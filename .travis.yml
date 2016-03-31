@@ -8,20 +8,25 @@ python:
   # maintainers to fix their pypy-dev package.
   - "pypy"
   - "pypy3"
+
+env:
+  - TOXENV=py27
+  - TOXENV=py33
+  - TOXENV=py34
+  - TOXENV=py35
 # command to install dependencies
 install:
   - pip install .
   - pip install coveralls
+  - pip install tox
 
 #  - pip install -r requirements.txt -r test-requirements.txt
 # command to run tests
 script:
 #  - nosetests
-#  - coverage run --source=test/module_test.py setup.py test
-   - tox
-
-script:
-
+  - tox 
+  - coverage run --source=setup.py test
+  - coverage report -m
 
 after_success:
   - coveralls
