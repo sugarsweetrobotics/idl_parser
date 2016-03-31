@@ -1,0 +1,41 @@
+/******
+ * This IDL is for test
+ */
+
+module my_module {
+  struct my_struct1 {
+    long long_member;
+  };
+
+
+  struct my_struct2 {
+    my_struct1 my_struct_member;
+  };
+
+  struct my_struct3 {
+    octet octet_member;
+    char char_member;
+    wchar wchar_member;
+    string string_member;
+    unsigned short ushort_member;
+    short short_member;
+    unsigned long ulong_member;
+    long long_member;
+    float float_member;
+    double double_member;
+  };
+
+
+  typedef octet my_byte;
+  typedef my_struct1 my_struct_typedef;
+
+  interface my_interface1 {
+    long method1(in long long_arg, out double double_arg, inout short short_arg);
+    my_struct1 method2(in my_struct1 my_struct1_arg, out my_struct2 my_strcut2_arg);
+  };
+
+  typedef sequence<double> DoubleSeq;
+  
+
+};
+
