@@ -1,6 +1,7 @@
 idl_parser
 ============
 
+|Travis Build Status|
 
 Description 
 -----------
@@ -69,13 +70,13 @@ Example
     print '  type:', m.type.name    
 
 How to install
------------
+---------------
 
     sudo pip install idl_parser
 
 
 Copyright
------------
+------------
 
 - author: Yuki Suga
 
