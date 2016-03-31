@@ -1,16 +1,16 @@
 idl_parser
-==========
-
-|Travis Build Status|
+============
 
 
 Description 
+-----------
 
 OMG IDL file parser. This library just parse IDL files, and output intermidiate type objects.
 
 Example
+-----------
 
-..code:: python
+.. code:: python
 
   """
   example for idl_parser package   
@@ -44,35 +44,44 @@ Example
   };
   """
     
-global_module = parser_.load(idl_str)
-my_module = global_module.module_by_name('my_module')
-dataGetter = my_module.interface_by_name('DataGetter')
-print 'DataGetter interface'
-for m in dataGetter.methods:
-  print '- method:'
-  print '  name:', m.name
-  print '  returns:', m.returns.name
-  print '  arguments:'
-  for a in m.arguments:
-    print '    name:', a.name
-    print '    type:', a.type
-    print '    direction:', a.direction
+  global_module = parser_.load(idl_str)
+  my_module = global_module.module_by_name('my_module')
+  dataGetter = my_module.interface_by_name('DataGetter')
+  print 'DataGetter interface'
+  for m in dataGetter.methods: 
+    print '- method:'
+    print '  name:', m.name
+    print '  returns:', m.returns.name
+    print '  arguments:'
+    for a in m.arguments:
+      print '    name:', a.name
+      print '    type:', a.type
+      print '    direction:', a.direction
     
-doubleSeq = my_module.typedef_by_name('DoubleSeq')
-print 'typedef %s %s' % (doubleSeq.type.name, doubleSeq.name)
+  doubleSeq = my_module.typedef_by_name('DoubleSeq')
+  print 'typedef %s %s' % (doubleSeq.type.name, doubleSeq.name)
 
-timedDoubleSeq = my_module.struct_by_name('TimedDoubleSeq')
-print 'TimedDoubleSeq'
-for m in timedDoubleSeq.members:
-  print '- member:'
-  print '  name:', m.name
-  print '  type:', m.type.name    
-```
-## How to install
+  timedDoubleSeq = my_module.struct_by_name('TimedDoubleSeq')
+  print 'TimedDoubleSeq'
+  for m in timedDoubleSeq.members:
+    print '- member:'
+    print '  name:', m.name
+    print '  type:', m.type.name    
+
+How to install
+-----------
+
+::
+
     sudo pip install idl_parser
 
-## Copyright
-* author: Yuki Suga
-* copyright: Yuki Suga @ ssr.tokyo
-* license: GPLv3
+
+Copyright
+-----------
+
+- author: Yuki Suga
+
+- copyright: Yuki Suga @ ssr.tokyo
+
+- license: GPLv3
 
