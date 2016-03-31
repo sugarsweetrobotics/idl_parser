@@ -249,8 +249,6 @@ class IDLParser():
 
 
     def generate_constructor_python(self, typ):
-        
-        #print 'generate_constructor_python', typ, 'start'
         code = ''
         if typ.is_sequence:
             code = code + '[]'
@@ -273,5 +271,4 @@ class IDLParser():
                 else:
                     code = code + self.generate_constructor_python(m.type.obj) + ', '
             code = code[:-2] + ')'
-        # print 'generate_constructor_python', typ, 'end'
         return code.replace('::', '.')
