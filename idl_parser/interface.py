@@ -1,4 +1,4 @@
-import node
+from . import node
 
 from . import type as idl_type
 
