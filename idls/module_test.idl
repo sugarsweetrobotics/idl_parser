@@ -31,7 +31,7 @@ module my_module {
 
   interface my_interface1 {
     long method1(in long long_arg, out double double_arg, inout short short_arg);
-    my_struct1 method2(in my_struct1 my_struct1_arg, out my_struct2 my_strcut2_arg);
+    my_struct1 method2(in my_struct1 my_struct1_arg, out my_struct2 my_struct2_arg);
   };
 
   typedef sequence<double> DoubleSeq;

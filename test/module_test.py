@@ -2,7 +2,7 @@ import os, sys
 import unittest
 import idl_parser
 
-idl_path = 'module_test.idl'
+idl_path = 'idls/module_test.idl'
 class TestFunctions(unittest.TestCase):
     def setUp(self):
         pass
