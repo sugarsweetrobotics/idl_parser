@@ -3,8 +3,8 @@
 """
 
 def  test():    
-    import idl_parser
-    parser = idl_parser.IDLParser()
+    import idl_parser.parser
+    parser = idl_parser.parser.IDLParser()
     idl_str = '''
 module my_module {
   struct Time {
