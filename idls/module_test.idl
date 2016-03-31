@@ -35,7 +35,14 @@ module my_module {
   };
 
   typedef sequence<double> DoubleSeq;
-  
 
+  enum my_enum1 {
+    data1, 
+    data2,
+    data3,
+  };
+
+  const long value1 = -1;
+  const unsigned long value2 = 4;
 };
 

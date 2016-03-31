@@ -50,7 +50,6 @@ class TestFunctions(unittest.TestCase):
             self.assertFalse(m.type.is_const)
 
 
-
     def test_typedef_types(self):
         parser_ = parser.IDLParser()
         m = parser_.load(open(idl_path, 'r').read())
@@ -95,12 +94,11 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(sa.type.name, 'short')
         self.assertEqual(sa.direction, 'inout')
 
-
         method2 = my_int.method_by_name('method2')
         self.assertEqual(method2.returns.basename, 'my_struct1')
         self.assertEqual(method2.argument_by_name('my_struct1_arg').type.basename, 'my_struct1')
         self.assertEqual(method2.argument_by_name('my_struct2_arg').type.basename, 'my_struct2')
-        
+
     def test_struct_types(self):
         parser_ = parser.IDLParser()
         m = parser_.load(open(idl_path, 'r').read())
@@ -109,6 +107,7 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(my_module.name, 'my_module')
         my_struct2 = my_module.struct_by_name('my_struct2')
         self.assertEqual(my_struct2.basename, 'my_struct2')
+        self.assertTrue(my_struct2.is_struct)
 
         m = my_struct2.member_by_name('my_struct_member')
         self.assertEqual(m.type.basename, 'my_struct1')
@@ -116,7 +115,39 @@ class TestFunctions(unittest.TestCase):
         my_struct = m.type
         self.assertTrue(my_struct.is_struct)
 
+    def test_enum_types(self):
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
+        self.assertEqual(m.name,'__global__')
+        my_module = m.modules[0]
+        self.assertEqual(my_module.name, 'my_module')
 
+        my_enum1 = my_module.enum_by_name('my_enum1')
+        self.assertEqual(my_enum1.name, 'my_enum1')
+        self.assertTrue(my_enum1.is_enum)
+        
+        self.assertEqual(my_enum1.value_by_name('data1').value, 0)
+        self.assertEqual(my_enum1.value_by_name('data2').value, 1)
+        self.assertEqual(my_enum1.value_by_name('data3').value, 2)
+        
+
+    def test_const_types(self):
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
+        self.assertEqual(m.name,'__global__')
+        my_module = m.modules[0]
+        self.assertEqual(my_module.name, 'my_module')
+
+        value1 = my_module.const_by_name('value1')
+        self.assertTrue(value1.is_const)
+        self.assertEqual(value1.value_string, '-1')
+        self.assertEqual(value1.type.name, 'long')
+
+        value2 = my_module.const_by_name('value2')
+        self.assertTrue(value2.is_const)
+        self.assertEqual(value2.value_string, '4')
+        self.assertEqual(value2.type.name, 'unsigned long')
+        
         
 if __name__ == '__main__':
     unittest.main()

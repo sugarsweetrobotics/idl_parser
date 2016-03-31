@@ -32,9 +32,17 @@ class IDLConst(node.IDLNode):
     @property
     def typename(self):
         return self._typename
+    
+    @property
+    def type(self):
+        return self.root_node.find_types(self.typename)[0]
 
     @property
     def value(self):
+        return self._value
+
+    @property
+    def value_string(self):
         return self._value
 
     @property

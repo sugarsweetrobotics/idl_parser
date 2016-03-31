@@ -45,20 +45,20 @@ class IDLEnum(node.IDLNode):
     def __init__(self, name, parent):
         super(IDLEnum, self).__init__('IDLEnum', name, parent)
         self._verbose = True
-        self._members = []
+        self._values = []
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
         name = self.full_path if full_path else self.name
         if quiet:
             return 'enum %s' % name 
-        dic = { 'enum %s' % name : [v.to_simple_dic() for v in self.members] }
+        dic = { 'enum %s' % name : [v.to_simple_dic() for v in self.values] }
         return dic
                     
 
     def to_dic(self):
         dic = { 'name' : self.name,
                 'classname' : self.classname,
-                'members' : [v.to_dic() for v in self.members] }
+                'values' : [v.to_dic() for v in self.values] }
         return dic
 
     @property
@@ -100,9 +100,15 @@ class IDLEnum(node.IDLNode):
         v = IDLEnumValue(self._counter, self)
         self._counter = self._counter+ 1
         v.parse_blocks(blocks, self.filepath)
-        self._members.append(v)
+        self._values.append(v)
 
     @property
-    def members(self):
-        return self._members
+    def values(self):
+        return self._values
 
+
+    def value_by_name(self, name):
+        for m in self.values:
+            if m.name == name:
+                return m
+        return None
