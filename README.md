@@ -1,6 +1,6 @@
 # idl_parser
 
-[![Build Status](https://travis-ci.org/sugarsweetrobotics/idl_parser.svg?branch=master)](https://travis-ci.org/sugarsweetrobotics/idl_parser)
+[![Build Status](https://travis-ci.org/sugarsweetrobotics/idl_parser.svg?branch=master)](https://travis-ci.org/sugarsweetrobotics/idl_parser) [![Coverage Status](https://coveralls.io/repos/github/sugarsweetrobotics/idl_parser/badge.svg?branch=master)](https://coveralls.io/github/sugarsweetrobotics/idl_parser?branch=master)
 
 
 ## Description 
