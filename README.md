@@ -1,5 +1,8 @@
 # idl_parser
 
+[![Build Status](https://travis-ci.org/sugarsweetrobotics/idl_parser.svg?branch=master)](https://travis-ci.org/sugarsweetrobotics/idl_parser)
+
+
 ## Description 
 
 OMG IDL file parser. This library just parse IDL files, and output intermidiate type objects.
