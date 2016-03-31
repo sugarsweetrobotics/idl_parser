@@ -206,3 +206,9 @@ class BasicTestFunctions(unittest.TestCase):
         
 if __name__ == '__main__':
     unittest.main()
+
+
+def suite():
+    suite = unittest.TestSuite()
+    suite.addTests(unittest.makeSuite(BasicTestFunctions))
+    return suite

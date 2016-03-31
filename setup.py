@@ -1,8 +1,6 @@
 from setuptools import setup, find_packages
 import sys
 
-
-
 long_description = open('README.rst', 'r').read()
 
 
@@ -28,6 +26,6 @@ setup(name='idl_parser',
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering',
         ],
-      #test_suite = "foo_test.suite",
+      test_suite = "tests.module_test.suite",
       #package_dir = {'': 'src'}
     )
