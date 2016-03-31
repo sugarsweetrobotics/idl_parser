@@ -47,8 +47,7 @@ module my_module {
 
   typedef double Matrix34[3][4];
 
-  typedef unsigned long[3][4][5][6] Matrix3456;
-
+  typedef unsigned long  Matrix3456[3][4][5][6];
   
 };
 
