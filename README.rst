@@ -87,4 +87,5 @@ Copyright
 .. |Travis Build Status| image:: https://travis-ci.org/sugarsweetrobotics/idl_parser.svg?branch=master
    :target: https://travis-ci.org/sugarsweetrobotics/idl_parser
    
-.. |Coverage Status| image:: https://coveralls.io/repos/github/sugarsweetrobotics/idl_parser/badge.svg?branch=master :target: https://coveralls.io/github/sugarsweetrobotics/idl_parser?branch=master
+.. |Coverage Status| image:: https://coveralls.io/repos/github/sugarsweetrobotics/idl_parser/badge.svg?branch=master
+   :target: https://coveralls.io/github/sugarsweetrobotics/idl_parser?branch=master
