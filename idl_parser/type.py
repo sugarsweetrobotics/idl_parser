@@ -131,7 +131,7 @@ class IDLSequence(IDLTypeBase):
 
 class IDLArray(IDLTypeBase):
     def __init__(self, name, parent):
-        super(IDLArray, self).__init__('IDLArray', name, parent.root_node)
+        super(IDLArray, self).__init__('IDLArray', name.strip(), parent.root_node)
 
         self._verbose = True
         if name.find('[') < 0:
@@ -140,7 +140,7 @@ class IDLArray(IDLTypeBase):
         size = name[name.find('[')+1 : name.find(']')]
         inner_type_name = primitive_type_name + name[name.find(']')+1:]
         self._size = int(size)
-        self._type = IDLType(inner_type_name, parent)
+        self._type = IDLType(inner_type_name.strip(), parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = False
         self._is_array = True

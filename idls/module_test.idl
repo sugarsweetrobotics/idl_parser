@@ -44,5 +44,11 @@ module my_module {
 
   const long value1 = -1;
   const unsigned long value2 = 4;
+
+  typedef double Matrix34[3][4];
+
+  typedef unsigned long[3][4][5][6] Matrix3456;
+
+  
 };
 
