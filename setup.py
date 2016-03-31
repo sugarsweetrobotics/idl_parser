@@ -3,11 +3,11 @@ import sys
 
 
 
-long_description = open('README.md', 'r').read()
+long_description = open('README.rst', 'r').read()
 
 
 setup(name='idl_parser',
-      version='0.0.4',
+      version='0.0.5',
       url = 'http://www.sugarsweetrobotics.com/',
       author = 'ysuga',
       author_email = 'ysuga@ysuga.net',
