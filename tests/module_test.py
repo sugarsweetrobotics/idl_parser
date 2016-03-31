@@ -2,6 +2,11 @@ import os, sys
 import unittest
 from idl_parser import parser
 
+
+from coveralls import Coveralls
+from coveralls.api import log
+
+
 idl_path = 'idls/basic_module_test.idl'
 
 class BasicTestFunctions(unittest.TestCase):
