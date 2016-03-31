@@ -71,8 +71,6 @@ Example
 How to install
 -----------
 
-::
-
     sudo pip install idl_parser
 
 
@@ -85,3 +83,5 @@ Copyright
 
 - license: GPLv3
 
+.. |Travis Build Status| image:: https://travis-ci.org/sugarsweetrobotics/idl_parser.svg?branch=master
+   :target: https://travis-ci.org/sugarsweetrobotics/idl_parser
