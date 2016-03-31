@@ -1,6 +1,6 @@
 import os, sys
 import unittest
-import idl_parser.parser
+from idl_parser import parser
 
 idl_path = 'idls/module_test.idl'
 class TestFunctions(unittest.TestCase):
@@ -8,8 +8,8 @@ class TestFunctions(unittest.TestCase):
         pass
 
     def test_module(self):
-        parser = idl_parser.parser.IDLParser()
-        m = parser.load(open(idl_path, 'r').read())
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
         self.assertEqual(m.name,'__global__')
         my_module = m.modules[0]
         self.assertEqual(my_module.name, 'my_module')
@@ -17,8 +17,8 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(my_struct.name, 'my_struct1')
 
     def test_primitive_types(self):
-        parser = idl_parser.parser.IDLParser()
-        m = parser.load(open(idl_path, 'r').read())
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
         self.assertEqual(m.name,'__global__')
         my_module = m.modules[0]
         self.assertEqual(my_module.name, 'my_module')
@@ -52,8 +52,8 @@ class TestFunctions(unittest.TestCase):
 
 
     def test_typedef_types(self):
-        parser = idl_parser.parser.IDLParser()
-        m = parser.load(open(idl_path, 'r').read())
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
         self.assertEqual(m.name,'__global__')
         my_module = m.modules[0]
         self.assertEqual(my_module.name, 'my_module')
@@ -68,8 +68,8 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(my_st.type.member_by_name('long_member').type.name, 'long')
 
     def test_interface_types(self):
-        parser = idl_parser.parser.IDLParser()
-        m = parser.load(open(idl_path, 'r').read())
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
         self.assertEqual(m.name,'__global__')
         my_module = m.modules[0]
         self.assertEqual(my_module.name, 'my_module')
@@ -102,8 +102,8 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(method2.argument_by_name('my_struct2_arg').type.basename, 'my_struct2')
         
     def test_struct_types(self):
-        parser = idl_parser.parser.IDLParser()
-        m = parser.load(open(idl_path, 'r').read())
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
         self.assertEqual(m.name,'__global__')
         my_module = m.modules[0]
         self.assertEqual(my_module.name, 'my_module')

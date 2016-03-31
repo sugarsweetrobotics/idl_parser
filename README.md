@@ -13,8 +13,8 @@ OMG IDL file parser. This library just parse IDL files, and output intermidiate 
     
     """
     
-    import idl_parser.parser
-    parser = idl_parser.parser.IDLParser()
+    from idl_parser import parser
+    parser_ = parser.IDLParser()
     idl_str = '''
 module my_module {
   struct Time {
@@ -41,7 +41,7 @@ module my_module {
 };
 '''    
     
-    global_module = parser.load(idl_str)
+    global_module = parser_.load(idl_str)
     my_module = global_module.module_by_name('my_module')
     dataGetter = my_module.interface_by_name('DataGetter')
     print 'DataGetter interface'
