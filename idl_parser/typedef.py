@@ -1,5 +1,5 @@
-import node
-import type as idl_type
+from . import node
+from . import type as idl_type
 sep = '::'
 
 class IDLTypedef(node.IDLNode):

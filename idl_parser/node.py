@@ -1,5 +1,3 @@
-
-
 class IDLNode(object):
     def __init__(self, classname, name, parent):
         self._classname = classname

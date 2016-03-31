@@ -1,7 +1,7 @@
 import os, sys, traceback
 
-import node, type
-import struct, typedef, interface, enum, const
+from . import node, type
+from . import struct, typedef, interface, enum, const
 global_namespace = '__global__'
 sep = '::'
 

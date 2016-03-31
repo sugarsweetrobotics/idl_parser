@@ -1,6 +1,6 @@
 import node
 
-import type as idl_type
+from . import type as idl_type
 
 sep = '::'
 

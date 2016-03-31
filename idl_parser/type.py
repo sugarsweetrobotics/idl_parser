@@ -1,6 +1,6 @@
 import os, sys, traceback
 
-import node
+from . import node
 
 sep = '::'
 

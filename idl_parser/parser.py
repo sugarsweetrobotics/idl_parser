@@ -1,7 +1,7 @@
 import os, sys
 
-import module, token_buffer
-import type as idl_type
+from . import  module, token_buffer
+from . import type as idl_type
 
 
 

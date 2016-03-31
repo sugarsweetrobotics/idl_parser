@@ -1,7 +1,7 @@
 import os, sys, traceback
 
-import node
-import type as idl_type
+from . import node
+from . import type as idl_type
 
 
 class IDLMember(node.IDLNode):
