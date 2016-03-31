@@ -2,12 +2,17 @@ from setuptools import setup, find_packages
 import sys
 
 
+
+long_description = open('README.md', 'r').read()
+
+
 setup(name='idl_parser',
-      version='0.0.1',
+      version='0.0.4',
       url = 'http://www.sugarsweetrobotics.com/',
       author = 'ysuga',
       author_email = 'ysuga@ysuga.net',
-      description = 'OMG IDL Parser',
+      description = 'Very simple OMG IDL (Interface Definition Language) parser. This parses IDL files and outputs intermediate class objects.',
+      long_description = long_description,
       download_url = 'https://github.com/sugarsweetrobotics/idl_parser',
       packages = ["idl_parser"],
       #py_modules = ["pepper_kinematics"],
