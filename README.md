@@ -8,14 +8,14 @@
 OMG IDL file parser. This library just parse IDL files, and output intermidiate type objects.
 
 ## Example
-
+```
     """
     
     """
     
     from idl_parser import parser
     parser_ = parser.IDLParser()
-    idl_str = '''
+    idl_str = """
 module my_module {
   struct Time {
     long sec;
@@ -39,7 +39,7 @@ module my_module {
   };
 
 };
-'''    
+"""
     
     global_module = parser_.load(idl_str)
     my_module = global_module.module_by_name('my_module')
@@ -64,7 +64,7 @@ module my_module {
       print '- member:'
       print '  name:', m.name
       print '  type:', m.type.name    
-
+```
 ## How to install
     sudo pip install idl_parser
 
