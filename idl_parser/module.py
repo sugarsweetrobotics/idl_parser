@@ -164,7 +164,7 @@ class IDLModule(node.IDLNode):
                 return m
         return None
 
-    def forEachModule(self, func):
+    def for_each_module(self, func):
         for m in self.modules:
             func(m)
 
@@ -178,7 +178,7 @@ class IDLModule(node.IDLNode):
                 return i
         return None
 
-    def forEachInterface(self, func):
+    def for_each_interface(self, func):
         for m in self.interfaces:
             func(m)
 
@@ -192,7 +192,7 @@ class IDLModule(node.IDLNode):
                 return s
         return None
 
-    def forEachStruct(self, func):
+    def for_each_struct(self, func):
         for m in self.structs:
             func(m)
 
@@ -206,7 +206,7 @@ class IDLModule(node.IDLNode):
                 return e
         return None
 
-    def forEachEnum(self, func):
+    def for_each_enum(self, func):
         for m in self.enums:
             func(m)
 
@@ -220,7 +220,7 @@ class IDLModule(node.IDLNode):
                 return c
         return None
 
-    def forEachConst(self, func):
+    def for_each_const(self, func):
         for m in self.consts:
             func(m)
 
@@ -234,7 +234,7 @@ class IDLModule(node.IDLNode):
                 return t
         return None
 
-    def forEachTypedef(self, func):
+    def for_each_typedef(self, func):
         for m in self.typedefs:
             func(m)
 
@@ -248,11 +248,11 @@ class IDLModule(node.IDLNode):
                 typenode.append(s)
 
         def parse_module(m):
-            m.forEachModule(parse_module)
-            m.forEachStruct(parse_node)
-            m.forEachTypedef(parse_node)
-            m.forEachEnum(parse_node)
-            m.forEachInterface(parse_node)
+            m.for_each_module(parse_module)
+            m.for_each_struct(parse_node)
+            m.for_each_typedef(parse_node)
+            m.for_each_enum(parse_node)
+            m.for_each_interface(parse_node)
 
         parse_module(self)
 

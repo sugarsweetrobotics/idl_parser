@@ -35,7 +35,7 @@ class IDLParser():
         :param except_files: List of IDL files that should be ignored. Do not have to use fullpath.
         :returns: None
         """
-        self.forEachIDL(self.parse_idl, except_files=except_files, idls=idls, idl_dirs=idl_dirs)
+        self.for_each_idl(self.parse_idl, except_files=except_files, idls=idls, idl_dirs=idl_dirs)
 
     def parse_idl(self, idl_path):
         if self._verbose: sys.stdout.write(' - Parsing IDL (%s)\n' % idl_path)
@@ -73,14 +73,14 @@ class IDLParser():
                 included_filepaths.append(idl_path)
                 included_filenames.remove(os.path.basename(idl_path))
 
-        self.forEachIDL(get_fullpath)
+        self.for_each_idl(get_fullpath)
         if len(included_filenames) > 0:
             raise IDLCanNotFindException()
                 
         return included_filepaths
 
 
-    def forEachIDL(self, func, idl_dirs=[], except_files=[], idls=[]):
+    def for_each_idl(self, func, idl_dirs=[], except_files=[], idls=[]):
         """ Parse IDLs and apply function.
         :param func: Function. IDL file fullpath will be passed to the function.
         :param idls: List of IDL files. Must be fullpath.
@@ -116,7 +116,7 @@ class IDLParser():
                 global retval
                 retval = apply_func(filepath)
                 
-        self.forEachIDL(func, idl_dirs=idl_dirs)
+        self.for_each_idl(func, idl_dirs=idl_dirs)
         return retval
 
     def _paste_include(self, lines):
