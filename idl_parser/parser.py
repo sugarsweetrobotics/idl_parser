@@ -3,29 +3,31 @@ import os, sys
 from . import  module, token_buffer
 from . import type as idl_type
 
-
-
 class IDLParser():
 
     def __init__(self, idl_dirs=[]):
         self._global_module = module.IDLModule()
         self._dirs = idl_dirs
         self._verbose = False
+        
     @property
     def global_module(self):
         return self._global_module
 
-    def is_primitive(self, name):
+    def is_primitive(self, name, except_string=False):
+        if except_string:
+            if name == 'string' or name == 'wstring':
+                return False
         return idl_type.is_primitive(name)
 
     @property
     def dirs(self):
         return self._dirs
 
-    def load(self, input_str, include_dirs=[]):
+    def load(self, input_str, include_dirs=[], filepath=None):
         self._dirs = self._dirs + include_dirs
         lines = [l for l in input_str.split('\n')]
-        self.parse_lines(lines)
+        self.parse_lines(lines, filepath=filepath)
         return self._global_module
 
     def parse(self, idls=[], idl_dirs=[], except_files=[]):
@@ -46,7 +48,7 @@ class IDLParser():
 
         self.parse_lines(lines)
 
-    def parse_lines(self, lines):
+    def parse_lines(self, lines, filepath=None):
 
         lines = self._clear_comments(lines)
         lines = self._paste_include(lines)            
@@ -54,7 +56,7 @@ class IDLParser():
 
         self._token_buf = token_buffer.TokenBuffer(lines)
 
-        self._global_module.parse_tokens(self._token_buf, filepath=None)
+        self._global_module.parse_tokens(self._token_buf, filepath=filepath)
 
     def includes(self, idl_path):
         included_filepaths = []

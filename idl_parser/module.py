@@ -165,8 +165,10 @@ class IDLModule(node.IDLNode):
         return None
 
     def for_each_module(self, func):
+        retval = []
         for m in self.modules:
-            func(m)
+            retval.append(func(m))
+        return retval
 
     @property
     def interfaces(self):
@@ -179,8 +181,10 @@ class IDLModule(node.IDLNode):
         return None
 
     def for_each_interface(self, func):
+        retval = []
         for m in self.interfaces:
-            func(m)
+            retval.append(func(m))
+        return retval
 
     @property
     def structs(self):
@@ -192,9 +196,16 @@ class IDLModule(node.IDLNode):
                 return s
         return None
 
-    def for_each_struct(self, func):
+    def for_each_struct(self, func, filter=None):
+        retval = []
         for m in self.structs:
-            func(m)
+            if filter:
+                if filter(m):
+                    retval.append(func(m))
+                pass
+            else:
+                retval.append(func(m))
+        return retval
 
     @property
     def enums(self):
@@ -207,8 +218,10 @@ class IDLModule(node.IDLNode):
         return None
 
     def for_each_enum(self, func):
+        retval = []
         for m in self.enums:
-            func(m)
+            retval.append(func(m))
+        return retval
 
     @property
     def consts(self):
@@ -221,8 +234,11 @@ class IDLModule(node.IDLNode):
         return None
 
     def for_each_const(self, func):
+        retval = []
         for m in self.consts:
-            func(m)
+            retval.append(func(m))
+        return retval
+            
 
     @property
     def typedefs(self):
@@ -235,8 +251,9 @@ class IDLModule(node.IDLNode):
         return None
 
     def for_each_typedef(self, func):
+        retval = []
         for m in self.typedefs:
-            func(m)
+            retval.append(func(m))
 
     def find_types(self, full_typename):
         if type.is_primitive(full_typename):
