@@ -47,8 +47,13 @@ class IDLMember(node.IDLNode):
     @property
     def type(self):
         if self._type.classname == 'IDLBasicType': # Struct
-            return self.root_node.find_types(self._type.name)[0]
+            typs = self.root_node.find_types(self._type.name)
+            if len(typs) == 0:
+                print 'Can not find Data Type (%s)\n' % self._type.name
+                raise InvalidDataTypeException()
+            return typs[0]
         return self._type
+
 
     def get_type(self, extract_typedef=False):
         if extract_typedef:
