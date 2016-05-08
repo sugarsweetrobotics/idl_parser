@@ -64,7 +64,7 @@ class IDLSequence(IDLTypeBase):
         if name.find('sequence') < 0:
             raise InvalidIDLSyntaxError()
         typ_ = name[name.find('<')+1 : name.find('>')]
-        self._type = IDLType(typ_, parent)        
+        self._type = IDLType(typ_, parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = True
 
