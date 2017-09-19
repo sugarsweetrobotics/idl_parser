@@ -12,7 +12,7 @@ class IDLModule(node.IDLNode):
         self._verbose = False
         if name is None:
             self._name = global_namespace
-            
+
         self._interfaces = []
         self._typedefs = []
         self._structs = []
@@ -24,7 +24,7 @@ class IDLModule(node.IDLNode):
     @property
     def is_global(self):
         return self.name == global_namespace
-        
+
     @property
     def full_path(self):
         if self.parent is None:
@@ -37,16 +37,16 @@ class IDLModule(node.IDLNode):
     def to_simple_dic(self, quiet=False):
         dic = {'module %s' % self.name : [s.to_simple_dic(quiet) for s in self.structs] +
                [i.to_simple_dic(quiet) for i in self.interfaces] +
-               [m.to_simple_dic(quiet) for m in self.modules] + 
-               [e.to_simple_dic(quiet) for e in self.enums] + 
-               [u.to_simple_dic(quiet) for e in self.unions] + 
-               [t.to_simple_dic(quiet) for t in self.typedefs] + 
+               [m.to_simple_dic(quiet) for m in self.modules] +
+               [e.to_simple_dic(quiet) for e in self.enums] +
+               [u.to_simple_dic(quiet) for e in self.unions] +
+               [t.to_simple_dic(quiet) for t in self.typedefs] +
                [t.to_simple_dic(quiet) for t in self.consts]}
         return dic
 
     def to_dic(self):
         dic = { 'name' : self.name,
-                'filepath' : self.filepath, 
+                'filepath' : self.filepath,
                 'classname' : self.classname,
                 'interfaces' : [i.to_dic() for i in self.interfaces],
                 'typedefs' : [t.to_dic() for t in self.typedefs],
@@ -56,7 +56,7 @@ class IDLModule(node.IDLNode):
                 'modules' : [m.to_dic() for m in self.modules],
                 'consts' : [c.to_dic() for c in self.consts] }
         return dic
-    
+
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
@@ -115,7 +115,7 @@ class IDLModule(node.IDLNode):
                 #    raise InvalidIDLSyntaxError
                 else:
                     self._interfaces.append(s)
-            
+
             elif token == 'enum':
                 name_ = token_buf.pop()
                 s = enum.IDLEnum(name_, self)
@@ -158,10 +158,10 @@ class IDLModule(node.IDLNode):
                     if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
                 else:
                     self._consts.append(s)
-                
+
             elif token == '}':
                 break
-            
+
         return True
 
 
@@ -266,7 +266,7 @@ class IDLModule(node.IDLNode):
         for m in self.consts:
             retval.append(func(m))
         return retval
-            
+
 
     @property
     def typedefs(self):

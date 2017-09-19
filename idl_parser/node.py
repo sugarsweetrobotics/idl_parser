@@ -13,7 +13,7 @@ class IDLNode(object):
     @property
     def is_array(self):
         return self._classname == 'IDLArray'
-    
+
     @property
     def is_void(self):
         return self._classname == 'IDLVoid'
