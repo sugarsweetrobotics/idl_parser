@@ -44,10 +44,10 @@ class IDLArgument(node.IDLNode):
         return self._type
 
     def post_process(self):
-        #self._type = self.refine_typename(self.type)
-        pass
+        self._type._name = self.refine_typename(self.type)
 
-        
+
+
 class IDLMethod(node.IDLNode):
     def __init__(self, parent):
         super(IDLMethod, self).__init__('IDLValue', '', parent)
@@ -71,7 +71,7 @@ class IDLMethod(node.IDLNode):
         if not blocks[2] == '(':
             print(' -- Invalid Interface Token (%s)' % interface_name)
             print( blocks)
-            
+
         index = 3
         argument_blocks = []
         while True:
@@ -130,12 +130,12 @@ class IDLMethod(node.IDLNode):
         pass
 
 class IDLInterface(node.IDLNode):
-    
+
     def __init__(self, name, parent):
         super(IDLInterface, self).__init__('IDLInterface', name, parent)
         self._verbose = True
         self._methods = []
-        
+
     @property
     def full_path(self):
         return self.parent.full_path + sep + self.name
@@ -148,33 +148,33 @@ class IDLInterface(node.IDLNode):
 
     def to_dic(self):
         dic = { 'name' : self.name,
-                'filepath' : self.filepath, 
+                'filepath' : self.filepath,
                 'classname' : self.classname,
                 'methods' : [m.to_dic() for m in self.methods] }
         return dic
-    
+
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath=filepath
         kakko = token_buf.pop()
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
             raise InvalidIDLSyntaxError()
-        
-        block_tokens = []        
+
+        block_tokens = []
         while True:
 
             token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise InvalidIDLSyntaxError()
-            
+
             elif token == '}':
                 token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
                     raise InvalidIDLSyntaxError()
                 break
-            
+
             if token == ';':
                 self._parse_block(block_tokens)
                 block_tokens = []
@@ -204,4 +204,4 @@ class IDLInterface(node.IDLNode):
         for m in self.methods:
             func(m)
 
-        
+

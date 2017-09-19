@@ -63,8 +63,7 @@ class IDLMember(node.IDLNode):
 
 
     def post_process(self):
-        #self._type = self.refine_typename(self.type)
-        pass
+        self._type._name = self.refine_typename(self.type)
 
 
 class IDLStruct(node.IDLNode):

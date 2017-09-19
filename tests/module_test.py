@@ -1,7 +1,7 @@
 import os, sys
 import unittest
 from idl_parser import parser
-
+from idl_parser.type import IDLType
 
 from coveralls import Coveralls
 from coveralls.api import log
@@ -29,12 +29,12 @@ class BasicTestFunctions(unittest.TestCase):
         my_module = m.modules[0]
         self.assertEqual(my_module.name, 'my_module')
         my_struct = my_module.struct_by_name('my_struct3')
-        self.assertEqual(my_struct.name, 'my_struct3') 
+        self.assertEqual(my_struct.name, 'my_struct3')
 
         typenames = {
             'octet': 'octet_member',
             'unsigned long': 'ulong_member',
-            
+
             'char': 'char_member',
             'wchar': 'wchar_member',
             'string': 'string_member',
@@ -78,7 +78,7 @@ class BasicTestFunctions(unittest.TestCase):
         self.assertEqual(m.name,'__global__')
         my_module = m.modules[0]
         self.assertEqual(my_module.name, 'my_module')
-        
+
         my_int = my_module.interface_by_name('my_interface1')
         self.assertEqual(my_int.basename, 'my_interface1')
         method1 = my_int.method_by_name('method1')
@@ -121,6 +121,45 @@ class BasicTestFunctions(unittest.TestCase):
         my_struct = m.type
         self.assertTrue(my_struct.is_struct)
 
+    def test_union_types(self):
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
+        self.assertEqual(m.name,'__global__')
+        my_module = m.modules[0]
+        self.assertEqual(my_module.name, 'my_module')
+        my_union_1 = my_module.union_by_name('my_union1')
+        self.assertEqual(my_union_1.basename, 'my_union1')
+        self.assertTrue(my_union_1.is_union)
+
+        m = my_union_1.member_by_name('ull_value')
+        self.assertEqual(m.type.name, 'unsigned long long')
+        self.assertIn(
+            'descriminator_unknown',
+            m.descriminator_value_associations)
+        self.assertIn(
+            'descriminator_kind_count',
+            m.descriminator_value_associations)
+        self.assertIn(
+            'descriminator_ulonglong',
+            m.descriminator_value_associations)
+        m = my_union_1.member_by_name('ll_value')
+        self.assertEqual(m.type.name, 'long long')
+        self.assertIn(
+            'descriminator_longlong',
+            m.descriminator_value_associations)
+        m = my_union_1.member_by_name('d_value')
+        self.assertEqual(m.type.name, 'double')
+        self.assertIn(
+            'descriminator_double',
+            m.descriminator_value_associations)
+        m = my_union_1.member_by_name('str_value')
+        sequence_type = IDLType(m.type.name, m.parent)
+        self.assertTrue(sequence_type.is_sequence)
+        self.assertEqual(sequence_type.inner_type.name, 'char')
+        self.assertIn(
+            'descriminator_string',
+            m.descriminator_value_associations)
+
     def test_enum_types(self):
         parser_ = parser.IDLParser()
         m = parser_.load(open(idl_path, 'r').read())
@@ -131,11 +170,11 @@ class BasicTestFunctions(unittest.TestCase):
         my_enum1 = my_module.enum_by_name('my_enum1')
         self.assertEqual(my_enum1.name, 'my_enum1')
         self.assertTrue(my_enum1.is_enum)
-        
+
         self.assertEqual(my_enum1.value_by_name('data1').value, 0)
         self.assertEqual(my_enum1.value_by_name('data2').value, 1)
         self.assertEqual(my_enum1.value_by_name('data3').value, 2)
-        
+
 
     def test_const_types(self):
         parser_ = parser.IDLParser()
@@ -153,7 +192,7 @@ class BasicTestFunctions(unittest.TestCase):
         self.assertTrue(value2.is_const)
         self.assertEqual(value2.value_string, '4')
         self.assertEqual(value2.type.name, 'unsigned long')
-        
+
     def test_sequence_test(self):
         parser_ = parser.IDLParser()
         m = parser_.load(open(idl_path, 'r').read())
@@ -166,7 +205,7 @@ class BasicTestFunctions(unittest.TestCase):
         seq_double = doubleSeq.type
         self.assertTrue(seq_double.is_sequence)
         self.assertEqual(seq_double.inner_type.name, 'double')
-        
+
     def test_arraye_test(self):
         parser_ = parser.IDLParser()
         m = parser_.load(open(idl_path, 'r').read())
@@ -180,7 +219,7 @@ class BasicTestFunctions(unittest.TestCase):
         arr_arr_double = mat34.type
         self.assertTrue(arr_arr_double.is_array)
         self.assertEqual(arr_arr_double.size, 3)
-        
+
         arr_double = arr_arr_double.inner_type
         self.assertEqual(arr_double.name, 'double [4]')
         self.assertTrue(arr_double.is_array)
@@ -194,7 +233,7 @@ class BasicTestFunctions(unittest.TestCase):
         arr_arr_arr_arr_ul = mat3456.type
         self.assertTrue(arr_arr_arr_arr_ul.is_array)
         self.assertEqual(arr_arr_arr_arr_ul.size, 3)
-        
+
         arr_arr_arr_ul = arr_arr_arr_arr_ul.inner_type
         self.assertTrue(arr_arr_arr_ul.is_array)
         self.assertEqual(arr_arr_arr_ul.size, 4)
@@ -207,8 +246,8 @@ class BasicTestFunctions(unittest.TestCase):
         self.assertTrue(arr_ul.is_array)
         self.assertEqual(arr_ul.size, 6)
         self.assertTrue(arr_ul.inner_type.name, 'unsigned long')
-        
-        
+
+
 if __name__ == '__main__':
     unittest.main()
 

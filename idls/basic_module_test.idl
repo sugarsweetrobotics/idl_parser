@@ -25,6 +25,29 @@ module my_module {
     double double_member;
   };
 
+  enum my_union1_descriminator_kind
+  {
+      descriminator_unknown,
+      descriminator_ulonglong,
+      descriminator_longlong,
+      descriminator_double,
+      descriminator_string,
+      descriminator_kind_count
+  };
+
+  union my_union1 switch( my_union1_descriminator_kind )
+  {
+      case descriminator_unknown:
+      case descriminator_kind_count:
+      case descriminator_ulonglong:
+          unsigned long long      ull_value;
+      case descriminator_longlong:
+          long long               ll_value;
+      case descriminator_double:
+          double                  d_value;
+      case descriminator_string:
+          sequence<char>          str_value;
+  };
 
   typedef octet my_byte;
   typedef my_struct1 my_struct_typedef;
@@ -37,7 +60,7 @@ module my_module {
   typedef sequence<double> DoubleSeq;
 
   enum my_enum1 {
-    data1, 
+    data1,
     data2,
     data3,
   };
@@ -48,6 +71,6 @@ module my_module {
   typedef double Matrix34[3][4];
 
   typedef unsigned long  Matrix3456[3][4][5][6];
-  
+
 };
 

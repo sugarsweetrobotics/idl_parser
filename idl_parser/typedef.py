@@ -3,7 +3,7 @@ from . import type as idl_type
 sep = '::'
 
 class IDLTypedef(node.IDLNode):
-    
+
     def __init__(self, parent):
         super(IDLTypedef, self).__init__('IDLTypedef', '', parent)
         self._verbose = True
@@ -49,7 +49,7 @@ class IDLTypedef(node.IDLNode):
                 return self.type.type
         return self.type
 
-    
+
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
         type_name_ = ''
@@ -58,7 +58,7 @@ class IDLTypedef(node.IDLNode):
         while True:
             if name.find('[') < 0:
                 break
-            
+
             if name.find('[') > 0:
                 type_name_ = name[name.find('['):]
                 name = name[:name.find('[')]
@@ -81,5 +81,4 @@ class IDLTypedef(node.IDLNode):
         self._post_process()
 
     def _post_process(self):
-        #self._type = self.refine_typename(self.type)
-        pass
+        self._type._name = self.refine_typename(self.type)

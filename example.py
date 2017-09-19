@@ -25,7 +25,7 @@ module my_module {
   union UnionType switch( UNION_DESCRIMINATOR_KIND )
   {
       case DESCRIMINATOR_UNKNOWN:
-      case DESCRIMINATOR_COUNT:
+      case DESCRIMINATOR_KIND_COUNT:
       case DESCRIMINATOR_ULONGLONG:
           unsigned long long      ull_value;
       case DESCRIMINATOR_LONGLONG:

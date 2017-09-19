@@ -55,12 +55,12 @@ class IDLUnionMember(node.IDLNode):
                 'descriminator_value_associations' : self.descriminator_value_associations,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
-                'type' : str(self.type) }
+                'type' : self.type.name }
         return dic
 
     @property
     def type(self):
-        if self._type.classname == 'IDLBasicType': # Struct
+        if self._type.classname == 'IDLBasicType': # Union
             typs = self.root_node.find_types(self._type.name)
             if len(typs) == 0:
                 print('Can not find Data Type (%s)\n' % self._type.name)
@@ -78,11 +78,8 @@ class IDLUnionMember(node.IDLNode):
                 return self.type.type
         return self.type
 
-
     def post_process(self):
-        #self._type = self.refine_typename(self.type)
-        pass
-
+        self._type._name = self.refine_typename(self.type)
 
 class IDLUnion(node.IDLNode):
 
