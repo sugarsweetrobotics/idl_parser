@@ -12,6 +12,30 @@ module my_module {
     long usec;
   };
 
+  enum union_descriminator_kind
+  {
+      PARAMETER_VALUE_UNKNOWN,
+      PARAMETER_VALUE_ULONGLONG,
+      PARAMETER_VALUE_LONGLONG,
+      PARAMETER_VALUE_DOUBLE,
+      PARAMETER_VALUE_STRING,
+      PARAMETER_VALUE_KIND_COUNT
+  };
+
+  union union_value switch( union_descriminator_kind )
+  {
+      case PARAMETER_VALUE_UNKNOWN:
+      case PARAMETER_VALUE_KIND_COUNT:
+      case PARAMETER_VALUE_ULONGLONG:
+          unsigned long long      ull_value;
+      case PARAMETER_VALUE_LONGLONG:
+          long long               ll_value;
+      case PARAMETER_VALUE_DOUBLE:
+          double                  d_value;
+      case PARAMETER_VALUE_STRING:
+          sequence<char>          str_value;
+  };
+
   typedef sequence<double> DoubleSeq;
   
   struct TimedDoubleSeq {
