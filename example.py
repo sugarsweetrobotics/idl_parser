@@ -33,7 +33,7 @@ module my_module {
       case DESCRIMINATOR_DOUBLE:
           double                  d_value;
       case DESCRIMINATOR_STRING:
-          sequence<char>          str_value;
+          sequence<char>     str_value;
   };
 
   typedef sequence<double> DoubleSeq;

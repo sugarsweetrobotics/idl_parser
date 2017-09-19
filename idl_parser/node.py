@@ -107,12 +107,13 @@ class IDLNode(object):
     def refine_typename(self, typ):
         global_module = self.root_node
         if typ.name.find('sequence') >= 0:
-            typs = global_module.find_types(typ.name[typ.name.find('<')+1 : typ.name.find('>')])
+            name = typ.name[typ.name.find('<')+1 : typ.name.find('>')].strip()
+            typs = global_module.find_types(name)
             if len(typs) == 0:
                 typ__ = typs
             else:
                 typ__  = typs[0]
-            print typ__
+
             return 'sequence < ' + typ__.name + ' >'
         else:
             typs = global_module.find_types(typ.name)

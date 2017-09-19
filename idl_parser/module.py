@@ -39,7 +39,7 @@ class IDLModule(node.IDLNode):
                [i.to_simple_dic(quiet) for i in self.interfaces] +
                [m.to_simple_dic(quiet) for m in self.modules] +
                [e.to_simple_dic(quiet) for e in self.enums] +
-               [u.to_simple_dic(quiet) for e in self.unions] +
+               [u.to_simple_dic(quiet) for u in self.unions] +
                [t.to_simple_dic(quiet) for t in self.typedefs] +
                [t.to_simple_dic(quiet) for t in self.consts]}
         return dic
@@ -52,7 +52,7 @@ class IDLModule(node.IDLNode):
                 'typedefs' : [t.to_dic() for t in self.typedefs],
                 'structs' : [s.to_dic() for s in self.structs],
                 'enums' : [e.to_dic() for e in self.enums],
-                'unions' : [u.to_dic() for e in self.unions],
+                'unions' : [u.to_dic() for u in self.unions],
                 'modules' : [m.to_dic() for m in self.modules],
                 'consts' : [c.to_dic() for c in self.consts] }
         return dic
