@@ -218,12 +218,12 @@ class BasicTestFunctions(unittest.TestCase):
         self.assertTrue(mat34.is_typedef)
         arr_arr_double = mat34.type
         self.assertTrue(arr_arr_double.is_array)
-        self.assertEqual(arr_arr_double.size, 3)
+        self.assertEqual(arr_arr_double.size, '3')
 
         arr_double = arr_arr_double.inner_type
         self.assertEqual(arr_double.name, 'double [4]')
         self.assertTrue(arr_double.is_array)
-        self.assertEqual(arr_double.size, 4)
+        self.assertEqual(arr_double.size, '4')
         self.assertEqual(arr_double.inner_type.name, 'double')
 
 
@@ -232,21 +232,39 @@ class BasicTestFunctions(unittest.TestCase):
         self.assertTrue(mat3456.is_typedef)
         arr_arr_arr_arr_ul = mat3456.type
         self.assertTrue(arr_arr_arr_arr_ul.is_array)
-        self.assertEqual(arr_arr_arr_arr_ul.size, 3)
+        self.assertEqual(arr_arr_arr_arr_ul.size,'3')
 
         arr_arr_arr_ul = arr_arr_arr_arr_ul.inner_type
         self.assertTrue(arr_arr_arr_ul.is_array)
-        self.assertEqual(arr_arr_arr_ul.size, 4)
+        self.assertEqual(arr_arr_arr_ul.size, '4')
 
         arr_arr_ul = arr_arr_arr_ul.inner_type
         self.assertTrue(arr_arr_ul.is_array)
-        self.assertEqual(arr_arr_ul.size, 5)
+        self.assertEqual(arr_arr_ul.size, '5')
 
         arr_ul = arr_arr_ul.inner_type
         self.assertTrue(arr_ul.is_array)
-        self.assertEqual(arr_ul.size, 6)
+        self.assertEqual(arr_ul.size, '6')
         self.assertTrue(arr_ul.inner_type.name, 'unsigned long')
 
+    def test_odd_spaces(self):
+        parser_ = parser.IDLParser()
+        m = parser_.load(open(idl_path, 'r').read())
+        self.assertEqual(m.name,'__global__')
+        my_module = m.modules[0]
+        self.assertEqual(my_module.name, 'my_module')
+        another_struct = my_module.struct_by_name('another_struct')
+        m = another_struct.member_by_name('another_struct_array1')
+        self.assertTrue(m.type.is_array)
+        self.assertEqual(m.type.size, 'MY_CONSTANT')
+        m = another_struct.member_by_name('another_struct_array2')
+        self.assertTrue(m.type.is_array)
+        self.assertEqual(m.type.size, '10')
+        m = another_struct.member_by_name('another_struct_array1')
+        m = another_struct.member_by_name('another_struct_seq1')
+        self.assertEqual(m.type.inner_type.name, 'my_byte')
+        m = another_struct.member_by_name('another_struct_seq2')
+        self.assertEqual(m.type.inner_type.name, 'int')
 
 if __name__ == '__main__':
     unittest.main()

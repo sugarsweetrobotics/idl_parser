@@ -72,5 +72,18 @@ module my_module {
 
   typedef unsigned long  Matrix3456[3][4][5][6];
 
+  const MY_CONSTANT = 10;
+
+  struct another_struct {
+    int another_struct_array1[ MY_CONSTANT ];
+    int another_struct_array2[
+      10
+      ];
+    sequence< my_byte > another_struct_seq1;
+    sequence<
+      int
+      > another_struct_seq2;
+  };
+
 };
 

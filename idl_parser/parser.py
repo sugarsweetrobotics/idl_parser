@@ -24,8 +24,27 @@ class IDLParser():
     def dirs(self):
         return self._dirs
 
+    def prepare_input(self, data):
+        from re import compile, UNICODE, MULTILINE
+        flags = UNICODE | MULTILINE
+
+        pattern = compile('\[[ \n]+', flags)
+        data = pattern.sub('[', data)
+
+        pattern = compile('[ \n]+\]', flags)
+        data = pattern.sub(']', data)
+
+        pattern = compile('\<[ \n]+', flags)
+        data = pattern.sub('<', data)
+
+        pattern = compile('[ \n]+\>', flags)
+        data = pattern.sub('>', data)
+
+        return data
+
     def load(self, input_str, include_dirs=[], filepath=None):
         self._dirs = self._dirs + include_dirs
+        input_str = self.prepare_input(input_str)
         lines = [l for l in input_str.split('\n')]
         self.parse_lines(lines, filepath=filepath)
         return self._global_module
@@ -55,7 +74,6 @@ class IDLParser():
         lines = self._clear_ifdef(lines)
 
         self._token_buf = token_buffer.TokenBuffer(lines)
-
         self._global_module.parse_tokens(self._token_buf, filepath=filepath)
 
     def includes(self, idl_path):

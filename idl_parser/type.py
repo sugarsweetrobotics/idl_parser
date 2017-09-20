@@ -139,7 +139,7 @@ class IDLArray(IDLTypeBase):
         primitive_type_name = name[:name.find('[')]
         size = name[name.find('[')+1 : name.find(']')]
         inner_type_name = primitive_type_name + name[name.find(']')+1:]
-        self._size = int(size)
+        self._size = size
         self._type = IDLType(inner_type_name.strip(), parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = False
