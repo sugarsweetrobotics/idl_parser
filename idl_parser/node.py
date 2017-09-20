@@ -13,7 +13,7 @@ class IDLNode(object):
     @property
     def is_array(self):
         return self._classname == 'IDLArray'
-    
+
     @property
     def is_void(self):
         return self._classname == 'IDLVoid'
@@ -41,6 +41,10 @@ class IDLNode(object):
     @property
     def is_enum(self):
         return self._classname == 'IDLEnum'
+
+    @property
+    def is_union(self):
+        return self._classname == 'IDLUnion'
 
     @property
     def is_const(self):
@@ -102,14 +106,18 @@ class IDLNode(object):
 
     def refine_typename(self, typ):
         global_module = self.root_node
-        if typ.find('sequence') >= 0:
-            typ_ = typ[typ.find('<')+1 : typ.find('>')]
-            typ__ = self.refine_typename(typ_)
-            return 'sequence < ' + typ__ + ' >'
+        if typ.name.find('sequence') >= 0:
+            name = typ.name[typ.name.find('<')+1 : typ.name.find('>')].strip()
+            typs = global_module.find_types(name)
+            if len(typs) == 0:
+                typ__ = typs
+            else:
+                typ__  = typs[0]
+
+            return 'sequence < ' + typ__.name + ' >'
         else:
-        #f True:
-            typs = global_module.find_types(typ)
+            typs = global_module.find_types(typ.name)
             if len(typs) == 0:
                 return typ
             else:
-                return typs[0].full_path
+                return typs[0].name

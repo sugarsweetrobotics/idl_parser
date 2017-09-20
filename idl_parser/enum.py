@@ -36,12 +36,12 @@ class IDLEnumValue(node.IDLNode):
     @property
     def value(self):
         return self._value
-    
+
 
 
 
 class IDLEnum(node.IDLNode):
-    
+
     def __init__(self, name, parent):
         super(IDLEnum, self).__init__('IDLEnum', name, parent)
         self._verbose = True
@@ -50,10 +50,10 @@ class IDLEnum(node.IDLNode):
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
         name = self.full_path if full_path else self.name
         if quiet:
-            return 'enum %s' % name 
+            return 'enum %s' % name
         dic = { 'enum %s' % name : [v.to_simple_dic() for v in self.values] }
         return dic
-                    
+
 
     def to_dic(self):
         dic = { 'name' : self.name,
@@ -64,7 +64,7 @@ class IDLEnum(node.IDLNode):
     @property
     def full_path(self):
         return self.parent.full_path + sep + self.name
-    
+
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
         self._counter = 0
@@ -72,14 +72,14 @@ class IDLEnum(node.IDLNode):
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
             raise InvalidIDLSyntaxError()
-        
-        block_tokens = []        
+
+        block_tokens = []
         while True:
             token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise InvalidIDLSyntaxError()
-            
+
             elif token == '}':
                 token = token_buf.pop()
                 if not token == ';':
@@ -89,13 +89,13 @@ class IDLEnum(node.IDLNode):
                 if len(block_tokens) > 0:
                     self._parse_block(block_tokens)
                 break
-            
+
             if token == ',':
                 self._parse_block(block_tokens)
                 block_tokens = []
                 continue
             block_tokens.append(token)
-            
+
     def _parse_block(self, blocks):
         v = IDLEnumValue(self._counter, self)
         self._counter = self._counter+ 1

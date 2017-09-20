@@ -6,14 +6,14 @@ sep = '::'
 
 primitive = [
     'boolean',
-    'char', 'byte', 'octet', 
-    'short', 'wchar', 
-    'long', 
+    'char', 'byte', 'octet',
+    'short', 'wchar',
+    'long',
     'float',
     'double',
     'string',
     'wstring']
-           
+
 def is_primitive(name):
     for n in name.split(' '):
         if n in primitive:
@@ -63,7 +63,7 @@ class IDLSequence(IDLTypeBase):
         self._verbose = True
         if name.find('sequence') < 0:
             raise InvalidIDLSyntaxError()
-        typ_ = name[name.find('<')+1 : name.find('>')]
+        typ_ = name[name.find('<')+1 : name.find('>')].strip()
         self._type = IDLType(typ_, parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = True
@@ -74,7 +74,7 @@ class IDLSequence(IDLTypeBase):
 
     def __str__(self):
         return 'sequence<%s>' % str(self.inner_type)
-    
+
     @property
     def obj(self):
         return self
@@ -163,14 +163,14 @@ class IDLArray(IDLTypeBase):
             n[0] = n[0] + '[%s]' % typ.size
             if typ.inner_type.is_array:
                 _apply_size(typ.inner_type)
-        
+
         _apply_size(self)
         return n[0]
-    
+
     @property
     def obj(self):
         return self
-    
+
     @property
     def size(self):
         return self._size
@@ -201,9 +201,9 @@ class IDLArray(IDLTypeBase):
 
         if recursive:
             if self.type.is_primitive:
-                return str(self) 
+                return str(self)
             else:
-                return str(self) 
+                return str(self)
         """
             n = 'typedef ' + str(self.type) +' ' + name
             if not self.type.is_primitive:
@@ -224,21 +224,23 @@ class IDLArray(IDLTypeBase):
                 'type' : str(self.type) }
         return dic
 
-        
+
 class IDLPrimitive(IDLTypeBase):
     def __init__(self, name, parent):
         super(IDLPrimitive, self).__init__('IDLPrimitive', name, parent.root_node)
         self._verbose = True
         self._is_primitive = True
-
+    @property
+    def full_path(self):
+        return (self.parent.full_path + self.sep + self.name).strip()
 class IDLBasicType(IDLTypeBase):
     def __init__(self, name, parent):
         super(IDLBasicType, self).__init__('IDLBasicType', name, parent.root_node)
         self._verbose = True
         #if self.name.find('['):
         #    self._name = self.name[self.name.find('[')+1:]
-        self._name = self.refine_typename(self.name)
-        
+        self._name = self.refine_typename(self)
+
     @property
     def obj(self):
         global_module = self.root_node

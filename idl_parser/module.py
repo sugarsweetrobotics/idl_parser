@@ -1,7 +1,7 @@
 import os, sys, traceback
 
 from . import node, type
-from . import struct, typedef, interface, enum, const
+from . import struct, typedef, interface, enum, const, union
 global_namespace = '__global__'
 sep = '::'
 
@@ -12,18 +12,19 @@ class IDLModule(node.IDLNode):
         self._verbose = False
         if name is None:
             self._name = global_namespace
-            
+
         self._interfaces = []
         self._typedefs = []
         self._structs = []
         self._enums = []
+        self._unions = []
         self._consts = []
         self._modules = []
 
     @property
     def is_global(self):
         return self.name == global_namespace
-        
+
     @property
     def full_path(self):
         if self.parent is None:
@@ -36,24 +37,26 @@ class IDLModule(node.IDLNode):
     def to_simple_dic(self, quiet=False):
         dic = {'module %s' % self.name : [s.to_simple_dic(quiet) for s in self.structs] +
                [i.to_simple_dic(quiet) for i in self.interfaces] +
-               [m.to_simple_dic(quiet) for m in self.modules] + 
-               [e.to_simple_dic(quiet) for e in self.enums] + 
-               [t.to_simple_dic(quiet) for t in self.typedefs] + 
+               [m.to_simple_dic(quiet) for m in self.modules] +
+               [e.to_simple_dic(quiet) for e in self.enums] +
+               [u.to_simple_dic(quiet) for u in self.unions] +
+               [t.to_simple_dic(quiet) for t in self.typedefs] +
                [t.to_simple_dic(quiet) for t in self.consts]}
         return dic
 
     def to_dic(self):
         dic = { 'name' : self.name,
-                'filepath' : self.filepath, 
+                'filepath' : self.filepath,
                 'classname' : self.classname,
                 'interfaces' : [i.to_dic() for i in self.interfaces],
                 'typedefs' : [t.to_dic() for t in self.typedefs],
                 'structs' : [s.to_dic() for s in self.structs],
                 'enums' : [e.to_dic() for e in self.enums],
+                'unions' : [u.to_dic() for u in self.unions],
                 'modules' : [m.to_dic() for m in self.modules],
                 'consts' : [c.to_dic() for c in self.consts] }
         return dic
-    
+
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
@@ -112,7 +115,7 @@ class IDLModule(node.IDLNode):
                 #    raise InvalidIDLSyntaxError
                 else:
                     self._interfaces.append(s)
-            
+
             elif token == 'enum':
                 name_ = token_buf.pop()
                 s = enum.IDLEnum(name_, self)
@@ -124,7 +127,16 @@ class IDLModule(node.IDLNode):
                 else:
                     self._enums.append(s)
 
-                pass
+            elif token == 'union':
+                name_ = token_buf.pop()
+                s = union.IDLUnion(name_, self)
+                s.parse_tokens(token_buf, filepath)
+                s_ = self.union_by_name(name_)
+                if s_:
+                    if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
+                #    raise InvalidIDLSyntaxError
+                else:
+                    self._unions.append(s)
 
             elif token == 'const':
                 values = []
@@ -146,10 +158,10 @@ class IDLModule(node.IDLNode):
                     if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
                 else:
                     self._consts.append(s)
-                
+
             elif token == '}':
                 break
-            
+
         return True
 
 
@@ -224,6 +236,22 @@ class IDLModule(node.IDLNode):
         return retval
 
     @property
+    def unions(self):
+        return self._unions
+
+    def union_by_name(self, name):
+        for u in self.unions:
+            if u.name == name:
+                return u
+        return None
+
+    def for_each_union(self, func):
+        retval = []
+        for m in self.unions:
+            retval.append(func(m))
+        return retval
+
+    @property
     def consts(self):
         return self._consts
 
@@ -238,7 +266,7 @@ class IDLModule(node.IDLNode):
         for m in self.consts:
             retval.append(func(m))
         return retval
-            
+
 
     @property
     def typedefs(self):
@@ -269,6 +297,7 @@ class IDLModule(node.IDLNode):
             m.for_each_struct(parse_node)
             m.for_each_typedef(parse_node)
             m.for_each_enum(parse_node)
+            m.for_each_union(parse_node)
             m.for_each_interface(parse_node)
 
         parse_module(self)

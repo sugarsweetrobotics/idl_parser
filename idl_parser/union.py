@@ -4,11 +4,12 @@ from . import node
 from . import type as idl_type
 
 
-class IDLMember(node.IDLNode):
+class IDLUnionMember(node.IDLNode):
     def __init__(self, parent):
-        super(IDLMember, self).__init__('IDLMember', '', parent)
+        super(IDLUnionMember, self).__init__('IDLUnionMember', '', parent)
         self._verbose = True
         self._type = None
+        self._descriminator_value_associations = []
         self.sep = '::'
 
     @property
@@ -17,6 +18,18 @@ class IDLMember(node.IDLNode):
 
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
+
+        while True:
+            if blocks[0] != 'case':
+                break
+            blocks.pop(0)
+            token = blocks.pop(0)
+            self._descriminator_value_associations.append(token)
+            token = blocks.pop(0)
+            if token != ':':
+                if self._verbose: sys.stdout.write('# Error. No ":" after case value.\n')
+                raise InvalidDataTypeException()
+
         name, typ = self._name_and_type(blocks)
         if name.find('[') >= 0:
             name_ = name[:name.find('[')]
@@ -39,14 +52,15 @@ class IDLMember(node.IDLNode):
 
     def to_dic(self):
         dic = { 'name' : self.name,
+                'descriminator_value_associations' : self.descriminator_value_associations,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
-                'type' : str(self.type) }
+                'type' : self.type.name }
         return dic
 
     @property
     def type(self):
-        if self._type.classname == 'IDLBasicType': # Struct
+        if self._type.classname == 'IDLBasicType': # Union
             typs = self.root_node.find_types(self._type.name)
             if len(typs) == 0:
                 print('Can not find Data Type (%s)\n' % self._type.name)
@@ -54,6 +68,9 @@ class IDLMember(node.IDLNode):
             return typs[0]
         return self._type
 
+    @property
+    def descriminator_value_associations(self):
+        return self._descriminator_value_associations
 
     def get_type(self, extract_typedef=False):
         if extract_typedef:
@@ -61,16 +78,15 @@ class IDLMember(node.IDLNode):
                 return self.type.type
         return self.type
 
-
     def post_process(self):
         self._type._name = self.refine_typename(self.type)
 
-
-class IDLStruct(node.IDLNode):
+class IDLUnion(node.IDLNode):
 
     def __init__(self, name, parent):
-        super(IDLStruct, self).__init__('IDLStruct', name.strip(), parent)
+        super(IDLUnion, self).__init__('IDLUnion', name.strip(), parent)
         self._verbose = True
+        self._descriminator_kind = None
         self._members = []
         self.sep = '::'
 
@@ -81,26 +97,29 @@ class IDLStruct(node.IDLNode):
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
         name = self.full_path if full_path else self.name
         if quiet:
-            return 'struct %s' % name
+            return 'union %s' % name
 
-        dic = { 'struct %s' % name : [v.to_simple_dic(recursive=recursive) for v in self.members] }
+        dic = { 'union %s' % name : [v.to_simple_dic(recursive=recursive) for v in self.members] }
 
         if member_only:
             return dic.values()[0]
         return dic
 
-
     def to_dic(self):
         dic = { 'name' : self.name,
                 'classname' : self.classname,
+                'descriminator_kind' : self.descriminator_kind,
                 'members' : [v.to_dic() for v in self.members] }
         return dic
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
-        kakko = token_buf.pop()
-        if not kakko == '{':
-            if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
+
+        self.parse_descriminator_kind(token_buf)
+
+        token = token_buf.pop()
+        if token != '{':
+            if self._verbose: sys.stdout.write('# Error. No kokka "{".\n')
             raise InvalidIDLSyntaxError()
 
         block_tokens = []
@@ -126,8 +145,24 @@ class IDLStruct(node.IDLNode):
 
         self._post_process()
 
+    def parse_descriminator_kind(self, token_buf):
+        token = token_buf.pop()
+        if token != 'switch':
+            if self._verbose: sys.stdout.write('# Error. Union definition missing "switch".\n')
+            raise InvalidIDLSyntaxError()
+        token = token_buf.pop()
+        if token != '(':
+            if self._verbose: sys.stdout.write('# Error. No "(".\n')
+            raise InvalidIDLSyntaxError()
+        token = token_buf.pop()
+        self._descriminator_kind = token
+        token = token_buf.pop()
+        if token != ')':
+            if self._verbose: sys.stdout.write('# Error. No ")".\n')
+            raise InvalidIDLSyntaxError()
+
     def _parse_block(self, blocks):
-        v = IDLMember(self)
+        v = IDLUnionMember(self)
         v.parse_blocks(blocks, self.filepath)
         self._members.append(v)
 
@@ -137,6 +172,10 @@ class IDLStruct(node.IDLNode):
     @property
     def members(self):
         return self._members
+
+    @property
+    def descriminator_kind(self):
+        return self._descriminator_kind
 
     def member_by_name(self, name):
         for m in self._members:

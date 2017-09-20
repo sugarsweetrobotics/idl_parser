@@ -9,7 +9,7 @@ class IDLParser():
         self._global_module = module.IDLModule()
         self._dirs = idl_dirs
         self._verbose = False
-        
+
     @property
     def global_module(self):
         return self._global_module
@@ -51,7 +51,7 @@ class IDLParser():
     def parse_lines(self, lines, filepath=None):
 
         lines = self._clear_comments(lines)
-        lines = self._paste_include(lines)            
+        lines = self._paste_include(lines)
         lines = self._clear_ifdef(lines)
 
         self._token_buf = token_buffer.TokenBuffer(lines)
@@ -78,7 +78,7 @@ class IDLParser():
         self.for_each_idl(get_fullpath)
         if len(included_filenames) > 0:
             raise IDLCanNotFindException()
-                
+
         return included_filepaths
 
 
@@ -110,14 +110,14 @@ class IDLParser():
 
     def _find_idl(self, filename, apply_func, idl_dirs=[]):
         if self._verbose: sys.stdout.write(' --- Find %s\n' % filename)
-        
+
         global retval
         retval = None
         def func(filepath):
             if os.path.basename(filepath) == filename:
                 global retval
                 retval = apply_func(filepath)
-                
+
         self.for_each_idl(func, idl_dirs=idl_dirs)
         return retval
 
@@ -166,7 +166,7 @@ class IDLParser():
 
             else:
                 output_line = line
-                
+
             output_lines.append(output_line)
 
         return output_lines
@@ -184,7 +184,7 @@ class IDLParser():
                 line = line[:line.find('//')]
 
             for token in line.split(' '):
-                
+
                 if in_comment and token.find('*/') >= 0:
                     in_comment = False
                     output_line = output_line + ' ' + token[token.find('*/')+2:].strip()
@@ -194,13 +194,15 @@ class IDLParser():
 
                 elif token.startswith('//'):
                     break # ignore this line
-                
+
                 elif token.find('/*') >= 0:
                     in_comment = True
                     output_line = output_line + ' ' + token[0: token.find('/*')]
                 else:
                     if token.find('{') >= 0:
                         token = token.replace('{', ' { ')
+                    if token.find(':') >= 0:
+                        token = token.replace(':', ' : ')
                     if token.find(';') >= 0:
                         token = token.replace(';', ' ;')
                     if token.find('(') >= 0:
@@ -211,7 +213,7 @@ class IDLParser():
                     output_line = output_line + ' ' + token.strip()
             if len(output_line.strip()) > 0:
                 output_lines.append(output_line.strip() + '\n')
-        
+
         return output_lines
 
     def _clear_ifdef(self, lines):
