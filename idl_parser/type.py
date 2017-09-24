@@ -139,7 +139,25 @@ class IDLArray(IDLTypeBase):
         primitive_type_name = name[:name.find('[')]
         size = name[name.find('[')+1 : name.find(']')]
         inner_type_name = primitive_type_name + name[name.find(']')+1:]
-        self._size = size
+
+        # check if array size is defined with a 
+        # constant type in the current module
+        is_const_type = self.parent.modules[-1].const_by_name(size)
+        size_literal = None
+        
+        if is_const_type: 
+            size_literal = is_const_type.value
+        else:
+            size_literal = size
+
+        try:
+            size_literal = int(size_literal)
+        except:
+            if self._verbose: sys.stdout.write(
+                "# Error. Array index '%s' not an integer.\n" % size_literal)
+            raise InvalidDataTypeException()
+
+        self._size = size_literal
         self._type = IDLType(inner_type_name.strip(), parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = False
