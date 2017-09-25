@@ -2,6 +2,8 @@
  * This IDL is for test
  */
 
+const short GLOBAL_CONSTANT = 44;
+
 module first_module {
     const double MY_CONSTANT = 77.7;
 };
@@ -87,6 +89,7 @@ module my_module {
     short another_struct_array2[
       11
       ];
+    short another_struct_array3[GLOBAL_CONSTANT];
     sequence< my_byte > another_struct_seq1;
     sequence<
       long
