@@ -139,7 +139,10 @@ class IDLArray(IDLTypeBase):
         primitive_type_name = name[:name.find('[')]
         size = name[name.find('[')+1 : name.find(']')]
         inner_type_name = primitive_type_name + name[name.find(']')+1:]
-        self._size = int(size)
+
+        size_literal = self.parse_size(size)
+
+        self._size = size_literal
         self._type = IDLType(inner_type_name.strip(), parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = False
@@ -185,6 +188,34 @@ class IDLArray(IDLTypeBase):
         else:
             # print typs[0]
             return typs[0]
+
+    def parse_size(self, size):
+        is_const_type = None
+
+        if self.root_node.modules:
+            is_const_type = self.root_node.modules[-1].const_by_name(size)
+        else:
+            is_const_type = self.root_node.const_by_name(size)
+
+        # maybe there are modules but the constant is defined at a global scope?
+        if not is_const_type:
+            is_const_type = self.root_node.const_by_name(size)
+
+        size_literal = None
+
+        if is_const_type:
+            size_literal = is_const_type.value
+        else:
+            size_literal = size
+
+        try:
+            size_literal = int(size_literal)
+        except:
+            if self._verbose: sys.stdout.write(
+                "# Error. Array index '%s' not an integer.\n" % size_literal)
+            raise InvalidDataTypeException()
+
+        return size_literal
 
     @property
     def type(self):

@@ -2,6 +2,12 @@
  * This IDL is for test
  */
 
+const short GLOBAL_CONSTANT = 44;
+
+module first_module {
+    const double MY_CONSTANT = 77.7;
+};
+
 module my_module {
   struct my_struct1 {
     long long_member;
@@ -62,7 +68,7 @@ module my_module {
   enum my_enum1 {
     data1,
     data2,
-    data3,
+    data3
   };
 
   const long value1 = -1;
@@ -72,5 +78,26 @@ module my_module {
 
   typedef unsigned long  Matrix3456[3][4][5][6];
 
+  /* 'MY_CONSTANT' defined diffenently in each module. Ensure with tests
+   * that the value of the 'MY_CONSTANT' is correctly associated with this
+   * module during parsing process.
+   */
+  const short MY_CONSTANT = 10;
+
+  struct another_struct {
+    double another_struct_array1[ MY_CONSTANT ];
+    short another_struct_array2[
+      11
+      ];
+    short another_struct_array3[GLOBAL_CONSTANT];
+    sequence< my_byte > another_struct_seq1;
+    sequence<
+      long
+      > another_struct_seq2;
+  };
+
 };
 
+module lase_module {
+    const double MY_CONSTANT = 99.9;
+};

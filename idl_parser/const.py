@@ -5,7 +5,7 @@ sep = '::'
 
 
 class IDLConst(node.IDLNode):
-    
+
     def __init__(self, name, typename, value, parent, filepath=None):
         super(IDLConst, self).__init__('IDLConst', name, parent)
         self._typename = typename
@@ -20,7 +20,7 @@ class IDLConst(node.IDLNode):
         dic = { 'const %s' % name : { 'type' : self.typename,
                                       'value' : self.value } }
         return dic
-                    
+
     def to_dic(self):
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
@@ -32,7 +32,7 @@ class IDLConst(node.IDLNode):
     @property
     def typename(self):
         return self._typename
-    
+
     @property
     def type(self):
         return self.root_node.find_types(self.typename)[0]
@@ -47,4 +47,4 @@ class IDLConst(node.IDLNode):
     @property
     def full_path(self):
         return self.parent.full_path + sep + self.name
-    
+

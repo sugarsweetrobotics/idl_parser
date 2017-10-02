@@ -110,7 +110,7 @@ class IDLNode(object):
             name = typ.name[typ.name.find('<')+1 : typ.name.find('>')].strip()
             typs = global_module.find_types(name)
             if len(typs) == 0:
-                typ__ = typs
+                typ__ = typ
             else:
                 typ__  = typs[0]
 
@@ -118,6 +118,6 @@ class IDLNode(object):
         else:
             typs = global_module.find_types(typ.name)
             if len(typs) == 0:
-                return typ
+                return typ.name
             else:
                 return typs[0].name
