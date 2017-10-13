@@ -1,4 +1,5 @@
 import os, sys
+import re
 
 from . import  module, token_buffer
 from . import type as idl_type
@@ -221,7 +222,7 @@ class IDLParser():
                     if token.find('{') >= 0:
                         token = token.replace('{', ' { ')
                     if token.find(':') >= 0:
-                        token = token.replace(':', ' : ')
+                        token = re.sub(r'([a-zA-Z0-9_]{1}):([a-zA-Z0-9_]{1}|$)', r'\1 : \2', token)
                     if token.find(';') >= 0:
                         token = token.replace(';', ' ;')
                     if token.find('(') >= 0:
