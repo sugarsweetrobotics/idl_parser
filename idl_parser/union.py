@@ -2,7 +2,7 @@ import os, sys, traceback
 
 from . import node
 from . import type as idl_type
-
+from . import exception
 
 class IDLUnionMember(node.IDLNode):
     def __init__(self, parent):
@@ -28,7 +28,7 @@ class IDLUnionMember(node.IDLNode):
             token = blocks.pop(0)
             if token != ':':
                 if self._verbose: sys.stdout.write('# Error. No ":" after case value.\n')
-                raise InvalidDataTypeException()
+                raise exception.InvalidDataTypeException()
 
         name, typ = self._name_and_type(blocks)
         if name.find('[') >= 0:

@@ -2,7 +2,7 @@ import os, sys, traceback
 
 from . import node
 from . import type as idl_type
-from exception import * 
+from . import exception
 
 class IDLMember(node.IDLNode):
     def __init__(self, parent):
@@ -50,7 +50,7 @@ class IDLMember(node.IDLNode):
             typs = self.root_node.find_types(self._type.name)
             if len(typs) == 0:
                 print('Can not find Data Type (%s)\n' % self._type.name)
-                raise InvalidDataTypeException()
+                raise exception.InvalidDataTypeException()
             return typs[0]
         return self._type
 

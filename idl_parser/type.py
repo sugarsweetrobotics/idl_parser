@@ -1,7 +1,7 @@
 import os, sys, traceback
 
 from . import node
-from exception import * 
+from . import exception
 
 sep = '::'
 
@@ -214,7 +214,7 @@ class IDLArray(IDLTypeBase):
         except:
             if self._verbose: sys.stdout.write(
                 "# Error. Array index '%s' not an integer.\n" % size_literal)
-            raise InvalidDataTypeException()
+            raise exception.InvalidDataTypeException()
 
         return size_literal
 

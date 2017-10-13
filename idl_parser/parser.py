@@ -3,7 +3,7 @@ import re
 
 from . import  module, token_buffer
 from . import type as idl_type
-from exception import * 
+from . import exception 
 
 class IDLParser():
 
@@ -97,7 +97,7 @@ class IDLParser():
 
         self.for_each_idl(get_fullpath)
         if len(included_filenames) > 0:
-            raise IDLCanNotFindException()
+            raise exception.IDLCanNotFindException()
 
         return included_filepaths
 
