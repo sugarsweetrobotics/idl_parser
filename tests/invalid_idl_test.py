@@ -29,7 +29,7 @@ class InvalidIDLTestFunctions(unittest.TestCase):
         try:
             with open(idl_path, 'r') as idlf:
                 m = parser_.load(idlf.read(), filepath=idl_path)
-        except IDLParserException, ex:
+        except IDLParserException as ex:
             self.assertEqual(ex.line_number, 10)
 
         except:
