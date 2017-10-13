@@ -76,7 +76,7 @@ class IDLStruct(node.IDLNode):
 
     def __init__(self, name, parent):
         super(IDLStruct, self).__init__('IDLStruct', name.strip(), parent)
-        self._verbose = True
+        self._verbose = False #True
         self._members = []
         self.sep = '::'
 
@@ -104,24 +104,24 @@ class IDLStruct(node.IDLNode):
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
-        kakko = token_buf.pop()
+        ln, fn, kakko = token_buf.pop()
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
         while True:
 
-            token = token_buf.pop()
+            ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
-                raise InvalidIDLSyntaxError()
+                raise exception.InvalidIDLSyntaxError()
 
             elif token == '}':
-                token = token_buf.pop()
+                ln2, fn2, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
-                    raise InvalidIDLSyntaxError()
+                    raise exception.InvalidIDLSyntaxError(ln, fn, 'No semi-colon after "}"')
                 break
 
             if token == ';':

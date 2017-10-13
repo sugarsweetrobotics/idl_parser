@@ -1,5 +1,5 @@
 #from parser import IDLParser
-__all__=['parser']
+__all__=['parser', 'exception']
 
 
 

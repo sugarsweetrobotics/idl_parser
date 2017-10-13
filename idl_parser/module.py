@@ -61,20 +61,20 @@ class IDLModule(node.IDLNode):
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
         if not self.name == global_namespace:
-            kakko = token_buf.pop()
+            ln, fn, kakko = token_buf.pop()
             if not kakko == '{':
                 if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
                 raise InvalidIDLSyntaxError()
 
         while True:
-            token = token_buf.pop()
+            ln, fn, token = token_buf.pop()
             if token == None:
                 if self.name == global_namespace:
                     break
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise InvalidIDLSyntaxError()
             elif token == 'module':
-                name_ = token_buf.pop()
+                ln, fn, name_ = token_buf.pop()
                 m = self.module_by_name(name_)
                 if m == None:
                     m = IDLModule(name_, self)
@@ -83,7 +83,7 @@ class IDLModule(node.IDLNode):
             elif token == 'typedef':
                 blocks = []
                 while True:
-                    t = token_buf.pop()
+                    ln, fn, t = token_buf.pop()
                     if t == None:
                         raise InvalidIDLSyntaxError()
                     elif t == ';':
@@ -94,7 +94,7 @@ class IDLModule(node.IDLNode):
                 self._typedefs.append(t)
                 t.parse_blocks(blocks, filepath=filepath)
             elif token == 'struct':
-                name_ = token_buf.pop()
+                ln, fn, name_ = token_buf.pop()
                 s_ = self.struct_by_name(name_)
                 s = struct.IDLStruct(name_, self)
                 s.parse_tokens(token_buf, filepath=filepath)
@@ -105,7 +105,7 @@ class IDLModule(node.IDLNode):
                     self._structs.append(s)
 
             elif token == 'interface':
-                name_ = token_buf.pop()
+                ln, fn, name_ = token_buf.pop()
                 s = interface.IDLInterface(name_, self)
                 s.parse_tokens(token_buf, filepath=filepath)
 
@@ -117,7 +117,7 @@ class IDLModule(node.IDLNode):
                     self._interfaces.append(s)
 
             elif token == 'enum':
-                name_ = token_buf.pop()
+                ln, fn, name_ = token_buf.pop()
                 s = enum.IDLEnum(name_, self)
                 s.parse_tokens(token_buf, filepath)
                 s_ = self.enum_by_name(name_)
@@ -128,7 +128,7 @@ class IDLModule(node.IDLNode):
                     self._enums.append(s)
 
             elif token == 'union':
-                name_ = token_buf.pop()
+                ln, fn, name_ = token_buf.pop()
                 s = union.IDLUnion(name_, self)
                 s.parse_tokens(token_buf, filepath)
                 s_ = self.union_by_name(name_)
@@ -141,7 +141,7 @@ class IDLModule(node.IDLNode):
             elif token == 'const':
                 values = []
                 while True:
-                    t = token_buf.pop()
+                    ln, fn, t = token_buf.pop()
                     if t == ';':
                         break
                     values.append(t)

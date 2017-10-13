@@ -1,0 +1,12 @@
+/**
+ * THIS FILE IS INVALID
+ * LINE 10 MISSES ";"
+ */
+
+moduleA {
+
+  struct invalid_struct {
+    double double_value;
+  }
+
+};

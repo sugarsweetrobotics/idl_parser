@@ -68,20 +68,20 @@ class IDLEnum(node.IDLNode):
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
         self._counter = 0
-        kakko = token_buf.pop()
+        ln, fn, kakko = token_buf.pop()
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
             raise InvalidIDLSyntaxError()
 
         block_tokens = []
         while True:
-            token = token_buf.pop()
+            ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise InvalidIDLSyntaxError()
 
             elif token == '}':
-                token = token_buf.pop()
+                ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
                     raise InvalidIDLSyntaxError()

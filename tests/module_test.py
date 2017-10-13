@@ -5,6 +5,7 @@ from idl_parser.type import IDLType
 
 from . import multimodule_test
 from . import generalization_test
+from . import invalid_idl_test
 __nocoveralls = False # This might be redundant but just in case ...
 try:
     from coveralls import Coveralls
@@ -307,4 +308,5 @@ def suite():
     suite.addTests(unittest.makeSuite(BasicTestFunctions))
     suite.addTests(unittest.makeSuite(multimodule_test.MultiModuleTestFunctions))
     suite.addTests(unittest.makeSuite(generalization_test.GeneralizationTestFunctions))
+    suite.addTests(unittest.makeSuite(invalid_idl_test.InvalidIDLTestFunctions))
     return suite
