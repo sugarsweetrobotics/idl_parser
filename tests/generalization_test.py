@@ -35,9 +35,9 @@ class GeneralizationTestFunctions(unittest.TestCase):
             interfaceB = moduleA.interface_by_name('InterfaceB')
             self.assertEqual(interfaceB.name, 'InterfaceB')
 
-            self.assertEqual(len(interfaceA.inheritences), 0)
-            self.assertEqual(len(interfaceB.inheritences), 1)        
-            self.assertEqual(interfaceB.inheritences[0], 'moduleA::InterfaceA') # Must be fullpath
+            self.assertEqual(len(interfaceA.inheritances), 0)
+            self.assertEqual(len(interfaceB.inheritances), 1)        
+            self.assertEqual(interfaceB.inheritances[0], 'moduleA::InterfaceA') # Must be fullpath
 
 
 if __name__ == '__main__':

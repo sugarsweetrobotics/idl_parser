@@ -136,11 +136,11 @@ class IDLInterface(node.IDLNode):
         super(IDLInterface, self).__init__('IDLInterface', name, parent)
         self._verbose = True
         self._methods = []
-        self._inheritences = []
+        self._inheritances = []
 
     @property
-    def inheritences(self):
-        return self._inheritences
+    def inheritances(self):
+        return self._inheritances
 
     @property
     def full_path(self):
@@ -162,7 +162,7 @@ class IDLInterface(node.IDLNode):
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath=filepath
         token = token_buf.pop()
-        if token == ':': # Detect Inheritence
+        if token == ':': # Detect Inheritance
             name = token_buf.pop()
             interfaces = self.root_node.find_types(name)
             if len(interfaces) == 0:
@@ -171,7 +171,7 @@ class IDLInterface(node.IDLNode):
             elif len(interfaces) > 1:
                 if self._verbose: sys.stdout.write('# Error. Multiple "%s" interfaces (one is generalization of "%s"). \n' % (name, self.name))
                 raise exception.InvalidDataTypeException
-            self._inheritences.append(interfaces[0].full_path)
+            self._inheritances.append(interfaces[0].full_path)
             token = token_buf.pop()
 
         kakko = token
