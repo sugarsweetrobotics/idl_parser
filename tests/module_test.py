@@ -3,7 +3,7 @@ import unittest
 from idl_parser import parser
 from idl_parser.type import IDLType
 
-from multimodule_test import MultiModuleTestFunctions
+from . import multimodule_test
 
 __nocoveralls = False # This might be redundant but just in case ...
 try:
@@ -305,5 +305,5 @@ if __name__ == '__main__':
 def suite():
     suite = unittest.TestSuite()
     suite.addTests(unittest.makeSuite(BasicTestFunctions))
-    suite.addTests(unittest.makeSuite(MultiModuleTestFunctions))
+    suite.addTests(unittest.makeSuite(multimodule_test.MultiModuleTestFunctions))
     return suite
