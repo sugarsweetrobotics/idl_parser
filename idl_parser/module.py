@@ -283,14 +283,18 @@ class IDLModule(node.IDLNode):
         for m in self.typedefs:
             retval.append(func(m))
 
-    def find_types(self, full_typename):
+    def find_types(self, full_typename, parent=None):
         if type.is_primitive(full_typename):
             return [type.IDLType(full_typename, self)]
         typenode = []
 
         def parse_node(s, name=str(full_typename)):
-            if s.name == name.strip() or s.full_path == name.strip():
-                typenode.append(s)
+            if parent:
+                if parent.full_path + '::' + name.strip() == s.full_path or name.strip() == s.full_path:
+                    typenode.append(s)
+            else:
+                if s.name == name.strip() or s.full_path == name.strip():
+                    typenode.append(s)
 
         def parse_module(m):
             m.for_each_module(parse_module)

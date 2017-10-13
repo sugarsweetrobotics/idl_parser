@@ -29,4 +29,19 @@ module moduleC {
   struct StructC {
     moduleA::StructA structA_value;
   };
+
 };
+
+
+module moduleD {
+  struct StructA {
+    long long_value;
+  };
+
+  struct StructD {
+    StructA structA_value;
+  };
+};
+
+    
+  

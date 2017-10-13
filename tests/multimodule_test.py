@@ -70,7 +70,19 @@ class MultiModuleTestFunctions(unittest.TestCase):
             double_member = structB.member_by_name('structA_value')
             self.assertEqual(double_member.name, 'structA_value')
 
-        
+    def test_distinguish_same_struct_different_module(self):
+        parser_ = parser.IDLParser()
+        with open('idls/multi_module_test.idl', 'r') as idlf:
+            m = parser_.load(idlf.read(), include_dirs=['idls'])
+            
+            self.assertEqual(m.name,'__global__')
+            moduleD = m.modules[3]
+            self.assertEqual(moduleD.name, 'moduleD')
+            structD = moduleD.struct_by_name('StructD')
+            self.assertEqual(structD.full_path, 'moduleD::StructD')
+            structA_member = structD.member_by_name('structA_value')
+            self.assertEqual(structA_member.type.full_path, 'moduleD::StructA')
+
 
 
 if __name__ == '__main__':
