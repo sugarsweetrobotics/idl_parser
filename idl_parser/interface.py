@@ -140,7 +140,7 @@ class IDLInterface(node.IDLNode):
 
     @property
     def inheritances(self):
-        return self._inheritances
+        return [self.root_node.find_types(inheritance)[0] for inheritance in self._inheritances]
 
     @property
     def full_path(self):
