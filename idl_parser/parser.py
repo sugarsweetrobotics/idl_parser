@@ -155,7 +155,7 @@ class IDLParser():
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
                         sys.stdout.write(' # IDL (%s) can not be found.\n' % filename)
-                        raise IDLFileNotFoundErrorx
+                        raise exception.IDLCanNotFindException
                     self.parse_idl(idl_path = p)
 
                     inc_lines = []
@@ -172,7 +172,7 @@ class IDLParser():
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
                         sys.stdout.write(' # IDL (%s) can not be found.\n' % filename)
-                        raise IDLFileNotFoundErrorx
+                        raise exception.IDLCanNotFindException
                     inc_lines = []
 
                     self.parse_idl(idl_path = p)
