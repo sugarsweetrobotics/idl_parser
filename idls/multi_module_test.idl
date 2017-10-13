@@ -1,0 +1,32 @@
+/* 
+ * @file multimodule_test.idl
+ * @author Yuki Suga (ysuga@ysuga.net)
+ */
+
+
+module moduleA {
+
+  struct StructA {
+    double double_value;
+  };
+
+};
+
+
+
+module moduleB {
+
+
+  struct StructB {
+    double double_valueA;
+  };
+
+};
+
+
+module moduleC {
+  
+  struct StructC {
+    moduleA::StructA structA_value;
+  };
+};
