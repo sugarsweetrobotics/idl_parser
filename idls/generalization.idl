@@ -1,0 +1,18 @@
+
+
+
+
+module moduleA {
+  
+
+  interface InterfaceA {
+    void methodA();
+  };
+
+
+  interface InterfaceB : InterfaceA {
+    void methodB();
+  };
+
+};
+    

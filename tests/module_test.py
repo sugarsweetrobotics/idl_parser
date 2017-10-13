@@ -4,7 +4,7 @@ from idl_parser import parser
 from idl_parser.type import IDLType
 
 from . import multimodule_test
-
+from . import generalization_test
 __nocoveralls = False # This might be redundant but just in case ...
 try:
     from coveralls import Coveralls
@@ -306,4 +306,5 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTests(unittest.makeSuite(BasicTestFunctions))
     suite.addTests(unittest.makeSuite(multimodule_test.MultiModuleTestFunctions))
+    suite.addTests(unittest.makeSuite(generalization_test.GeneralizationTestFunctions))
     return suite
