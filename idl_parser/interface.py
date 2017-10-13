@@ -69,7 +69,7 @@ class IDLMethod(node.IDLNode):
         self._arguments = []
 
         if not blocks[2] == '(':
-            print(' -- Invalid Interface Token (%s)' % interface_name)
+            print(' -- Invalid Interface Token (%s)' % blocks[1])
             print( blocks)
 
         index = 3

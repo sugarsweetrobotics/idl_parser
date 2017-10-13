@@ -5,12 +5,32 @@ from . import  module, token_buffer
 from . import type as idl_type
 from . import exception 
 
+
+class ConsoleTracker():
+    def __init__(self):
+        self._indent = 0
+        pass
+
+    def write(self, *args):
+        sys.stdout.write('  ' * self._indent)
+        sys.stdout.write(*args)
+
+    def indent(self):
+        self._indent = self._indent+1
+
+    def deindent(self):
+        self._indent = self._indent-1
+        if self._indent < 0: self._indent = 0
+
+logger = ConsoleTracker()
+
 class IDLParser():
 
-    def __init__(self, idl_dirs=[]):
+    def __init__(self, idl_dirs=[], verbose=False):
         self._global_module = module.IDLModule()
         self._dirs = idl_dirs
-        self._verbose = False
+        self._verbose = verbose
+        self._parsed_files = []
 
     @property
     def global_module(self):
@@ -58,16 +78,33 @@ class IDLParser():
         :param except_files: List of IDL files that should be ignored. Do not have to use fullpath.
         :returns: None
         """
+        if self._verbose:
+            logger.write('parse(\n')
+            logger.write('  idls=%s\n' % idls)
+            logger.indent()
         self.for_each_idl(self.parse_idl, except_files=except_files, idls=idls, idl_dirs=idl_dirs)
+        if self._verbose: logger.deindent()
 
     def parse_idl(self, idl_path):
-        if self._verbose: sys.stdout.write(' - Parsing IDL (%s)\n' % idl_path)
+        if idl_path in self._parsed_files:
+            if self._verbose:
+                logger.write('Parsing IDL(%s) but ALREADY PARSED.\n' % idl_path)
+            return
+            pass
+        if self._verbose: 
+            logger.write('Parsing IDL(%s)\n' % idl_path) #sys.stdout.write(' - Parsing IDL (%s)\n' % idl_path)
+            logger.indent()
         f = open(idl_path, 'r')
         lines = []
         for line in f:
             lines.append(line)
 
         self.parse_lines(lines)
+
+        if self._verbose: 
+            logger.deindent()
+            logger.write('Parsed IDL (%s)\n' % idl_path)        
+        self._parsed_files.append(idl_path)
 
     def parse_lines(self, lines, filepath=None):
 
@@ -95,14 +132,14 @@ class IDLParser():
                 included_filepaths.append(idl_path)
                 included_filenames.remove(os.path.basename(idl_path))
 
-        self.for_each_idl(get_fullpath)
+        self.for_each_idl(get_fullpath, find_all=True)
         if len(included_filenames) > 0:
             raise exception.IDLCanNotFindException()
 
         return included_filepaths
 
 
-    def for_each_idl(self, func, idl_dirs=[], except_files=[], idls=[]):
+    def for_each_idl(self, func, idl_dirs=[], except_files=[], idls=[], find_all=False):
         """ Parse IDLs and apply function.
         :param func: Function. IDL file fullpath will be passed to the function.
         :param idls: List of IDL files. Must be fullpath.
@@ -120,25 +157,37 @@ class IDLParser():
                     if not f in except_files:
                         path = os.path.join(idl_dir, f)
                         if not f in basenames_:
-                            idls_.append(path)
-                            basenames_.append(os.path.basename(path))
+                            if not( path in idls_ ):
+                                idls_.append(path)
+                                basenames_.append(os.path.basename(path))
 
-        idls_ = idls_ + idls
+        #idls_ = idls_ + idls
+
+        if find_all:
+            idls_ = idls_ + idls
+        else:
+            idls_ = idls
+
         for f in idls_:
-            if self._verbose: sys.stdout.write(' - Apply function to %s\n' % f)
+            # if self._verbose: sys.stdout.write(' - Apply function to %s\n' % f)
             func(f)
 
     def _find_idl(self, filename, apply_func, idl_dirs=[]):
-        if self._verbose: sys.stdout.write(' --- Find %s\n' % filename)
+        if self._verbose: 
+            logger.write('Finding %s\n' % filename)
+            logger.indent()
 
         global retval
         retval = None
         def func(filepath):
             if os.path.basename(filepath) == filename:
+                if self._verbose:
+                    logger.write('Found %s\n' % filename)
                 global retval
                 retval = apply_func(filepath)
 
-        self.for_each_idl(func, idl_dirs=idl_dirs)
+        self.for_each_idl(func, idl_dirs=idl_dirs, find_all=True)
+        if self._verbose: logger.deindent()
         return retval
 
     def _paste_include(self, lines):
@@ -151,12 +200,14 @@ class IDLParser():
 
                 if line.find('"') >= 7:
                     filename = line[line.find('"')+1 : line.rfind('"')]
-                    if self._verbose: sys.stdout.write(' -- Includes %s\n' % filename)
+                    if self._verbose: logger.write('Find Includes %s\n' % filename)
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
-                        sys.stdout.write(' # IDL (%s) can not be found.\n' % filename)
+                        if self._verbose:logger.write(' # IDL (%s) can not be found.\n' % filename)
                         raise exception.IDLCanNotFindException
+                    if self._verbose: logger.write('IDL Found (%s). Parsing\n'% filename)
                     self.parse_idl(idl_path = p)
+                    if self._verbose: logger.write('Including IDL Parsing End.\n')
 
                     inc_lines = []
                     f = open(p, 'r')
@@ -171,7 +222,7 @@ class IDLParser():
                     if self._verbose: sys.stdout.write(' -- Includes %s\n' % filename)
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
-                        sys.stdout.write(' # IDL (%s) can not be found.\n' % filename)
+                        if self._verbose:sys.stdout.write(' # IDL (%s) can not be found.\n' % filename)
                         raise exception.IDLCanNotFindException
                     inc_lines = []
 

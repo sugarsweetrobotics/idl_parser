@@ -1,0 +1,8 @@
+
+
+
+module moduleA {
+  struct StructA {
+    double double_value;
+  };
+};

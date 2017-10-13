@@ -1,0 +1,9 @@
+
+
+#include "included_idl.idl"
+
+module moduleB {
+  struct StructB {
+    moduleA::StructA structA_value;
+  };
+};

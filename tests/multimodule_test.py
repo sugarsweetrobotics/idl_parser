@@ -50,6 +50,29 @@ class MultiModuleTestFunctions(unittest.TestCase):
             self.assertEqual(structA_member.name, 'structA_value')
 
 
+    def test_include(self):
+        parser_ = parser.IDLParser()
+        with open('idls/including_idl.idl', 'r') as idlf:
+            m = parser_.load(idlf.read(), include_dirs=['idls'])
+            
+            self.assertEqual(m.name,'__global__')
+            moduleA = m.modules[0]
+            self.assertEqual(moduleA.name, 'moduleA')
+            structA = moduleA.struct_by_name('StructA')
+            self.assertEqual(structA.name, 'StructA')
+            double_member = structA.member_by_name('double_value')
+            self.assertEqual(double_member.name, 'double_value')
+
+            moduleB = m.modules[1]
+            self.assertEqual(moduleB.name, 'moduleB')
+            structB = moduleB.struct_by_name('StructB')
+            self.assertEqual(structB.name, 'StructB')
+            double_member = structB.member_by_name('structA_value')
+            self.assertEqual(double_member.name, 'structA_value')
+
+        
+
+
 if __name__ == '__main__':
     unittest.main()
 
