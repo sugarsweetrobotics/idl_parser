@@ -10,7 +10,7 @@ module moduleA {
   };
 
 
-  interface InterfaceB : InterfaceA {
+  interface InterfaceB : moduleA::InterfaceA {
     void methodB();
   };
 

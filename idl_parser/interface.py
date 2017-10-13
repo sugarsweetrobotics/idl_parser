@@ -1,3 +1,4 @@
+import sys
 from . import node
 
 from . import type as idl_type
@@ -135,6 +136,11 @@ class IDLInterface(node.IDLNode):
         super(IDLInterface, self).__init__('IDLInterface', name, parent)
         self._verbose = True
         self._methods = []
+        self._inheritences = []
+
+    @property
+    def inheritences(self):
+        return self._inheritences
 
     @property
     def full_path(self):
@@ -155,10 +161,23 @@ class IDLInterface(node.IDLNode):
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath=filepath
-        kakko = token_buf.pop()
+        token = token_buf.pop()
+        if token == ':': # Detect Inheritence
+            name = token_buf.pop()
+            interfaces = self.root_node.find_types(name)
+            if len(interfaces) == 0:
+                if self._verbose: sys.stdout.write('# Error. Can not find "%s" interface which is generalization of "%s"\n' % (name, self.name))
+                raise exception.InvalidDataTypeException
+            elif len(interfaces) > 1:
+                if self._verbose: sys.stdout.write('# Error. Multiple "%s" interfaces (one is generalization of "%s"). \n' % (name, self.name))
+                raise exception.InvalidDataTypeException
+            self._inheritences.append(interfaces[0].full_path)
+            token = token_buf.pop()
+
+        kakko = token
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
         while True:
