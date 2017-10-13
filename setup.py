@@ -5,7 +5,7 @@ long_description = open('README.rst', 'r').read()
 
 
 setup(name='idl_parser',
-      version='0.0.15',
+      version='0.0.16',
       url = 'http://www.sugarsweetrobotics.com/',
       author = 'ysuga',
       author_email = 'ysuga@ysuga.net',
