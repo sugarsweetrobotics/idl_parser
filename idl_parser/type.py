@@ -1,6 +1,7 @@
 import os, sys, traceback
 
 from . import node
+from exception import * 
 
 sep = '::'
 

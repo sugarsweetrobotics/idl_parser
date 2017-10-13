@@ -2,6 +2,7 @@ import os, sys
 
 from . import  module, token_buffer
 from . import type as idl_type
+from exception import * 
 
 class IDLParser():
 

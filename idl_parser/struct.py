@@ -2,7 +2,7 @@ import os, sys, traceback
 
 from . import node
 from . import type as idl_type
-
+from exception import * 
 
 class IDLMember(node.IDLNode):
     def __init__(self, parent):
