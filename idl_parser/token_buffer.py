@@ -5,11 +5,11 @@ class TokenBuffer():
     def __init__(self, lines):
         self._tokens = []
         self._token_offset = 0
-        for line in lines:
+        for line_number, file_name, line in lines:
             ts = line.split(' ')
             for t in ts:
                 if len(t.strip()) != 0:
-                    self._tokens.append(t.strip())
+                    self._tokens.append((line_number, file_name, t.strip()))
 
     @property
     def t_debug(self):
@@ -17,9 +17,9 @@ class TokenBuffer():
 
     def pop(self):
         if len(self._tokens) == self._token_offset:
-            return None
-        t = self._tokens[self._token_offset].strip()
+            return (-1, '', None)
+        t = self._tokens[self._token_offset]#.strip()
         self._token_offset = self._token_offset + 1
-        return t.strip()
+        return t
 
 

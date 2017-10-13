@@ -67,7 +67,7 @@ class IDLParser():
     def load(self, input_str, include_dirs=[], filepath=None):
         self._dirs = self._dirs + include_dirs
         input_str = self.prepare_input(input_str)
-        lines = [l for l in input_str.split('\n')]
+        lines = [(i+1, filepath, l) for i, l in enumerate(input_str.split('\n'))]
         self.parse_lines(lines, filepath=filepath)
         return self._global_module
 
@@ -96,8 +96,10 @@ class IDLParser():
             logger.indent()
         f = open(idl_path, 'r')
         lines = []
+        line_number = 1
         for line in f:
-            lines.append(line)
+            lines.append((line_number, idl_path, line))
+            line_number = line_number + 1
 
         self.parse_lines(lines)
 
@@ -107,7 +109,6 @@ class IDLParser():
         self._parsed_files.append(idl_path)
 
     def parse_lines(self, lines, filepath=None):
-
         lines = self._clear_comments(lines)
         lines = self._paste_include(lines)
         lines = self._clear_ifdef(lines)
@@ -192,7 +193,7 @@ class IDLParser():
 
     def _paste_include(self, lines):
         output_lines = []
-        for line in lines:
+        for line_number, file_name, line in lines:
             output_line = ''
             if line.startswith('#include'):
                 def _include_paste(filepath):
@@ -211,8 +212,10 @@ class IDLParser():
 
                     inc_lines = []
                     f = open(p, 'r')
+                    ln = 1
                     for l in f:
-                        inc_lines.append(l)
+                        inc_lines.append((ln, p, l))
+                        ln = ln + 1
                     inc_lines = self._clear_comments(inc_lines)
                     inc_lines = self._paste_include(inc_lines)
                     output_lines = output_lines + inc_lines
@@ -229,8 +232,10 @@ class IDLParser():
                     self.parse_idl(idl_path = p)
 
                     f = open(p, 'r')
+                    ln = 1
                     for l in f:
-                        inc_lines.append(l)
+                        inc_lines.append((ln, p, l))
+                        ln = ln + 1
                     inc_lines = self._clear_comments(inc_lines)
                     inc_lines = self._paste_include(inc_lines)
                     output_lines = output_lines + inc_lines
@@ -238,7 +243,7 @@ class IDLParser():
             else:
                 output_line = line
 
-            output_lines.append(output_line)
+            output_lines.append((line_number, file_name, output_line))
 
         return output_lines
 
@@ -248,7 +253,7 @@ class IDLParser():
         output_lines = []
         in_comment = False
 
-        for line in lines:
+        for line_number, file_name, line in lines:
             line = line.strip()
             output_line = ''
             if line.find('//') >= 0:
@@ -283,7 +288,7 @@ class IDLParser():
                     token = token.replace('}', ' } ')
                     output_line = output_line + ' ' + token.strip()
             if len(output_line.strip()) > 0:
-                output_lines.append(output_line.strip() + '\n')
+                output_lines.append((line_number, file_name, output_line.strip() + '\n'))
 
         return output_lines
 
@@ -295,7 +300,7 @@ class IDLParser():
         def _parse(flag):
             global offset
             while offset < len(lines):
-                line = lines[offset]
+                line_number, file_name, line = lines[offset]
                 if line.startswith('#define'):
                     def_token = line.split(' ')[1]
                     def_tokens.append(def_token)
@@ -317,7 +322,7 @@ class IDLParser():
                 else:
                     offset = offset + 1
                     if flag:
-                        output_lines.append(line)
+                        output_lines.append((line_number, file_name, line))
 
         _parse(True)
         return output_lines
