@@ -3,7 +3,7 @@ import re
 
 from . import  module, token_buffer
 from . import type as idl_type
-from . import exception
+from . import exception 
 
 
 class ConsoleTracker():
@@ -78,7 +78,7 @@ class IDLParser():
         :param except_files: List of IDL files that should be ignored. Do not have to use fullpath.
         :returns: None
         """
-        if self._verbose:
+        if self._verbose: 
             logger.write('parse(\n')
             logger.write('  idls=%s\n' % idls)
             logger.indent()
@@ -91,7 +91,7 @@ class IDLParser():
                 logger.write('Parsing IDL(%s) but ALREADY PARSED.\n' % idl_path)
             return
             pass
-        if self._verbose:
+        if self._verbose: 
             logger.write('Parsing IDL(%s)\n' % idl_path) #sys.stdout.write(' - Parsing IDL (%s)\n' % idl_path)
             logger.indent()
         f = open(idl_path, 'r')
@@ -104,7 +104,7 @@ class IDLParser():
         self._parsed_files.append(idl_path)
         self.parse_lines(lines)
 
-        if self._verbose:
+        if self._verbose: 
             logger.deindent()
             logger.write('Parsed IDL (%s)\n' % idl_path)
 
@@ -174,7 +174,7 @@ class IDLParser():
             func(f)
 
     def _find_idl(self, filename, apply_func, idl_dirs=[]):
-        if self._verbose:
+        if self._verbose: 
             logger.write('Finding %s\n' % filename)
             logger.indent()
 
