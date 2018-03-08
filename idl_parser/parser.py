@@ -3,7 +3,7 @@ import re
 
 from . import  module, token_buffer
 from . import type as idl_type
-from . import exception 
+from . import exception
 
 
 class ConsoleTracker():
@@ -87,11 +87,11 @@ class IDLParser():
 
     def parse_idl(self, idl_path):
         if idl_path in self._parsed_files:
-            if self._verbose:
+            if self._verbose: 
                 logger.write('Parsing IDL(%s) but ALREADY PARSED.\n' % idl_path)
             return
             pass
-        if self._verbose: 
+        if self._verbose:
             logger.write('Parsing IDL(%s)\n' % idl_path) #sys.stdout.write(' - Parsing IDL (%s)\n' % idl_path)
             logger.indent()
         f = open(idl_path, 'r')
@@ -101,12 +101,12 @@ class IDLParser():
             lines.append((line_number, idl_path, line))
             line_number = line_number + 1
 
+        self._parsed_files.append(idl_path)
         self.parse_lines(lines)
 
-        if self._verbose: 
+        if self._verbose:
             logger.deindent()
-            logger.write('Parsed IDL (%s)\n' % idl_path)        
-        self._parsed_files.append(idl_path)
+            logger.write('Parsed IDL (%s)\n' % idl_path)
 
     def parse_lines(self, lines, filepath=None):
         lines = self._clear_comments(lines)
@@ -174,7 +174,7 @@ class IDLParser():
             func(f)
 
     def _find_idl(self, filename, apply_func, idl_dirs=[]):
-        if self._verbose: 
+        if self._verbose:
             logger.write('Finding %s\n' % filename)
             logger.indent()
 
@@ -201,6 +201,9 @@ class IDLParser():
 
                 if line.find('"') >= 7:
                     filename = line[line.find('"')+1 : line.rfind('"')]
+                    if filename in self._parsed_files:
+                        if self._verbose: logger.write("Skipping already included file %s\n" % filename)
+                        continue
                     if self._verbose: logger.write('Find Includes %s\n' % filename)
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
@@ -222,6 +225,9 @@ class IDLParser():
 
                 elif line.find('<') >= 7:
                     filename = line[line.find('<')+1 : line.rfind('>')]
+                    if filename in self._parsed_files:
+                        if self._verbose: logger.write("Skipping already included file %s\n" % filename)
+                        continue
                     if self._verbose: sys.stdout.write(' -- Includes %s\n' % filename)
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
