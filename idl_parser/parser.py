@@ -201,6 +201,8 @@ class IDLParser():
 
                 if line.find('"') >= 7:
                     filename = line[line.find('"')+1 : line.rfind('"')]
+                    #DSE8COB: modification (Include with sub paths will be handled )
+                    filename = os.path.basename(filename)
                     if self._verbose: logger.write('Find Includes %s\n' % filename)
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
