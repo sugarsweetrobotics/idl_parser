@@ -2,7 +2,7 @@ import sys
 from . import node
 
 from . import type as idl_type
-
+from . import exception
 sep = '::'
 
 class IDLArgument(node.IDLNode):
@@ -185,13 +185,13 @@ class IDLInterface(node.IDLNode):
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
-                raise InvalidIDLSyntaxError()
+                raise exception.InvalidIDLSyntaxError()
 
             elif token == '}':
                 ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
-                    raise InvalidIDLSyntaxError()
+                    raise exception.InvalidIDLSyntaxError()
                 break
 
             if token == ';':

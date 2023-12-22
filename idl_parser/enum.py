@@ -1,6 +1,7 @@
 import os, sys, traceback
 
 from . import node
+from . import exception
 sep = '::'
 
 class IDLEnumValue(node.IDLNode):
@@ -71,20 +72,20 @@ class IDLEnum(node.IDLNode):
         ln, fn, kakko = token_buf.pop()
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
         while True:
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
-                raise InvalidIDLSyntaxError()
+                raise exception.InvalidIDLSyntaxError()
 
             elif token == '}':
                 ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
-                    raise InvalidIDLSyntaxError()
+                    raise exception.InvalidIDLSyntaxError()
 
                 if len(block_tokens) > 0:
                     self._parse_block(block_tokens)

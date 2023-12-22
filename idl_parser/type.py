@@ -13,7 +13,9 @@ primitive = [
     'float',
     'double',
     'string',
-    'wstring']
+    'wstring',
+    'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32',
+    'int64', 'uint64']
 
 def is_primitive(name):
     for n in name.split(' '):
@@ -24,12 +26,14 @@ def is_primitive(name):
 def IDLType(name, parent):
     if name == 'void':
         return IDLVoid(name, parent)
-
-    elif name.find('sequence') >= 0:
+    elif name.find('sequence') == 0:
         return IDLSequence(name, parent)
+    elif name.find('map') ==0:
+        return IDLMap(name, parent)
     elif name.find('[') >= 0:
         return IDLArray(name, parent)
-
+    elif name.find('<') >=0:
+        return IDLSequence(name, parent)
     if is_primitive(name):
         return IDLPrimitive(name, parent)
 
@@ -40,7 +44,6 @@ class IDLTypeBase(node.IDLNode):
         super(IDLTypeBase, self).__init__(classname, name, parent.root_node)
         self._is_sequence = False
         self._is_primitive = False
-
     def __str__(self):
         return self.name
 
@@ -57,14 +60,67 @@ class IDLVoid(IDLTypeBase):
     def __init__(self, name, parent):
         super(IDLVoid, self).__init__('IDLVoid', name, parent.root_node)
         self._verbose = True
+class IDLMap(IDLTypeBase):
+    def __init__(self, name, parent):
+        super(IDLMap, self).__init__('IDLMap', name, parent.root_node)
+        self._verbose = True
+        if name.find('map') < 0 and name.find('<') < 0:
+            raise exception.InvalidIDLSyntaxError()
+        typ_ = name[name.find('<')+1 : name.find('>')+1].strip()
+        typ_ = typ_.split(',')
+        self._key_type = typ_[0]
+        self._type = IDLType(typ_[1], parent)
+        self._is_primitive = False #self.inner_type.is_primitive
+        self._is_sequence = False
+
+    @property
+    def key_type(self):
+        return self._key_type
+    def __str__(self):
+        return f'map<{str(self.key_type)}, {str(self.type)}>'
+
+    @property
+    def obj(self):
+        return self
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def full_path(self):
+        return self.parent.full_path + sep + self.name
+
+    def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        name = self.full_path if full_path else self.name
+        return f'map<{str(self.key_type)}, {str(self.type)}>'
+
+    def to_dic(self):
+        dic = { 'name' : self.name,
+                'classname' : self.classname,
+                'type' : str(self.type),
+                'key_type' : str(self.key_type) }
+        return dic
 
 class IDLSequence(IDLTypeBase):
     def __init__(self, name, parent):
         super(IDLSequence, self).__init__('IDLSequence', name, parent.root_node)
         self._verbose = True
-        if name.find('sequence') < 0:
-            raise InvalidIDLSyntaxError()
-        typ_ = name[name.find('<')+1 : name.find('>')].strip()
+        if name.find('sequence') < 0 and name.find('<') < 0:
+            raise exception.InvalidIDLSyntaxError()
+        self._size = 0
+        if name.find('sequence') >=0:
+            typ_ = name[name.find('<')+1 : name.find('>')].strip()
+            tokens = typ_.split(',')
+            typ_ = tokens[0]            
+            if len(tokens) > 1:
+                self._size = int(tokens[1])
+        else:
+            typ_ = name[:name.find('<')].strip()
+            try: 
+                self._size = int(name[name.find('<')+1 : name.find('>')].strip())
+            except:
+                pass
         self._type = IDLType(typ_, parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = True
@@ -72,9 +128,15 @@ class IDLSequence(IDLTypeBase):
     @property
     def inner_type(self):
         return self._type
-
+    @property
+    def size(self):
+        return self._size
+    
     def __str__(self):
-        return 'sequence<%s>' % str(self.inner_type)
+        if self.size > 0:
+            return f'sequence<{str(self.inner_type)}, {self.size}>' 
+        else:
+            return f'sequence<{str(self.inner_type)}>' 
 
     @property
     def obj(self):
@@ -86,10 +148,8 @@ class IDLSequence(IDLTypeBase):
         typs = global_module.find_types(self.inner_type)
         # print self.inner_type
         if len(typs) == 0:
-            # print 'None'
             return None
         else:
-            # print typs[0]
             return typs[0]
 
     @property
@@ -136,7 +196,7 @@ class IDLArray(IDLTypeBase):
 
         self._verbose = True
         if name.find('[') < 0:
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
         primitive_type_name = name[:name.find('[')]
         size = name[name.find('[')+1 : name.find(']')]
         inner_type_name = primitive_type_name + name[name.find(']')+1:]
@@ -182,12 +242,9 @@ class IDLArray(IDLTypeBase):
     def __hoge(self):
         global_module = self.root_node
         typs = global_module.find_types(self.inner_type)
-        # print self.inner_type
         if len(typs) == 0:
-            # print 'None'
             return None
         else:
-            # print typs[0]
             return typs[0]
 
     def parse_size(self, size):
