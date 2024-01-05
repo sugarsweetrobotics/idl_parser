@@ -6,11 +6,26 @@ sep = '::'
 
 class IDLConst(node.IDLNode):
 
-    def __init__(self, name, typename, value, parent, filepath=None):
-        super(IDLConst, self).__init__('IDLConst', name, parent)
+    def __init__(self, values, parent, filepath=None):
+        super(IDLConst, self).__init__('IDLConst', values[values.index('=')-1], parent)
+        value_ = values[values.index('=')+1:]
+        for i in [',' , '{', '}']:
+            while True:
+                if i in value_:
+                    value_.remove(i)
+                else: break
+        if len(value_) == 1:
+            value_ = value_[0].strip('"')
+        else:
+            value_ = [v.strip('"') for v in value_]
+        name_ = values[values.index('=')-1]
+        typename = ''
+        for t in values[:values.index(name_)]:
+            typename = typename + ' ' + t
+        typename = typename.strip()        
         self._typename = typename
         self._verbose = True
-        self._value = value
+        self._value = value_
         self._filepath= filepath
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):

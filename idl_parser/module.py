@@ -1,6 +1,6 @@
 import os, sys, traceback
 
-from . import node, type
+from . import node, type, exception
 from . import struct, typedef, interface, enum, const, union
 global_namespace = '__global__'
 sep = '::'
@@ -12,7 +12,14 @@ class IDLModule(node.IDLNode):
         self._verbose = False
         if name is None:
             self._name = global_namespace
-
+        if parent:
+            self._global_module = self._parent
+            while self._global_module:
+                if self._global_module.name == '__global__':
+                    break
+                self._global_module = self._global_module._parent
+        else:
+            self._global_module = self
         self._interfaces = []
         self._typedefs = []
         self._structs = []
@@ -20,7 +27,8 @@ class IDLModule(node.IDLNode):
         self._unions = []
         self._consts = []
         self._modules = []
-
+        self._processed_modules = [global_namespace]
+    
     @property
     def is_global(self):
         return self.name == global_namespace
@@ -54,7 +62,8 @@ class IDLModule(node.IDLNode):
                 'enums' : [e.to_dic() for e in self.enums],
                 'unions' : [u.to_dic() for u in self.unions],
                 'modules' : [m.to_dic() for m in self.modules],
-                'consts' : [c.to_dic() for c in self.consts] }
+                'consts' : [c.to_dic() for c in self.consts],
+                'annotations':[a.to_dic() for a in self._annotations] }
         return dic
 
 
@@ -64,28 +73,50 @@ class IDLModule(node.IDLNode):
             ln, fn, kakko = token_buf.pop()
             if not kakko == '{':
                 if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
-                raise InvalidIDLSyntaxError()
-
+                raise exception.InvalidIDLSyntaxError()
+        annotation_found = False
+        annotations = ''
+        keywords = ['module', 'typedef', 'struct', 'interface', 'enum', 'union', 'const']
+        
         while True:
-            ln, fn, token = token_buf.pop()
+            ln, fn, token = token_buf.pop()            
+            if token != None:
+                if token.find('@') > -1 and token != '@annotation':
+                    annotation_found = True
+                    annotations += token
+                    while True:
+                        ln, fn, t = token_buf.pop()                        
+                        if t in keywords:
+                            token = t
+                            break
+                        annotations += ' '+ t
             if token == None:
-                if self.name == global_namespace:
+                if self.name in self._global_module._processed_modules:
                     break
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
-                raise InvalidIDLSyntaxError()
+                raise exception.InvalidIDLSyntaxError()                
             elif token == 'module':
                 ln, fn, name_ = token_buf.pop()
-                m = self.module_by_name(name_)
+                m = self.module_by_name(name_)                
                 if m == None:
                     m = IDLModule(name_, self)
                     self._modules.append(m)
-                m.parse_tokens(token_buf, filepath=filepath)
+                    self._global_module._processed_modules +=[name_]
+                    m.parse_tokens(token_buf, filepath=filepath)
+                    if annotation_found:
+                        parts = annotations.strip().split('@')
+                        for part in parts:
+                            v = node.IDLAnnotation('@'+part)
+                            if v.annotation_type != node.AnnotationType.UNKNOWN:
+                                m._annotations += [v]
+                        annotations = ''
+                        annotation_found = False
             elif token == 'typedef':
                 blocks = []
                 while True:
                     ln, fn, t = token_buf.pop()
                     if t == None:
-                        raise InvalidIDLSyntaxError()
+                        raise exception.InvalidIDLSyntaxError()
                     elif t == ';':
                         break
                     else:
@@ -98,12 +129,19 @@ class IDLModule(node.IDLNode):
                 s_ = self.struct_by_name(name_)
                 s = struct.IDLStruct(name_, self)
                 s.parse_tokens(token_buf, filepath=filepath)
+                if annotation_found:
+                    parts = annotations.strip().split('@')
+                    for part in parts:
+                        v = node.IDLAnnotation('@'+part)
+                        if v.annotation_type != node.AnnotationType.UNKNOWN:
+                            s._annotations += [v]
+                    annotations = ''
+                    annotation_found = False
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
+                    raise exception.InvalidIDLSyntaxError()
                 else:
                     self._structs.append(s)
-
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
                 s = interface.IDLInterface(name_, self)
@@ -112,10 +150,9 @@ class IDLModule(node.IDLNode):
                 s_ = self.interface_by_name(name_)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Interface Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
+                    raise exception.InvalidIDLSyntaxError()
                 else:
                     self._interfaces.append(s)
-
             elif token == 'enum':
                 ln, fn, name_ = token_buf.pop()
                 s = enum.IDLEnum(name_, self)
@@ -123,10 +160,9 @@ class IDLModule(node.IDLNode):
                 s_ = self.enum_by_name(name_)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Enum Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
+                    raise exception.InvalidIDLSyntaxError()
                 else:
                     self._enums.append(s)
-
             elif token == 'union':
                 ln, fn, name_ = token_buf.pop()
                 s = union.IDLUnion(name_, self)
@@ -134,10 +170,9 @@ class IDLModule(node.IDLNode):
                 s_ = self.union_by_name(name_)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
+                    raise exception.InvalidIDLSyntaxError()
                 else:
                     self._unions.append(s)
-
             elif token == 'const':
                 values = []
                 while True:
@@ -145,20 +180,25 @@ class IDLModule(node.IDLNode):
                     if t == ';':
                         break
                     values.append(t)
-
-                value_ = values[-1]
-                name_ = values[-3]
-                typename = ''
-                for t in values[:-3]:
-                    typename = typename + ' ' + t
-                typename = typename.strip()
-                s = const.IDLConst(name_, typename, value_, self, filepath=filepath)
+                s = const.IDLConst(values, self, filepath=filepath)
                 s_ = self.const_by_name(name_)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
                 else:
                     self._consts.append(s)
-
+            elif token == '@annotation':
+                #skip annotation definitions
+                while True:
+                    ln, fn, token = token_buf.pop()
+                    if token == None:
+                        if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
+                        raise exception.InvalidIDLSyntaxError()
+                    elif token == '}':
+                        ln, fn, token = token_buf.pop()
+                        if not token == ';':
+                            if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
+                            raise exception.InvalidIDLSyntaxError()
+                        break                
             elif token == '}':
                 break
 
