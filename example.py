@@ -225,7 +225,5 @@ module VelocityStateSensor {
 
     print (json.dumps(global_module.to_dic(), indent=3))
 
-    
-
 if __name__ == '__main__':
     test()

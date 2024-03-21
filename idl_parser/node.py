@@ -82,13 +82,21 @@ class IDLNode(object):
         self._parent = parent
         self._name = name
         self._filepath = None
-        self.sep = '::'
+        self._sep = '::'
         self._annotations = []
-
+        self._full_path = ''
+        if self.parent is None:
+            self._full_path  = self.name
+        else:
+            if len(self.parent.full_path) == 0:
+                self._full_path  = self.name
+            self._full_path  = (self.parent.full_path + self._sep + self.name).strip()
     @property
     def filepath(self):
         return self._filepath
-
+    @property
+    def full_path(self):
+        return self._full_path
     @property
     def is_array(self):
         return self._classname == 'IDLArray'
@@ -141,17 +149,17 @@ class IDLNode(object):
 
     @property
     def basename(self):
-        return self._name.split(self.sep)[-1]
+        return self._name.split(self._sep)[-1]
 
     @property
     def basename(self):
-        if self.name.find(self.sep) > 0:
+        if self.name.find(self._sep) > 0:
             return self.name[self.name.rfind('::')+2:]
         return self.name
 
     @property
     def pathname(self):
-        if self.name.find(self.sep) > 0:
+        if self.name.find(self._sep) > 0:
             return self.name[:self.name.rfind('::')]
         return ''
 

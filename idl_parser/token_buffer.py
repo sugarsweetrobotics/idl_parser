@@ -14,7 +14,17 @@ class TokenBuffer():
     @property
     def t_debug(self):
         return self._tokens
-
+    @property
+    def size(self):
+        return len(self._tokens)
+    @property
+    def offset(self):
+        return self._token_offset
+    def peek(self):
+        if len(self._tokens) == self._token_offset:
+            return (-1, '', None)
+        t = self._tokens[self._token_offset]
+        return t
     def pop(self):
         if len(self._tokens) == self._token_offset:
             return (-1, '', None)

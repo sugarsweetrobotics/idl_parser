@@ -114,7 +114,8 @@ class IDLParser():
         lines = self._clear_ifdef(lines)
 
         self._token_buf = token_buffer.TokenBuffer(lines)
-        self._global_module.parse_tokens(self._token_buf, filepath=filepath)
+        while self._token_buf.offset < self._token_buf.size:
+            self._global_module.parse_tokens(self._token_buf, filepath=filepath)
 
     def includes(self, idl_path):
         included_filepaths = []

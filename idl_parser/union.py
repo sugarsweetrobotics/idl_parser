@@ -10,12 +10,14 @@ class IDLUnionMember(node.IDLNode):
         self._verbose = True
         self._type = None
         self._descriminator_value_associations = []
-        self.sep = '::'
-
+        self._discriminator = '0'
+        self._full_path = self.parent.full_path + self._sep + self.name
     @property
     def full_path(self):
-        return self.parent.full_path + self.sep + self.name
-
+        return self._full_path
+    @property
+    def discriminator(self):
+        return self._discriminator
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
 
@@ -25,6 +27,7 @@ class IDLUnionMember(node.IDLNode):
             blocks.pop(0)
             token = blocks.pop(0)
             self._descriminator_value_associations.append(token)
+            self._discriminator = token
             token = blocks.pop(0)
             if token != ':':
                 if self._verbose: sys.stdout.write('# Error. No ":" after case value.\n')
@@ -88,11 +91,12 @@ class IDLUnion(node.IDLNode):
         self._verbose = True
         self._descriminator_kind = None
         self._members = []
-        self.sep = '::'
-
+        self._sep = '::'
+        self.forward_decl = False
+        self._full_path = (self.parent.full_path + self._sep + self.name).strip()
     @property
     def full_path(self):
-        return (self.parent.full_path + self.sep + self.name).strip()
+        return self._full_path
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
         name = self.full_path if full_path else self.name
@@ -114,10 +118,16 @@ class IDLUnion(node.IDLNode):
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
-
+        
+        ln, fn, token = token_buf.peek()
+        if token == ';':
+            ln, fn, kakko = token_buf.pop()
+            self.forward_decl = True;
+            return
         self.parse_descriminator_kind(token_buf)
 
         ln, fn, token = token_buf.pop()
+        
         if token != '{':
             if self._verbose: sys.stdout.write('# Error. No kokka "{".\n')
             raise exception.InvalidIDLSyntaxError()

@@ -27,20 +27,23 @@ class IDLModule(node.IDLNode):
         self._unions = []
         self._consts = []
         self._modules = []
+        self._forward_decls = []
         self._processed_modules = [global_namespace]
-    
+        self._found_types = {}
+        self._full_path  = ''
+        if self.parent is None:
+            self._full_path  = '' # self.name
+        else:
+            if len(self.parent.full_path) == 0:
+                self._full_path  = self.name
+            self._full_path  = self.parent.full_path + sep + self.name    
     @property
     def is_global(self):
         return self.name == global_namespace
 
     @property
     def full_path(self):
-        if self.parent is None:
-            return '' # self.name
-        else:
-            if len(self.parent.full_path) == 0:
-                return self.name
-            return self.parent.full_path + sep + self.name
+        return self._full_path
 
     def to_simple_dic(self, quiet=False):
         dic = {'module %s' % self.name : [s.to_simple_dic(quiet) for s in self.structs] +
@@ -77,9 +80,10 @@ class IDLModule(node.IDLNode):
         annotation_found = False
         annotations = ''
         keywords = ['module', 'typedef', 'struct', 'interface', 'enum', 'union', 'const']
-        
+        if self.full_path == 'stanag4817::p7::catl_json::core::basic_types::contact':
+            print('stop')
         while True:
-            ln, fn, token = token_buf.pop()            
+            ln, fn, token = token_buf.pop()         
             if token != None:
                 if token.find('@') > -1 and token != '@annotation':
                     annotation_found = True
@@ -111,6 +115,8 @@ class IDLModule(node.IDLNode):
                                 m._annotations += [v]
                         annotations = ''
                         annotation_found = False
+                else:
+                    m.parse_tokens(token_buf, filepath=filepath)
             elif token == 'typedef':
                 blocks = []
                 while True:
@@ -125,23 +131,26 @@ class IDLModule(node.IDLNode):
                 self._typedefs.append(t)
                 t.parse_blocks(blocks, filepath=filepath)
             elif token == 'struct':
-                ln, fn, name_ = token_buf.pop()
+                ln, fn, name_ = token_buf.pop()                
                 s_ = self.struct_by_name(name_)
                 s = struct.IDLStruct(name_, self)
                 s.parse_tokens(token_buf, filepath=filepath)
-                if annotation_found:
-                    parts = annotations.strip().split('@')
-                    for part in parts:
-                        v = node.IDLAnnotation('@'+part)
-                        if v.annotation_type != node.AnnotationType.UNKNOWN:
-                            s._annotations += [v]
-                    annotations = ''
-                    annotation_found = False
-                if s_:
-                    if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
-                    raise exception.InvalidIDLSyntaxError()
+                if s.forward_decl == False:
+                    if annotation_found:
+                        parts = annotations.strip().split('@')
+                        for part in parts:
+                            v = node.IDLAnnotation('@'+part)
+                            if v.annotation_type != node.AnnotationType.UNKNOWN:
+                                s._annotations += [v]
+                        annotations = ''
+                        annotation_found = False
+                    if s_:
+                        if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
+                        raise exception.InvalidIDLSyntaxError()
+                    else:
+                        self._structs.append(s)
                 else:
-                    self._structs.append(s)
+                    self._forward_decls.append(s)
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
                 s = interface.IDLInterface(name_, self)
@@ -167,12 +176,15 @@ class IDLModule(node.IDLNode):
                 ln, fn, name_ = token_buf.pop()
                 s = union.IDLUnion(name_, self)
                 s.parse_tokens(token_buf, filepath)
-                s_ = self.union_by_name(name_)
-                if s_:
-                    if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
-                    raise exception.InvalidIDLSyntaxError()
+                if s.forward_decl == False:                    
+                    s_ = self.union_by_name(name_)
+                    if s_:
+                        if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
+                        raise exception.InvalidIDLSyntaxError()
+                    else:
+                        self._unions.append(s)
                 else:
-                    self._unions.append(s)
+                    self._forward_decls.append(s)
             elif token == 'const':
                 values = []
                 while True:
@@ -258,7 +270,11 @@ class IDLModule(node.IDLNode):
             else:
                 retval.append(func(m))
         return retval
-
+    def for_each_forward_decl(self, func):
+        retval = []
+        for m in self._forward_decls:
+            retval.append(func(m))
+        return retval
     @property
     def enums(self):
         return self._enums
@@ -327,14 +343,22 @@ class IDLModule(node.IDLNode):
         if type.is_primitive(full_typename):
             return [type.IDLType(full_typename, self)]
         typenode = []
-
+        res = self._found_types.get(full_typename, None)
+        if res:
+            return res
         def parse_node(s, name=str(full_typename)):
             if parent:
                 if parent.full_path + '::' + name.strip() == s.full_path or name.strip() == s.full_path:
                     typenode.append(s)
+                else:
+                    if s.name.find(name.strip()) > -1 or s.full_path.find(name.strip()) > -1:
+                        typenode.append(s)
             else:
                 if s.name == name.strip() or s.full_path == name.strip():
                     typenode.append(s)
+                else:
+                    if s.name.find(name.strip()) > -1 or s.full_path.find(name.strip()) > -1:
+                        typenode.append(s)
 
         def parse_module(m):
             m.for_each_module(parse_module)
@@ -343,7 +367,9 @@ class IDLModule(node.IDLNode):
             m.for_each_enum(parse_node)
             m.for_each_union(parse_node)
             m.for_each_interface(parse_node)
+            m.for_each_forward_decl(parse_node)
 
         parse_module(self)
-
+        if len(typenode) > 0:
+            self._found_types[full_typename] = typenode
         return typenode

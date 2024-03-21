@@ -8,11 +8,10 @@ class IDLMember(node.IDLNode):
         super(IDLMember, self).__init__('IDLMember', '', parent)
         self._verbose = True
         self._type = None
-        self.sep = '::'
-
+        self._full_path = self.parent.full_path + self._sep + self.name
     @property
     def full_path(self):
-        return self.parent.full_path + self.sep + self.name
+        return self._full_path
 
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
@@ -86,12 +85,16 @@ class IDLStruct(node.IDLNode):
         super(IDLStruct, self).__init__('IDLStruct', name.split()[-1].strip(), parent)
         self._verbose = False #True
         self._members = []
-        self.sep = '::'
+        self._sep = '::'
         self.base = None
-
+        self.forward_decl = False
+        self._full_path = (self.parent.full_path + self._sep + self.name).strip()
+    @property
+    def baseclass(self):
+        return self.base
     @property
     def full_path(self):
-        return (self.parent.full_path + self.sep + self.name).strip()
+        return self._full_path
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
         name = self.full_path if full_path else self.name
@@ -116,7 +119,9 @@ class IDLStruct(node.IDLNode):
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
         ln, fn, kakko = token_buf.pop()
-
+        if kakko == ';':
+            self.forward_decl = True
+            return
         if kakko == ':':
             ln, fn, kakko = token_buf.pop()
             self.base = kakko
