@@ -91,8 +91,13 @@ class IDLModule(node.IDLNode):
                     else:
                         blocks.append(t)
                 t = typedef.IDLTypedef(self)
-                self._typedefs.append(t)
                 t.parse_blocks(blocks, filepath=filepath)
+                t_ = self.typedef_by_name(t.name)
+                if t_:
+                    if self._verbose: sys.stdout.write('# Error. Same Typedef Defined (%s)\n' % t.name)
+                else:
+                    self._typedefs.append(t)
+
             elif token == 'struct':
                 ln, fn, name_ = token_buf.pop()
                 s_ = self.struct_by_name(name_)
