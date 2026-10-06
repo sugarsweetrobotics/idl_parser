@@ -6,19 +6,6 @@ from idl_parser.type import IDLType
 from . import multimodule_test
 from . import generalization_test
 from . import invalid_idl_test
-__nocoveralls = False # This might be redundant but just in case ...
-try:
-    from coveralls import Coveralls
-    from coveralls.api import log
-except:
-    sys.stdout.write('''
-#######################################
-# 
-#   importing "coveralls" failed.
-#   
-#######################################
-''')
-    __nocoveralls = True
 
 idl_path = 'idls/basic_module_test.idl'
 
