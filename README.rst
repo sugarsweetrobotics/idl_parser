@@ -82,7 +82,7 @@ Copyright
 
 - copyright: Yuki Suga
 
-- contact: ysuga@ysuga.net
+- contact: please open an issue on `GitHub Issues <https://github.com/sugarsweetrobotics/idl_parser/issues>`_
 
 - license: GPLv3
 
