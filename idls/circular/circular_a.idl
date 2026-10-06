@@ -1,0 +1,7 @@
+#include "circular_b.idl"
+
+module circularA {
+  struct StructA {
+    long a_value;
+  };
+};

@@ -94,19 +94,19 @@ class IDLParser():
         if self._verbose: 
             logger.write('Parsing IDL(%s)\n' % idl_path) #sys.stdout.write(' - Parsing IDL (%s)\n' % idl_path)
             logger.indent()
-        f = open(idl_path, 'r')
+        # Mark as parsed BEFORE parsing so that mutually including files
+        # do not re-enter parse_idl() endlessly (issue #6).
+        self._parsed_files.append(idl_path)
         lines = []
-        line_number = 1
-        for line in f:
-            lines.append((line_number, idl_path, line))
-            line_number = line_number + 1
+        with open(idl_path, 'r') as f:
+            for line_number, line in enumerate(f, 1):
+                lines.append((line_number, idl_path, line))
 
         self.parse_lines(lines)
 
         if self._verbose: 
             logger.deindent()
-            logger.write('Parsed IDL (%s)\n' % idl_path)        
-        self._parsed_files.append(idl_path)
+            logger.write('Parsed IDL (%s)\n' % idl_path)
 
     def parse_lines(self, lines, filepath=None):
         lines = self._clear_comments(lines)
@@ -191,7 +191,19 @@ class IDLParser():
         if self._verbose: logger.deindent()
         return retval
 
-    def _paste_include(self, lines):
+    def _paste_include(self, lines, pasted=None):
+        """ Expand #include directives in-place.
+
+        :param pasted: Set of absolute paths already expanded in this
+            translation unit. Each file is pasted at most once (like
+            ``#pragma once``), which also stops infinite recursion when
+            IDL files include each other (issue #6).
+        """
+        if pasted is None:
+            pasted = set()
+            for _, file_name, _ in lines:
+                if file_name is not None:
+                    pasted.add(os.path.abspath(file_name))
         output_lines = []
         for line_number, file_name, line in lines:
             output_line = ''
@@ -201,44 +213,34 @@ class IDLParser():
 
                 if line.find('"') >= 7:
                     filename = line[line.find('"')+1 : line.rfind('"')]
+                elif line.find('<') >= 7:
+                    filename = line[line.find('<')+1 : line.rfind('>')]
+                else:
+                    filename = None
+
+                if filename is not None:
                     if self._verbose: logger.write('Find Includes %s\n' % filename)
                     p = self._find_idl(filename, _include_paste)
                     if p is None:
-                        if self._verbose:logger.write(' # IDL (%s) can not be found.\n' % filename)
+                        if self._verbose: logger.write(' # IDL (%s) can not be found.\n' % filename)
                         raise exception.IDLCanNotFindException
-                    if self._verbose: logger.write('IDL Found (%s). Parsing\n'% filename)
-                    self.parse_idl(idl_path = p)
-                    if self._verbose: logger.write('Including IDL Parsing End.\n')
 
-                    inc_lines = []
-                    f = open(p, 'r')
-                    ln = 1
-                    for l in f:
-                        inc_lines.append((ln, p, l))
-                        ln = ln + 1
-                    inc_lines = self._clear_comments(inc_lines)
-                    inc_lines = self._paste_include(inc_lines)
-                    output_lines = output_lines + inc_lines
+                    abs_p = os.path.abspath(p)
+                    if abs_p in pasted:
+                        if self._verbose: logger.write('IDL (%s) already included. Skipped.\n' % filename)
+                    else:
+                        pasted.add(abs_p)
+                        if self._verbose: logger.write('IDL Found (%s). Parsing\n' % filename)
+                        self.parse_idl(idl_path = p)
+                        if self._verbose: logger.write('Including IDL Parsing End.\n')
 
-                elif line.find('<') >= 7:
-                    filename = line[line.find('<')+1 : line.rfind('>')]
-                    if self._verbose: sys.stdout.write(' -- Includes %s\n' % filename)
-                    p = self._find_idl(filename, _include_paste)
-                    if p is None:
-                        if self._verbose:sys.stdout.write(' # IDL (%s) can not be found.\n' % filename)
-                        raise exception.IDLCanNotFindException
-                    inc_lines = []
-
-                    self.parse_idl(idl_path = p)
-
-                    f = open(p, 'r')
-                    ln = 1
-                    for l in f:
-                        inc_lines.append((ln, p, l))
-                        ln = ln + 1
-                    inc_lines = self._clear_comments(inc_lines)
-                    inc_lines = self._paste_include(inc_lines)
-                    output_lines = output_lines + inc_lines
+                        inc_lines = []
+                        with open(p, 'r') as f:
+                            for ln, l in enumerate(f, 1):
+                                inc_lines.append((ln, p, l))
+                        inc_lines = self._clear_comments(inc_lines)
+                        inc_lines = self._paste_include(inc_lines, pasted)
+                        output_lines = output_lines + inc_lines
 
             else:
                 output_line = line

@@ -1,0 +1,8 @@
+#include "circular_a.idl"
+#include <circular_a.idl>
+
+module diamond {
+  struct StructD {
+    circularA::StructA a;
+  };
+};
