@@ -1,6 +1,6 @@
 # idl_parser
 
-[![Build Status](https://travis-ci.org/sugarsweetrobotics/idl_parser.svg?branch=master)](https://travis-ci.org/sugarsweetrobotics/idl_parser) [![Coverage Status](https://coveralls.io/repos/github/sugarsweetrobotics/idl_parser/badge.svg?branch=master)](https://coveralls.io/github/sugarsweetrobotics/idl_parser?branch=master)
+[![Test](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml)
 
 
 ## Description 
@@ -70,6 +70,7 @@ for m in timedDoubleSeq.members:
 
 ## Copyright
 * author: Yuki Suga
-* copyright: Yuki Suga @ ssr.tokyo
+* copyright: Yuki Suga
+* contact: please open an issue on [GitHub Issues](https://github.com/sugarsweetrobotics/idl_parser/issues)
 * license: GPLv3
 

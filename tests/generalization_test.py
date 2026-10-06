@@ -3,19 +3,6 @@ import unittest
 from idl_parser import parser
 from idl_parser.type import IDLType
 
-__nocoveralls = False # This might be redundant but just in case ...
-try:
-    from coveralls import Coveralls
-    from coveralls.api import log
-except:
-    sys.stdout.write('''
-#######################################
-# 
-#   importing "coveralls" failed.
-#   
-#######################################
-''')
-    __nocoveralls = True
 
 idl_path = 'idls/generalization.idl'
 

@@ -1,7 +1,7 @@
 idl_parser
 ============
 
-|Travis Build Status|  |Coverage Status|
+|Test Status|
 
 Description 
 -----------
@@ -80,12 +80,11 @@ Copyright
 
 - author: Yuki Suga
 
-- copyright: Yuki Suga @ ssr.tokyo
+- copyright: Yuki Suga
+
+- contact: please open an issue on `GitHub Issues <https://github.com/sugarsweetrobotics/idl_parser/issues>`_
 
 - license: GPLv3
 
-.. |Travis Build Status| image:: https://travis-ci.org/sugarsweetrobotics/idl_parser.svg?branch=master
-   :target: https://travis-ci.org/sugarsweetrobotics/idl_parser
-   
-.. |Coverage Status| image:: https://coveralls.io/repos/github/sugarsweetrobotics/idl_parser/badge.svg?branch=master
-   :target: https://coveralls.io/github/sugarsweetrobotics/idl_parser?branch=master
+.. |Test Status| image:: https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=master
+   :target: https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml
