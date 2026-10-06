@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "idl_parser"
+dynamic = ["version"]
+description = "Very simple OMG IDL (Interface Definition Language) parser. This parses IDL files and outputs intermediate class objects."
+readme = { file = "README.rst", content-type = "text/x-rst" }
+requires-python = ">=3.9"
+authors = [{ name = "ysuga", email = "ysuga@ysuga.net" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Homepage = "http://www.sugarsweetrobotics.com/"
+Source = "https://github.com/sugarsweetrobotics/idl_parser"
+Issues = "https://github.com/sugarsweetrobotics/idl_parser/issues"
+
+[tool.setuptools]
+packages = ["idl_parser"]
+
+[tool.setuptools_scm]
+# The version comes from git tags (e.g. v0.0.18 -> 0.0.18).
+# Untagged commits get a .devN version; the local "+g<hash>" part is dropped
+# because PyPI/TestPyPI reject local versions.
+local_scheme = "no-local-version"

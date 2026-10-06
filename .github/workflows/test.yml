@@ -2,9 +2,10 @@ name: Test
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call: # reused by release.yml before building
 
 permissions:
   contents: read
