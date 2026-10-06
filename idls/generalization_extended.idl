@@ -1,0 +1,67 @@
+// Interface inheritance cases (issue #5)
+
+interface GlobalBase {
+  void globalMethod();
+};
+
+interface GlobalDerived : GlobalBase {
+  void globalDerivedMethod();
+};
+
+module moduleP {
+  interface Base {
+    void methodBase();
+  };
+
+  // Unqualified name of an interface in the same module
+  interface Derived : Base {
+    void methodDerived();
+  };
+
+  // Multi-level inheritance
+  interface Grandchild : Derived {
+    void methodGrandchild();
+  };
+
+  interface Other {
+    void methodOther();
+  };
+
+  // Multiple inheritance
+  interface Multi : Base, Other {
+    void methodMulti();
+  };
+
+  // Absolute name with a leading "::"
+  interface Absolute : ::moduleP::Base {
+    void methodAbsolute();
+  };
+
+  // Global interface referenced from inside a module
+  interface FromGlobal : GlobalBase {
+    void methodFromGlobal();
+  };
+};
+
+module moduleQ {
+  // Same name as moduleP::Base; the innermost declaration must win
+  interface Base {
+    void methodQBase();
+  };
+
+  interface LocalDerived : Base {
+    void methodLocal();
+  };
+
+  // Scoped name of an interface in another module
+  interface CrossDerived : moduleP::Base {
+    void methodCross();
+  };
+
+  module inner {
+    // Found in the enclosing scope (moduleQ), not in moduleP
+    interface InnerDerived : Base {
+      void methodInner();
+    };
+  };
+};
