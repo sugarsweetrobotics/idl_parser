@@ -1,6 +1,6 @@
 # idl_parser
 
-[![Test](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml)
+[![Test](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml)
 
 
 ## Description 

@@ -86,5 +86,5 @@ Copyright
 
 - license: GPLv3
 
-.. |Test Status| image:: https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=master
+.. |Test Status| image:: https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=main
    :target: https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml
