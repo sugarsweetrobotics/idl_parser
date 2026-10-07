@@ -1,0 +1,22 @@
+# Read the Docs configuration
+# https://docs.readthedocs.io/en/stable/config-file/v2.html
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.12"
+  jobs:
+    # setuptools-scm derives the version from git tags, so fetch full history/tags
+    post_checkout:
+      - git fetch --unshallow --tags || true
+
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: true
+
+python:
+  install:
+    - requirements: docs/requirements.txt
+    - method: pip
+      path: .

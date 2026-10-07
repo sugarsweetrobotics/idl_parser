@@ -2,4 +2,5 @@
 *~
 *.egg-info
 build/*
-dist/*
+dist/*docs/_build/
+docs/api/generated/
