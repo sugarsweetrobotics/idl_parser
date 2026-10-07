@@ -34,6 +34,67 @@ def parse_bounded_string(name):
         pass
     return (base, bound)
 
+def _parse_bound(bound):
+    """An int for a numeric literal, otherwise the name as written (e.g. a const)."""
+    bound = bound.strip()
+    try:
+        return int(bound)
+    except ValueError:
+        return bound
+
+def split_top_level(text, sep=','):
+    """Split ``text`` at ``sep`` that is not inside ``< >``.
+    ``'string<8>, 10'`` gives ``['string<8>', ' 10']``."""
+    parts = []
+    depth = 0
+    start = 0
+    for i, c in enumerate(text):
+        if c == '<':
+            depth = depth + 1
+        elif c == '>':
+            depth = depth - 1
+        elif c == sep and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+    parts.append(text[start:])
+    return parts
+
+_sequence_head = re.compile(r'^sequence\s*<')
+
+def parse_sequence(name):
+    """Return (element_type_name, bound) for a sequence type name, otherwise None (issue #31).
+
+    The ``<`` and ``>`` are matched, so nested types are kept whole:
+    ``'sequence<string<8>, 10>'`` gives ``('string<8>', 10)`` and
+    ``'sequence<sequence<long>>'`` gives ``('sequence<long>', None)``.
+    bound is None for an unbounded sequence, an int for a numeric literal,
+    or the name as written (e.g. a const).
+    Raises InvalidIDLSyntaxError if the brackets do not match.
+    """
+    name = name.strip()
+    m = _sequence_head.match(name)
+    if not m:
+        return None
+    open_ = m.end() - 1
+    depth = 0
+    close = None
+    for i in range(open_, len(name)):
+        if name[i] == '<':
+            depth = depth + 1
+        elif name[i] == '>':
+            depth = depth - 1
+            if depth == 0:
+                close = i
+                break
+    if close is None or name[close+1:].strip():
+        raise exception.InvalidIDLSyntaxError(message='Invalid sequence type "%s"' % name)
+    args = split_top_level(name[open_+1:close])
+    elem = args[0].strip()
+    if not elem or len(args) > 2 or (len(args) == 2 and not args[1].strip()):
+        raise exception.InvalidIDLSyntaxError(message='Invalid sequence type "%s"' % name)
+    bound = _parse_bound(args[1]) if len(args) == 2 else None
+    return (elem, bound)
+
 def is_string(name):
     name = name.strip()
     return name in ('string', 'wstring') or parse_bounded_string(name) is not None
@@ -50,7 +111,7 @@ def IDLType(name, parent):
     if name == 'void':
         return IDLVoid(name, parent)
 
-    elif name.find('sequence') >= 0:
+    elif _sequence_head.match(name.strip()) and not name.rstrip().endswith(']'):
         return IDLSequence(name, parent)
     elif name.find('[') >= 0:
         return IDLArray(name, parent)
@@ -87,9 +148,10 @@ class IDLSequence(IDLTypeBase):
     def __init__(self, name, parent):
         super(IDLSequence, self).__init__('IDLSequence', name, parent.root_node)
         self._verbose = True
-        if name.find('sequence') < 0:
+        parsed = parse_sequence(name)
+        if parsed is None:
             raise exception.InvalidIDLSyntaxError()
-        typ_ = name[name.find('<')+1 : name.find('>')].strip()
+        typ_, self._bound = parsed
         self._type = IDLType(typ_, parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = True
@@ -97,6 +159,18 @@ class IDLSequence(IDLTypeBase):
     @property
     def inner_type(self):
         return self._type
+
+    @property
+    def bound(self):
+        """Maximum length of a bounded sequence ('sequence<long, 10>' -> 10).
+        A constant name is returned as written ('sequence<long, MAXLEN>' -> 'MAXLEN').
+        None for an unbounded sequence. The type name does not include the bound
+        ('sequence<long, 10>' -> 'sequence<long>'), as with bounded strings."""
+        return self._bound
+
+    @property
+    def is_bounded_sequence(self):
+        return self._bound is not None
 
     def __str__(self):
         return 'sequence<%s>' % str(self.inner_type)

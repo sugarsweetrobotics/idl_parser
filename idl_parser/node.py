@@ -297,18 +297,22 @@ class IDLNode(object):
         return len(found) > 0
 
     def refine_typename(self, typ):
-        global_module = self.root_node
-        if typ.name.find('sequence') >= 0:
-            name = typ.name[typ.name.find('<')+1 : typ.name.find('>')].strip()
-            typs = global_module.find_types(name)
-            if len(typs) == 0:
-                # Not resolvable yet (e.g. a forward-declared interface): keep the inner name
-                return 'sequence < ' + name + ' >'
+        return self._refine_typename(typ.name)
 
-            return 'sequence < ' + typs[0].name + ' >'
-        else:
-            typs = global_module.find_types(typ.name)
-            if len(typs) == 0:
-                return typ.name
-            else:
-                return typs[0].name
+    def _refine_typename(self, name):
+        from . import type as idl_type
+        name = name.strip()
+        # 'sequence<long> [3]' is an array of sequences: keep it as written
+        seq = idl_type.parse_sequence(name) if name.endswith('>') else None
+        if seq is not None:
+            # Nested types are refined recursively (issue #31). The bound of
+            # a bounded sequence is not part of the type name (see .bound).
+            return 'sequence < ' + self._refine_typename(seq[0]) + ' >'
+        bounded = idl_type.parse_bounded_string(name)
+        if bounded is not None:
+            return bounded[0]
+        typs = self.root_node.find_types(name)
+        if len(typs) == 0:
+            # Not resolvable yet (e.g. a forward-declared interface): keep the name
+            return name
+        return typs[0].name
