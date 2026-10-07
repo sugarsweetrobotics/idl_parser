@@ -58,6 +58,9 @@ class IDLMethod(node.IDLNode):
         self._verbose = True
         self._returns = None
         self._arguments = []
+        self._oneway = False
+        self._raises = []
+        self._contexts = []
 
     def parse_blocks(self, blocks, filepath=None):
         self._filepath=filepath
@@ -78,10 +81,21 @@ class IDLMethod(node.IDLNode):
             print(' -- Invalid Interface Token (%s)' % blocks[1])
             print( blocks)
 
+        self._raises = []
+        self._contexts = []
         index = 3
+        args_end = len(blocks)
+        if blocks[2] == '(':
+            # Read the arguments only up to the ")" that closes the argument
+            # list; "raises (...)" and "context (...)" may follow it.
+            close = node.matching_paren(blocks, 2)
+            if close is None:
+                raise exception.InvalidIDLSyntaxError(message='No ")" after the arguments of "%s"' % self._name)
+            self._parse_clauses(blocks[close + 1:])
+            args_end = close + 1
         argument_blocks = []
         while True:
-            if index == len(blocks):
+            if index >= args_end:
                 break
             token = blocks[index]
             if token.startswith('@') and index + 1 < len(blocks) and blocks[index + 1] == '(':
@@ -106,6 +120,27 @@ class IDLMethod(node.IDLNode):
                 argument_blocks.append(token)
             index = index + 1
 
+    def _parse_clauses(self, blocks):
+        """Parse "raises (E1, E2)" and "context ("a", "b")" after the arguments."""
+        index = 0
+        while index < len(blocks):
+            keyword = blocks[index]
+            if keyword not in ('raises', 'context'):
+                raise exception.InvalidIDLSyntaxError(message='Unexpected token "%s" after the arguments of "%s"' % (keyword, self._name))
+            if index + 1 >= len(blocks) or blocks[index + 1] != '(':
+                raise exception.InvalidIDLSyntaxError(message='No "(" after "%s" of "%s"' % (keyword, self._name))
+            close = node.matching_paren(blocks, index + 1)
+            if close is None:
+                raise exception.InvalidIDLSyntaxError(message='No ")" after "%s" of "%s"' % (keyword, self._name))
+            names = [t for t in blocks[index + 2:close] if t != ',']
+            if len(names) == 0:
+                raise exception.InvalidIDLSyntaxError(message='Empty "%s (...)" of "%s"' % (keyword, self._name))
+            if keyword == 'raises':
+                self._raises.extend(names)
+            else:
+                self._contexts.extend(n.strip('"') for n in names)
+            index = close + 1
+
     def to_simple_dic(self):
         return {self.name : {
                 'returns' : str(self.returns),
@@ -117,11 +152,30 @@ class IDLMethod(node.IDLNode):
                 'classname' : self.classname,
                 'returns' : str(self._returns),
                 'arguments' : [a.to_dic() for a in self.arguments]}
+        if self._raises:
+            dic['raises'] = list(self._raises)
+        if self._contexts:
+            dic['context'] = list(self._contexts)
         return self._with_annotations(dic)
 
     @property
     def returns(self):
         return self._returns
+
+    @property
+    def oneway(self):
+        """True if the operation is declared "oneway"."""
+        return self._oneway
+
+    @property
+    def raises(self):
+        """Exception names in "raises (...)", as written (not resolved)."""
+        return list(self._raises)
+
+    @property
+    def contexts(self):
+        """Context names in "context (...)", without the quotes."""
+        return list(self._contexts)
 
     @property
     def arguments(self):
