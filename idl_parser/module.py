@@ -2,6 +2,7 @@ import os, sys, traceback
 
 from . import node, type
 from . import struct, typedef, interface, enum, const, union
+from .exception import InvalidIDLSyntaxError
 global_namespace = '__global__'
 sep = '::'
 
@@ -172,10 +173,32 @@ class IDLModule(node.IDLNode):
                 else:
                     self._consts.append(s)
 
+            elif token == '{':
+                # A block opened by an unsupported construct
+                # (e.g. "bitmask F { ... }", "bitset B { ... }", "exception E { ... }").
+                # Skip it up to the matching "}" so that its closing brace is not
+                # mistaken for the end of this module (issue #39).
+                self._skip_block(token_buf, ln, fn)
+
             elif token == '}':
                 break
 
         return True
+
+    def _skip_block(self, token_buf, start_line=None, start_file=None):
+        """Skip tokens up to the "}" matching an already consumed "{"."""
+        depth = 1
+        while depth > 0:
+            ln, fn, t = token_buf.pop()
+            if t is None:
+                raise InvalidIDLSyntaxError(start_line, start_file,
+                                            'No "}" matching "{" of an unsupported block')
+            elif t == '{':
+                depth += 1
+            elif t == '}':
+                depth -= 1
+        if self._verbose:
+            sys.stdout.write('# Warning. Skipped unsupported block at line %s.\n' % start_line)
 
 
 
