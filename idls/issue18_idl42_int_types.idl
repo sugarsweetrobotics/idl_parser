@@ -1,0 +1,29 @@
+// IDL 4.2 explicitly-sized integer types (issue #18).
+module Issue18 {
+
+  const int32 MAX_COUNT = 10;
+  const uint8 FLAG = 1;
+
+  typedef sequence<uint8> ByteSeq;
+  typedef int64 Timestamp;
+
+  struct AllIntTypes {
+    int8   i8;
+    int16  i16;
+    int32  i32;
+    int64  i64;
+    uint8  u8;
+    uint16 u16;
+    uint32 u32;
+    uint64 u64;
+    sequence<int32> int32_seq;
+    uint8  u8_array[4];
+    ByteSeq bytes;
+    Timestamp stamp;
+  };
+
+  interface IntService {
+    int64 add(in int32 a, in int32 b);
+    void get(out uint16 x, inout uint32 y);
+  };
+};
