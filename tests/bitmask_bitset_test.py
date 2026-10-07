@@ -60,7 +60,8 @@ class BitmaskTest(unittest.TestCase):
     def test_to_dic(self):
         d = self.m.bitmask_by_name('Flags').to_dic()
         self.assertEqual(d['bit_bound'], 8)
-        self.assertEqual(d['values'][1], {'name': 'F4', 'classname': 'IDLBitValue', 'position': 4, 'value': 16})
+        self.assertEqual(d['values'][1], {'name': 'F4', 'classname': 'IDLBitValue', 'position': 4, 'value': 16,
+                                          'annotations': [{'name': 'position', 'args': ['4'], 'params': {}}]})
         self.assertIn('bitmask Plain', self.m.to_simple_dic()['module M'][1])
 
     def test_errors(self):
@@ -151,9 +152,9 @@ class TypeResolutionTest(unittest.TestCase):
 
 
 class AnnotationTest(unittest.TestCase):
-    """Annotations other than those of bitmask are still ignored."""
+    """@bit_bound only affects the bitmask it is written before."""
 
-    def test_other_definitions_ignore_annotations(self):
+    def test_other_definitions_parse_with_annotations(self):
         g = load('@bit_bound(8) enum E { A, B };\n@nested(FALSE) @extensibility(FINAL) struct S { long x; };')
         self.assertEqual([v.name for v in g.enum_by_name('E').values], ['A', 'B'])
         self.assertIsNotNone(g.struct_by_name('S'))

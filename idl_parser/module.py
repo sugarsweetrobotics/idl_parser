@@ -63,7 +63,7 @@ class IDLModule(node.IDLNode):
                 'unions' : [u.to_dic() for u in self.unions],
                 'modules' : [m.to_dic() for m in self.modules],
                 'consts' : [c.to_dic() for c in self.consts] }
-        return dic
+        return self._with_annotations(dic)
 
 
     def parse_tokens(self, token_buf, filepath=None):
@@ -78,8 +78,7 @@ class IDLModule(node.IDLNode):
         while True:
             ln, fn, token = token_buf.pop()
             if token is not None and token.startswith('@'):
-                # Annotations apply to the next definition. Only bitmask uses
-                # them so far (@bit_bound); others are ignored as before.
+                # Annotations apply to the next definition (issue #39).
                 annotations.append(self._parse_annotation(token, token_buf))
                 continue
             pending_annotations, annotations = annotations, []
@@ -95,6 +94,7 @@ class IDLModule(node.IDLNode):
                 if m == None:
                     m = IDLModule(name_, self)
                     self._modules.append(m)
+                m._add_annotations(pending_annotations)
                 m.parse_tokens(token_buf, filepath=filepath)
             elif token == 'typedef':
                 blocks = []
@@ -107,6 +107,8 @@ class IDLModule(node.IDLNode):
                     else:
                         blocks.append(t)
                 t = typedef.IDLTypedef(self)
+                anns, blocks = node.parse_annotations(blocks)
+                t._add_annotations(pending_annotations + anns)
                 t.parse_blocks(blocks, filepath=filepath)
                 t_ = self.typedef_by_name(t.name)
                 if t_:
@@ -118,6 +120,7 @@ class IDLModule(node.IDLNode):
                 ln, fn, name_ = token_buf.pop()
                 s_ = self.struct_by_name(name_)
                 s = struct.IDLStruct(name_, self)
+                s._add_annotations(pending_annotations)
                 s.parse_tokens(token_buf, filepath=filepath)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
@@ -128,6 +131,7 @@ class IDLModule(node.IDLNode):
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
                 s = interface.IDLInterface(name_, self)
+                s._add_annotations(pending_annotations)
                 s.parse_tokens(token_buf, filepath=filepath)
 
                 if s.is_forward:
@@ -147,6 +151,7 @@ class IDLModule(node.IDLNode):
             elif token == 'enum':
                 ln, fn, name_ = token_buf.pop()
                 s = enum.IDLEnum(name_, self)
+                s._add_annotations(pending_annotations)
                 s.parse_tokens(token_buf, filepath)
                 s_ = self.enum_by_name(name_)
                 if s_:
@@ -167,6 +172,7 @@ class IDLModule(node.IDLNode):
             elif token == 'bitset':
                 ln, fn, name_ = token_buf.pop()
                 s = bitset.IDLBitset(name_, self)
+                s._add_annotations(pending_annotations)
                 s.parse_tokens(token_buf, filepath)
                 if self.bitset_by_name(name_):
                     if self._verbose: sys.stdout.write('# Error. Same Bitset Defined (%s)\n' % name_)
@@ -176,6 +182,7 @@ class IDLModule(node.IDLNode):
             elif token == 'union':
                 ln, fn, name_ = token_buf.pop()
                 s = union.IDLUnion(name_, self)
+                s._add_annotations(pending_annotations)
                 s.parse_tokens(token_buf, filepath)
                 s_ = self.union_by_name(name_)
                 if s_:
@@ -199,6 +206,7 @@ class IDLModule(node.IDLNode):
                     typename = typename + ' ' + t
                 typename = typename.strip()
                 s = const.IDLConst(name_, typename, value_, self, filepath=filepath)
+                s._add_annotations(pending_annotations)
                 s_ = self.const_by_name(name_)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
@@ -218,18 +226,23 @@ class IDLModule(node.IDLNode):
         return True
 
     def _parse_annotation(self, token, token_buf):
-        """Consume an annotation and return (name, [args]).
-        '@bit_bound ( 8 )' -> ('bit_bound', ['8'])."""
+        """Consume an annotation and return it as an :class:`~idl_parser.node.IDLAnnotation`.
+        '@bit_bound ( 8 )' -> @bit_bound(8)."""
         tokens = [token]
         if token_buf.peek()[2] == '(':
+            depth = 0
             while True:
                 ln, fn, t = token_buf.pop()
                 if t is None:
                     raise InvalidIDLSyntaxError(ln, fn, 'No ")" in annotation "%s"' % token)
                 tokens.append(t)
-                if t == ')':
-                    break
-        annotations, _ = bitmask.split_annotations(tokens)
+                if t == '(':
+                    depth += 1
+                elif t == ')':
+                    depth -= 1
+                    if depth == 0:
+                        break
+        annotations, _ = node.parse_annotations(tokens)
         return annotations[0]
 
     def _skip_block(self, token_buf, start_line=None, start_file=None):

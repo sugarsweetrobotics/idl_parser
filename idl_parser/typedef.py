@@ -35,7 +35,7 @@ class IDLTypedef(node.IDLNode):
         dic = { 'name' : self.name,
                 'classname' : self.classname,
                 'type' : str(self.type) }
-        return dic
+        return self._with_annotations(dic)
 
     @property
     def type(self):

@@ -11,6 +11,8 @@ class IDLEnumValue(node.IDLNode):
 
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
+        annotations, blocks = node.parse_annotations(blocks)
+        self._add_annotations(annotations)
         if len(blocks) == 1:
             self._name = blocks[0]
         else:
@@ -32,7 +34,7 @@ class IDLEnumValue(node.IDLNode):
                 'filepath' : self.filepath,
                 'classname' : self.classname,
                 'value' : self.value }
-        return dic
+        return self._with_annotations(dic)
     @property
     def value(self):
         return self._value
@@ -59,7 +61,7 @@ class IDLEnum(node.IDLNode):
         dic = { 'name' : self.name,
                 'classname' : self.classname,
                 'values' : [v.to_dic() for v in self.values] }
-        return dic
+        return self._with_annotations(dic)
 
     @property
     def full_path(self):
@@ -74,13 +76,19 @@ class IDLEnum(node.IDLNode):
             raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
+        depth = 0  # inside the parentheses of an annotation, e.g. @foo(a, b)
         while True:
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise exception.InvalidIDLSyntaxError()
 
-            elif token == '}':
+            elif token == '(':
+                depth += 1
+            elif token == ')':
+                depth -= 1
+
+            if token == '}' and depth == 0:
                 ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
@@ -90,7 +98,7 @@ class IDLEnum(node.IDLNode):
                     self._parse_block(block_tokens)
                 break
 
-            if token == ',':
+            if token == ',' and depth == 0:
                 self._parse_block(block_tokens)
                 block_tokens = []
                 continue

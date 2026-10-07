@@ -19,6 +19,8 @@ class IDLUnionMember(node.IDLNode):
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
 
+        annotations, blocks = node.parse_annotations(blocks)
+        self._add_annotations(annotations)
         while True:
             if blocks[0] != 'case':
                 break
@@ -30,6 +32,8 @@ class IDLUnionMember(node.IDLNode):
                 if self._verbose: sys.stdout.write('# Error. No ":" after case value.\n')
                 raise exception.InvalidDataTypeException()
 
+        annotations, blocks = node.parse_annotations(blocks)
+        self._add_annotations(annotations)
         name, typ = self._name_and_type(blocks)
         if name.find('[') >= 0:
             name_ = name[:name.find('[')]
@@ -56,7 +60,7 @@ class IDLUnionMember(node.IDLNode):
                 'filepath' : self.filepath,
                 'classname' : self.classname,
                 'type' : self.type.name }
-        return dic
+        return self._with_annotations(dic)
 
     @property
     def type(self):
@@ -112,7 +116,7 @@ class IDLUnion(node.IDLNode):
                 'classname' : self.classname,
                 'descriminator_kind' : self.descriminator_kind,
                 'members' : [v.to_dic() for v in self.members] }
-        return dic
+        return self._with_annotations(dic)
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath

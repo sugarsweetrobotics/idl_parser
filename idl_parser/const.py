@@ -27,7 +27,7 @@ class IDLConst(node.IDLNode):
                 'classname' : self.classname,
                 'typename' : self.typename,
                 'value' : self.value }
-        return dic
+        return self._with_annotations(dic)
 
     @property
     def typename(self):
