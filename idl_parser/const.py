@@ -35,7 +35,7 @@ class IDLConst(node.IDLNode):
 
     @property
     def type(self):
-        return self.root_node.find_types(self.typename)[0]
+        return self.root_node.find_types(self.typename, scope=self)[0]
     @property
     def value(self):
         return self._value

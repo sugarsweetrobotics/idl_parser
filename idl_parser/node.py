@@ -323,7 +323,7 @@ class IDLNode(object):
             name = typ.name.strip()
             if name.startswith(self.sep):
                 name = name[len(self.sep):]
-            if len(self.root_node.find_types(name)) > 0:
+            if len(typ.resolve()) > 0:
                 continue
             if self.is_pending_forward_declaration(name):
                 continue
@@ -347,6 +347,10 @@ class IDLNode(object):
     def refine_typename(self, typ):
         return self._refine_typename(typ.name)
 
+    def _lookup_scope(self):
+        """The node whose scope type names written here are resolved from."""
+        return self
+
     def _refine_typename(self, name):
         from . import type as idl_type
         name = name.strip()
@@ -359,7 +363,7 @@ class IDLNode(object):
         bounded = idl_type.parse_bounded_string(name)
         if bounded is not None:
             return bounded[0]
-        typs = self.root_node.find_types(name)
+        typs = self.root_node.find_types(name, scope=self._lookup_scope())
         if len(typs) == 0:
             # Not resolvable yet (e.g. a forward-declared interface): keep the name
             return name

@@ -461,10 +461,19 @@ class IDLModule(node.IDLNode):
         for m in self.typedefs:
             retval.append(func(m))
 
-    def find_types(self, full_typename, parent=None):
+    def find_types(self, full_typename, parent=None, scope=None):
+        """Return the type definitions named ``full_typename`` (a list).
+
+        ``scope`` is the node where the name is written (issue #72). When it
+        is given, the name is resolved with the IDL scoping rules: it is
+        looked up in the innermost enclosing scope first, then in the outer
+        ones (``X`` in module ``B`` finds ``B::X`` before ``X`` elsewhere).
+        A name starting with ``::`` is looked up from the global scope only.
+        If the scoping rules find nothing, every definition whose name or
+        full path is ``full_typename`` is returned, as before.
+        """
         if type.is_primitive(full_typename):
             return [type.IDLType(full_typename, self)]
-        typenode = []
         # A fully qualified name may start with '::' ("::M::A", issue #69).
         # full_path has no leading '::' ("M::A"), so drop it before comparing.
         name = str(full_typename).strip()
@@ -472,30 +481,48 @@ class IDLModule(node.IDLNode):
         if absolute:
             name = name.lstrip(':').strip()
 
-        def parse_node(s):
-            full_path = s.full_path.lstrip(':')
-            if absolute:
-                # '::X' always names X from the global scope
-                if full_path == name:
-                    typenode.append(s)
-            elif parent:
-                prefix = parent.full_path.lstrip(':')
-                if (prefix + '::' + name if prefix else name) == full_path or name == full_path:
-                    typenode.append(s)
-            else:
-                if s.name == name or full_path == name:
-                    typenode.append(s)
-
+        nodes = []
         def parse_module(m):
             m.for_each_module(parse_module)
-            m.for_each_struct(parse_node)
-            m.for_each_typedef(parse_node)
-            m.for_each_enum(parse_node)
-            m.for_each_bitmask(parse_node)
-            m.for_each_bitset(parse_node)
-            m.for_each_union(parse_node)
-            m.for_each_interface(parse_node)
-
+            for each in (m.for_each_struct, m.for_each_typedef, m.for_each_enum,
+                         m.for_each_bitmask, m.for_each_bitset, m.for_each_union,
+                         m.for_each_interface):
+                each(nodes.append)
         parse_module(self)
 
-        return typenode
+        def with_full_path(full):
+            return [s for s in nodes if s.full_path.lstrip(':') == full]
+
+        if absolute:
+            # '::X' always names X from the global scope
+            return with_full_path(name)
+
+        if scope is not None:
+            for prefix in _enclosing_scopes(scope):
+                found = with_full_path(prefix + sep + name if prefix else name)
+                if len(found) > 0:
+                    return found
+
+        if parent:
+            prefix = parent.full_path.lstrip(':')
+            return [s for s in nodes
+                    if s.full_path.lstrip(':') in ((prefix + sep + name if prefix else name), name)]
+        return [s for s in nodes if s.name == name or s.full_path.lstrip(':') == name]
+
+
+_scope_classnames = ('IDLModule', 'IDLStruct', 'IDLUnion', 'IDLInterface')
+
+def _enclosing_scopes(node):
+    """Full paths (without a leading '::') of the scopes enclosing ``node``,
+    innermost first and ending with the global scope ('')."""
+    scopes = []
+    n = node
+    while n is not None:
+        if n.classname in _scope_classnames:
+            path = n.full_path.lstrip(':')
+            if path not in scopes:
+                scopes.append(path)
+        n = n.parent
+    if '' not in scopes:
+        scopes.append('')
+    return scopes

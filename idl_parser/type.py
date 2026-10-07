@@ -383,6 +383,10 @@ class IDLPrimitive(IDLTypeBase):
         return (self.parent.full_path + self.sep + self.name).strip()
 class IDLBasicType(IDLTypeBase):
     def __init__(self, name, parent):
+        # The node where the name is written: the name is resolved from its
+        # scope (issue #72). The parent of a type node is the root node.
+        self._scope = parent
+        self._ref_name = name.strip()
         super(IDLBasicType, self).__init__('IDLBasicType', name, parent.root_node)
         self._verbose = True
         #if self.name.find('['):
@@ -390,9 +394,22 @@ class IDLBasicType(IDLTypeBase):
         self._name = self.refine_typename(self)
 
     @property
+    def ref_name(self):
+        """The type name as written (``'A::X'``, ``'::B::X'``). ``name`` is
+        the name of the definition without its scope (``'X'``)."""
+        return self._ref_name
+
+    def _lookup_scope(self):
+        return self._scope
+
+    def resolve(self):
+        """The definitions this name refers to, found from the scope where
+        it is written (a list; empty if it is not defined)."""
+        return self.root_node.find_types(self._ref_name, scope=self._scope)
+
+    @property
     def obj(self):
-        global_module = self.root_node
-        typs = global_module.find_types(self.name)
+        typs = self.resolve()
         if len(typs) == 0:
             return None
         else:
