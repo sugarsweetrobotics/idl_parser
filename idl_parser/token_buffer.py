@@ -22,4 +22,8 @@ class TokenBuffer():
         self._token_offset = self._token_offset + 1
         return t
 
-
+    def peek(self):
+        """Return the next token without consuming it (same format as pop)."""
+        if len(self._tokens) == self._token_offset:
+            return (-1, '', None)
+        return self._tokens[self._token_offset]

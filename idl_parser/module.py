@@ -1,7 +1,7 @@
 import os, sys, traceback
 
 from . import node, type
-from . import struct, typedef, interface, enum, const, union
+from . import struct, typedef, interface, enum, const, union, bitmask, bitset
 from .exception import InvalidIDLSyntaxError
 global_namespace = '__global__'
 sep = '::'
@@ -19,6 +19,8 @@ class IDLModule(node.IDLNode):
         self._typedefs = []
         self._structs = []
         self._enums = []
+        self._bitmasks = []
+        self._bitsets = []
         self._unions = []
         self._consts = []
         self._modules = []
@@ -41,6 +43,8 @@ class IDLModule(node.IDLNode):
                [i.to_simple_dic(quiet) for i in self.interfaces] +
                [m.to_simple_dic(quiet) for m in self.modules] +
                [e.to_simple_dic(quiet) for e in self.enums] +
+               [b.to_simple_dic(quiet) for b in self.bitmasks] +
+               [b.to_simple_dic(quiet) for b in self.bitsets] +
                [u.to_simple_dic(quiet) for u in self.unions] +
                [t.to_simple_dic(quiet) for t in self.typedefs] +
                [t.to_simple_dic(quiet) for t in self.consts]}
@@ -54,6 +58,8 @@ class IDLModule(node.IDLNode):
                 'typedefs' : [t.to_dic() for t in self.typedefs],
                 'structs' : [s.to_dic() for s in self.structs],
                 'enums' : [e.to_dic() for e in self.enums],
+                'bitmasks' : [b.to_dic() for b in self.bitmasks],
+                'bitsets' : [b.to_dic() for b in self.bitsets],
                 'unions' : [u.to_dic() for u in self.unions],
                 'modules' : [m.to_dic() for m in self.modules],
                 'consts' : [c.to_dic() for c in self.consts] }
@@ -68,8 +74,16 @@ class IDLModule(node.IDLNode):
                 if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
                 raise InvalidIDLSyntaxError()
 
+        annotations = []
         while True:
             ln, fn, token = token_buf.pop()
+            if token is not None and token.startswith('@'):
+                # Annotations apply to the next definition. Only bitmask uses
+                # them so far (@bit_bound); others are ignored as before.
+                annotations.append(self._parse_annotation(token, token_buf))
+                continue
+            pending_annotations, annotations = annotations, []
+
             if token == None:
                 if self.name == global_namespace:
                     break
@@ -141,6 +155,24 @@ class IDLModule(node.IDLNode):
                 else:
                     self._enums.append(s)
 
+            elif token == 'bitmask':
+                ln, fn, name_ = token_buf.pop()
+                s = bitmask.IDLBitmask(name_, self, pending_annotations)
+                s.parse_tokens(token_buf, filepath)
+                if self.bitmask_by_name(name_):
+                    if self._verbose: sys.stdout.write('# Error. Same Bitmask Defined (%s)\n' % name_)
+                else:
+                    self._bitmasks.append(s)
+
+            elif token == 'bitset':
+                ln, fn, name_ = token_buf.pop()
+                s = bitset.IDLBitset(name_, self)
+                s.parse_tokens(token_buf, filepath)
+                if self.bitset_by_name(name_):
+                    if self._verbose: sys.stdout.write('# Error. Same Bitset Defined (%s)\n' % name_)
+                else:
+                    self._bitsets.append(s)
+
             elif token == 'union':
                 ln, fn, name_ = token_buf.pop()
                 s = union.IDLUnion(name_, self)
@@ -184,6 +216,21 @@ class IDLModule(node.IDLNode):
                 break
 
         return True
+
+    def _parse_annotation(self, token, token_buf):
+        """Consume an annotation and return (name, [args]).
+        '@bit_bound ( 8 )' -> ('bit_bound', ['8'])."""
+        tokens = [token]
+        if token_buf.peek()[2] == '(':
+            while True:
+                ln, fn, t = token_buf.pop()
+                if t is None:
+                    raise InvalidIDLSyntaxError(ln, fn, 'No ")" in annotation "%s"' % token)
+                tokens.append(t)
+                if t == ')':
+                    break
+        annotations, _ = bitmask.split_annotations(tokens)
+        return annotations[0]
 
     def _skip_block(self, token_buf, start_line=None, start_file=None):
         """Skip tokens up to the "}" matching an already consumed "{"."""
@@ -283,6 +330,32 @@ class IDLModule(node.IDLNode):
         return retval
 
     @property
+    def bitmasks(self):
+        return self._bitmasks
+
+    def bitmask_by_name(self, name):
+        for b in self.bitmasks:
+            if b.name == name:
+                return b
+        return None
+
+    def for_each_bitmask(self, func):
+        return [func(b) for b in self.bitmasks]
+
+    @property
+    def bitsets(self):
+        return self._bitsets
+
+    def bitset_by_name(self, name):
+        for b in self.bitsets:
+            if b.name == name:
+                return b
+        return None
+
+    def for_each_bitset(self, func):
+        return [func(b) for b in self.bitsets]
+
+    @property
     def unions(self):
         return self._unions
 
@@ -348,6 +421,8 @@ class IDLModule(node.IDLNode):
             m.for_each_struct(parse_node)
             m.for_each_typedef(parse_node)
             m.for_each_enum(parse_node)
+            m.for_each_bitmask(parse_node)
+            m.for_each_bitset(parse_node)
             m.for_each_union(parse_node)
             m.for_each_interface(parse_node)
 
