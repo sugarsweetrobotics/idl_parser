@@ -40,7 +40,13 @@ class IDLTypedef(node.IDLNode):
     @property
     def type(self):
         if self._type.classname == 'IDLBasicType': # Struct
-            return self.root_node.find_types(self._type.name)[0]
+            typs = self.root_node.find_types(self._type.name)
+            if len(typs) == 0:
+                # issue #69: report an unknown type instead of an IndexError
+                from . import exception
+                raise exception.InvalidDataTypeException(
+                    message='Can not find Data Type (%s)' % self._type.name)
+            return typs[0]
         return self._type
 
     def get_type(self, extract_typedef=False):
