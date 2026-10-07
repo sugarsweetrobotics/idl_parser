@@ -202,12 +202,19 @@ class IDLModule(node.IDLNode):
                         break
                     values.append(t)
 
-                value_ = values[-1]
-                name_ = values[-3]
-                typename = ''
-                for t in values[:-3]:
-                    typename = typename + ' ' + t
-                typename = typename.strip()
+                # Split at '=': "<type> <name> = <value>" (issue #52).
+                # The value is every token after '=', so that an
+                # expression such as "1 + 2" is kept whole.
+                if '=' not in values:
+                    raise InvalidIDLSyntaxError(ln, fn, 'No "=" in const definition "%s"' % ' '.join(values))
+                eq = values.index('=')
+                if eq < 2:
+                    raise InvalidIDLSyntaxError(ln, fn, 'No type or name in const definition "%s"' % ' '.join(values))
+                if eq == len(values) - 1:
+                    raise InvalidIDLSyntaxError(ln, fn, 'No value in const definition "%s"' % ' '.join(values))
+                value_ = ' '.join(values[eq+1:])
+                name_ = values[eq-1]
+                typename = ' '.join(values[:eq-1])
                 s = const.IDLConst(name_, typename, value_, self, filepath=filepath)
                 s._add_annotations(pending_annotations)
                 s_ = self.const_by_name(name_)

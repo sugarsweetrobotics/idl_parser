@@ -2,6 +2,7 @@ import os, sys
 import re
 
 from . import  module, token_buffer, pragma as idl_pragma
+from .token_buffer import _literal_end
 from . import type as idl_type
 from . import exception 
 
@@ -23,26 +24,6 @@ class ConsoleTracker():
         if self._indent < 0: self._indent = 0
 
 logger = ConsoleTracker()
-
-
-def _literal_end(line, start):
-    """Index just after the string or character literal starting at
-    ``line[start]`` (a ``"`` or ``'``). A backslash escapes the next
-    character, so ``"a\\"b"`` and ``'\\''`` are read as one literal.
-    An unterminated literal runs to the end of the line."""
-    quote = line[start]
-    i = start + 1
-    while i < len(line):
-        c = line[i]
-        if c == '\\':
-            i = i + 2
-        elif c == quote:
-            return i + 1
-        elif c in '\r\n':
-            return i
-        else:
-            i = i + 1
-    return len(line)
 
 
 def _format_code(code):
