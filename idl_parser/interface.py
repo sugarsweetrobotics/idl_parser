@@ -107,7 +107,9 @@ class IDLMethod(node.IDLNode):
                 argument_blocks.extend(blocks[index:end + 1])
                 index = end + 1
                 continue
-            if token == ',' or token == ')':
+            # A "," inside "< >" belongs to the type, e.g. sequence<long, 10> (issue #31)
+            in_template = sum(t.count('<') - t.count('>') for t in argument_blocks) > 0
+            if (token == ',' and not in_template) or token == ')':
                 if len(argument_blocks) == 0:
                     break
 
