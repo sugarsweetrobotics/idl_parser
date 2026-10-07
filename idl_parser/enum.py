@@ -54,6 +54,8 @@ class IDLEnum(node.IDLNode):
         if quiet:
             return 'enum %s' % name
         dic = { 'enum %s' % name : [v.to_simple_dic() for v in self.values] }
+        if member_only:
+            return list(dic.values())[0]
         return dic
 
 
