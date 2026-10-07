@@ -3,8 +3,11 @@
 int8/int16/int32/int64 and uint8/uint16/uint32/uint64 used to raise
 InvalidDataTypeException because they were not known primitive types.
 """
+import os
 import unittest
 from idl_parser import parser, type as idl_type
+
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
 
 
 INT_TYPES = ['int8', 'int16', 'int32', 'int64',
@@ -19,7 +22,7 @@ def load(path):
 class Issue18Test(unittest.TestCase):
 
     def setUp(self):
-        self.m = load('idls/issue18_idl42_int_types.idl').module_by_name('Issue18')
+        self.m = load(os.path.join(IDL_DIR, 'issue18_idl42_int_types.idl')).module_by_name('Issue18')
 
     def test_is_primitive(self):
         for t in INT_TYPES:

@@ -6,9 +6,11 @@ from idl_parser import parser
 from idl_parser import exception
 from idl_parser.type import IDLType
 
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
 
-idl_path = 'idls/generalization.idl'
-extended_idl_path = 'idls/generalization_extended.idl'
+
+idl_path = os.path.join(IDL_DIR, 'generalization.idl')
+extended_idl_path = os.path.join(IDL_DIR, 'generalization_extended.idl')
 
 
 def bases(interface):

@@ -3,8 +3,10 @@ import unittest
 from idl_parser import parser
 from idl_parser.type import IDLType
 
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
 
-idl_path = 'idls/multi_module_test.idl'
+
+idl_path = os.path.join(IDL_DIR, 'multi_module_test.idl')
 
 class MultiModuleTestFunctions(unittest.TestCase):
     def setUp(self):
@@ -39,8 +41,8 @@ class MultiModuleTestFunctions(unittest.TestCase):
 
     def test_include(self):
         parser_ = parser.IDLParser()
-        with open('idls/including_idl.idl', 'r') as idlf:
-            m = parser_.load(idlf.read(), include_dirs=['idls'])
+        with open(os.path.join(IDL_DIR, 'including_idl.idl'), 'r') as idlf:
+            m = parser_.load(idlf.read(), include_dirs=[IDL_DIR])
             
             self.assertEqual(m.name,'__global__')
             moduleA = m.modules[0]
@@ -59,8 +61,8 @@ class MultiModuleTestFunctions(unittest.TestCase):
 
     def test_distinguish_same_struct_different_module(self):
         parser_ = parser.IDLParser()
-        with open('idls/multi_module_test.idl', 'r') as idlf:
-            m = parser_.load(idlf.read(), include_dirs=['idls'])
+        with open(os.path.join(IDL_DIR, 'multi_module_test.idl'), 'r') as idlf:
+            m = parser_.load(idlf.read(), include_dirs=[IDL_DIR])
             
             self.assertEqual(m.name,'__global__')
             moduleD = m.modules[3]

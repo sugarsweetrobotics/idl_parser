@@ -1,11 +1,14 @@
+import os
 import contextlib
 import io
 import unittest
 from idl_parser import parser
 from idl_parser import exception
 
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
 
-idl_path = 'idls/forward_declaration.idl'
+
+idl_path = os.path.join(IDL_DIR, 'forward_declaration.idl')
 
 
 def load(idl):
