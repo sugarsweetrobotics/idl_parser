@@ -1,0 +1,8 @@
+#include "std/msg/Header.idl"
+
+module sensor_msgs { module msg {
+  struct Imu {
+    std::msg::Header header;
+    double orientation;
+  };
+}; };

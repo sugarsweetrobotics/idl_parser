@@ -1,0 +1,7 @@
+// Included with a sub path from another IDL (issue #12).
+module std { module msg {
+  struct Header {
+    long stamp;
+    string frame_id;
+  };
+}; };
