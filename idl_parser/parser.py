@@ -102,7 +102,8 @@ class IDLParser():
         :meth:`parse` alike (see :func:`idl_parser.token_buffer.join_brackets`,
         issue #53). Kept for compatibility; it does not look at literals.
 
-        Deprecated: calling it emits a :class:`DeprecationWarning`.
+        .. deprecated:: 0.2.1
+           Calling it emits a :class:`DeprecationWarning`.
         """
         from re import compile, UNICODE, MULTILINE
         flags = UNICODE | MULTILINE
