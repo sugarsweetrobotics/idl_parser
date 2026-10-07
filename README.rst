@@ -58,14 +58,17 @@ Example
       print('    name:', a.name)
       print('    type:', a.type)
       print('    direction:', a.direction)
+    
   doubleSeq = my_module.typedef_by_name('DoubleSeq')
   print('typedef %s %s' % (doubleSeq.type.name, doubleSeq.name))
+
   timedDoubleSeq = my_module.struct_by_name('TimedDoubleSeq')
   print('TimedDoubleSeq')
   for m in timedDoubleSeq.members:
     print('- member:')
     print('  name:', m.name)
     print('  type:', m.type.name)
+
 How to install
 ---------------
 
