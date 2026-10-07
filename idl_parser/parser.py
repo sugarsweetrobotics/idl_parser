@@ -24,6 +24,41 @@ class ConsoleTracker():
 
 logger = ConsoleTracker()
 
+
+def _literal_end(line, start):
+    """Index just after the string or character literal starting at
+    ``line[start]`` (a ``"`` or ``'``). A backslash escapes the next
+    character, so ``"a\\"b"`` and ``'\\''`` are read as one literal.
+    An unterminated literal runs to the end of the line."""
+    quote = line[start]
+    i = start + 1
+    while i < len(line):
+        c = line[i]
+        if c == '\\':
+            i = i + 2
+        elif c == quote:
+            return i + 1
+        elif c in '\r\n':
+            return i
+        else:
+            i = i + 1
+    return len(line)
+
+
+def _format_code(code):
+    """Put spaces around punctuation in code outside of literals and
+    comments, and squash runs of whitespace into one space."""
+    code = code.replace('{', ' { ')
+    # A single ':' (case label, inheritance), but not '::' (scoped name).
+    code = re.sub(r'(?<!:):(?!:)', ' : ', code)
+    code = code.replace(';', ' ;')
+    code = code.replace('(', ' ( ')
+    code = code.replace(',', ' , ')
+    code = code.replace('=', ' = ')
+    code = code.replace(')', ' ) ')
+    code = code.replace('}', ' } ')
+    return re.sub(r'\s+', ' ', code)
+
 class IDLParser():
 
     def __init__(self, idl_dirs=[], verbose=False):
@@ -308,46 +343,51 @@ class IDLParser():
 
 
     def _clear_comments(self, lines):
+        """Remove comments and put spaces around punctuation so that each
+        token is separated by whitespace.
+
+        Lines are scanned one character at a time. String literals
+        (``"..."``) and character literals (``'...'``) are copied as they
+        are: ``//`` or ``/*`` inside them is not a comment (issue #50), and
+        no spaces are put into them. A ``:`` right after a literal, as in
+        ``case 'a':``, is separated like any other ``:`` (issue #49).
+        """
         output_lines = []
         in_comment = False
 
         for line_number, file_name, line in lines:
-            line = line.strip()
-            output_line = ''
-            if line.find('//') >= 0:
-                line = line[:line.find('//')]
-
-            for token in line.split():
-
-                if in_comment and token.find('*/') >= 0:
+            parts = []  # code (formatted) and literals (as they are), in order
+            code = ''
+            i = 0
+            n = len(line)
+            while i < n:
+                if in_comment:
+                    end = line.find('*/', i)
+                    if end < 0:
+                        break  # the comment continues on the next line
                     in_comment = False
-                    output_line = output_line + ' ' + token[token.find('*/')+2:].strip()
-
-                elif in_comment:
-                    continue
-
-                elif token.startswith('//'):
-                    break # ignore this line
-
-                elif token.find('/*') >= 0:
+                    i = end + 2
+                    code = code + ' '
+                elif line.startswith('//', i):
+                    break  # ignore the rest of this line
+                elif line.startswith('/*', i):
                     in_comment = True
-                    output_line = output_line + ' ' + token[0: token.find('/*')]
+                    i = i + 2
+                    code = code + ' '
+                elif line[i] in '"\'':
+                    end = _literal_end(line, i)
+                    parts.append(_format_code(code))
+                    parts.append(line[i:end].rstrip('\r\n'))
+                    code = ''
+                    i = end
                 else:
-                    if token.find('{') >= 0:
-                        token = token.replace('{', ' { ')
-                    if token.find(':') >= 0:
-                        token = re.sub(r'([a-zA-Z0-9_]{1}):([a-zA-Z0-9_]{1}|$)', r'\1 : \2', token)
-                    if token.find(';') >= 0:
-                        token = token.replace(';', ' ;')
-                    if token.find('(') >= 0:
-                        token = token.replace('(', ' ( ')
-                    token = token.replace(',', ' , ')
-                    token = token.replace('=', ' = ')
-                    token = token.replace(')', ' ) ')
-                    token = token.replace('}', ' } ')
-                    output_line = output_line + ' ' + token.strip()
-            if len(output_line.strip()) > 0:
-                output_lines.append((line_number, file_name, output_line.strip() + '\n'))
+                    code = code + line[i]
+                    i = i + 1
+            parts.append(_format_code(code))
+
+            output_line = ''.join(parts).strip()
+            if len(output_line) > 0:
+                output_lines.append((line_number, file_name, output_line + '\n'))
 
         return output_lines
 

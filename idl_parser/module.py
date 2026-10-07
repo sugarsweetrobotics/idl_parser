@@ -195,6 +195,9 @@ class IDLModule(node.IDLNode):
                 values = []
                 while True:
                     ln, fn, t = token_buf.pop()
+                    if t is None:
+                        if self._verbose: sys.stdout.write('# Error. No ";" after const.\n')
+                        raise InvalidIDLSyntaxError(message='No ";" after const definition')
                     if t == ';':
                         break
                     values.append(t)
