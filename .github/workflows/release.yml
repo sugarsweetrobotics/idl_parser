@@ -38,6 +38,13 @@ jobs:
           python -m twine check --strict dist/*
           ls -l dist
 
+      # The GPL text must ship with every distribution (issue #58).
+      - name: Check that LICENSE is included
+        run: |
+          tar -tzf dist/*.tar.gz | grep -E '^[^/]+/LICENSE$'
+          python -m zipfile -l dist/*.whl | grep -E 'dist-info/licenses/LICENSE'
+          unzip -p dist/*.whl '*.dist-info/METADATA' | grep -x 'License-Expression: GPL-3.0-or-later'
+
       - uses: actions/upload-artifact@v7
         with:
           name: dist

@@ -97,7 +97,7 @@ Copyright
 
 - contact: please open an issue on `GitHub Issues <https://github.com/sugarsweetrobotics/idl_parser/issues>`_
 
-- license: GPLv3
+- license: GPLv3 or later (GPL-3.0-or-later, see LICENSE)
 
 .. |Test Status| image:: https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=main
    :target: https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml

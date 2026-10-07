@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools-scm>=8"]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,12 +8,13 @@ dynamic = ["version"]
 description = "Very simple OMG IDL (Interface Definition Language) parser. This parses IDL files and outputs intermediate class objects."
 readme = { file = "README.rst", content-type = "text/x-rst" }
 requires-python = ">=3.9"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 authors = [{ name = "ysuga", email = "ysuga@ysuga.net" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
