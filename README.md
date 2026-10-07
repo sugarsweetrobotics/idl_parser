@@ -1,11 +1,16 @@
 # idl_parser
 
 [![Test](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml)
+[![Documentation Status](https://readthedocs.org/projects/idl-parser/badge/?version=latest)](https://idl-parser.readthedocs.io/en/latest/)
 
 
 ## Description 
 
 OMG IDL file parser. This library just parse IDL files, and output intermidiate type objects.
+
+## Documentation
+
+API reference and usage: https://idl-parser.readthedocs.io/
 
 ## Example
 ```
