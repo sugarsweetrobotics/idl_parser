@@ -23,6 +23,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "http://www.sugarsweetrobotics.com/"
+Documentation = "https://idl-parser.readthedocs.io/"
 Source = "https://github.com/sugarsweetrobotics/idl_parser"
 Issues = "https://github.com/sugarsweetrobotics/idl_parser/issues"
 
