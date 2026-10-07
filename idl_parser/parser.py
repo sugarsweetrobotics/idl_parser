@@ -75,6 +75,13 @@ class IDLParser():
         return self._dirs
 
     def prepare_input(self, data):
+        """Remove whitespace just inside ``[ ]`` and ``< >`` in ``data``.
+
+        No longer used by :meth:`load`: the same joining is now done on
+        tokens outside literals and comments, for :meth:`load` and
+        :meth:`parse` alike (see :func:`idl_parser.token_buffer.join_brackets`,
+        issue #53). Kept for compatibility; it does not look at literals.
+        """
         from re import compile, UNICODE, MULTILINE
         flags = UNICODE | MULTILINE
 
@@ -96,7 +103,6 @@ class IDLParser():
 
     def load(self, input_str, include_dirs=[], filepath=None):
         self._dirs = self._dirs + include_dirs
-        input_str = self.prepare_input(input_str)
         lines = [(i+1, filepath, l) for i, l in enumerate(input_str.split('\n'))]
         self.parse_lines(lines, filepath=filepath)
         return self._global_module
