@@ -1,5 +1,6 @@
 import sys
 from . import node
+from . import exception
 
 from . import type as idl_type
 
@@ -140,7 +141,8 @@ class IDLInterface(node.IDLNode):
 
     @property
     def inheritances(self):
-        return [self.root_node.find_types(inheritance)[0] for inheritance in self._inheritances]
+        """Base interfaces (IDLInterface objects), in declaration order."""
+        return list(self._inheritances)
 
     @property
     def full_path(self):
@@ -156,28 +158,77 @@ class IDLInterface(node.IDLNode):
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
+                'inheritances' : [i.full_path for i in self.inheritances],
                 'methods' : [m.to_dic() for m in self.methods] }
         return dic
+
+    def _all_interfaces(self):
+        """All interfaces defined so far, keyed by full path without a leading '::'."""
+        found = {}
+        def walk(m):
+            for i in m.interfaces:
+                found[i.full_path.lstrip(':')] = i
+            for sub in m.modules:
+                walk(sub)
+        walk(self.root_node)
+        return found
+
+    def _resolve_inheritance(self, name, ln, fn):
+        """Resolve a base interface name following the OMG IDL scoping rules.
+
+        '::A::B' is looked up from the global scope.  Any other (possibly
+        scoped) name is looked up in the enclosing scope first and then in
+        each outer scope in turn, so the innermost declaration wins.
+        """
+        interfaces = self._all_interfaces()
+        if name.startswith(sep):
+            candidates = [name[len(sep):]]
+        else:
+            candidates = []
+            scope = self.parent
+            while scope is not None:
+                prefix = scope.full_path.lstrip(':')
+                candidates.append(prefix + sep + name if prefix else name)
+                scope = scope.parent
+        for c in candidates:
+            if c in interfaces:
+                return interfaces[c]
+        msg = 'Can not find "%s" interface which is generalization of "%s"' % (name, self.name)
+        if self._verbose: sys.stdout.write('# Error. %s\n' % msg)
+        raise exception.IDLCanNotFindException(ln, fn, msg)
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath=filepath
         ln, fn, token = token_buf.pop()
-        if token == ':': # Detect Inheritance
-            ln, fn, name = token_buf.pop()
-            interfaces = self.root_node.find_types(name)
-            if len(interfaces) == 0:
-                if self._verbose: sys.stdout.write('# Error. Can not find "%s" interface which is generalization of "%s"\n' % (name, self.name))
-                raise exception.InvalidDataTypeException
-            elif len(interfaces) > 1:
-                if self._verbose: sys.stdout.write('# Error. Multiple "%s" interfaces (one is generalization of "%s"). \n' % (name, self.name))
-                raise exception.InvalidDataTypeException
-            self._inheritances.append(interfaces[0].full_path)
-            ln, fn, token = token_buf.pop()
+        pending_name = None
+        if token is not None and token.startswith(':') and not token.startswith(sep) and token != ':':
+            # "B :A" reaches here as the single token ":A"
+            pending_name = token[1:]
+            token = ':'
+        if token == ':': # Detect Inheritance (interface X : A, B, ... {)
+            while True:
+                if pending_name is not None:
+                    name, pending_name = pending_name, None
+                else:
+                    ln, fn, name = token_buf.pop()
+                if name is None or name in ('{', ',', ';'):
+                    msg = 'Base interface name is expected after "%s" in the declaration of "%s"' % (':' if name is None else name, self.name)
+                    if self._verbose: sys.stdout.write('# Error. %s\n' % msg)
+                    raise exception.InvalidIDLSyntaxError(ln, fn, msg)
+                base = self._resolve_inheritance(name, ln, fn)
+                if base in self._inheritances:
+                    msg = '"%s" is inherited more than once by "%s"' % (name, self.name)
+                    if self._verbose: sys.stdout.write('# Error. %s\n' % msg)
+                    raise exception.InvalidIDLSyntaxError(ln, fn, msg)
+                self._inheritances.append(base)
+                ln, fn, token = token_buf.pop()
+                if token != ',':
+                    break
 
         kakko = token
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
-            raise exception.InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of interface "%s"' % self.name)
 
         block_tokens = []
         while True:
@@ -185,13 +236,13 @@ class IDLInterface(node.IDLNode):
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
-                raise InvalidIDLSyntaxError()
+                raise exception.InvalidIDLSyntaxError(ln, fn, "No \"}\" in the declaration of interface \"%s\"" % self.name)
 
             elif token == '}':
                 ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
-                    raise InvalidIDLSyntaxError()
+                    raise exception.InvalidIDLSyntaxError(ln, fn, 'No ";" after "}" in the declaration of interface "%s"' % self.name)
                 break
 
             if token == ';':
