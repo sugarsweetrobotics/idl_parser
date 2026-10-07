@@ -116,5 +116,19 @@ class SpacesInsideBracketsTest(unittest.TestCase):
         self.assertEqual(cm.exception.line_number, 6)
 
 
+class PrepareInputDeprecatedTest(unittest.TestCase):
+
+    def test_warns_and_still_works(self):
+        with self.assertWarns(DeprecationWarning):
+            out = parser.IDLParser().prepare_input('long a[ 5 ];')
+        self.assertEqual(out, 'long a[5];')
+
+    def test_load_does_not_warn(self):
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DeprecationWarning)
+            load('module M { struct S { long a[ 5 ]; }; };')
+
+
 if __name__ == '__main__':
     unittest.main()
