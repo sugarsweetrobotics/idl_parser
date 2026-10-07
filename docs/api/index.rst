@@ -10,6 +10,8 @@ API Reference
    idl_parser.interface
    idl_parser.struct
    idl_parser.enum
+   idl_parser.bitmask
+   idl_parser.bitset
    idl_parser.union
    idl_parser.typedef
    idl_parser.const

@@ -43,6 +43,14 @@ class IDLNode(object):
         return self._classname == 'IDLEnum'
 
     @property
+    def is_bitmask(self):
+        return self._classname == 'IDLBitmask'
+
+    @property
+    def is_bitset(self):
+        return self._classname == 'IDLBitset'
+
+    @property
     def is_union(self):
         return self._classname == 'IDLUnion'
 
