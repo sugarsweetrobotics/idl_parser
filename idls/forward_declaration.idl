@@ -1,0 +1,69 @@
+// Forward declarations of interfaces ("interface A;")
+
+interface GlobalForward;
+
+interface GlobalUser {
+  void use(in GlobalForward f);
+};
+
+interface GlobalForward {
+  void globalMethod();
+};
+
+module moduleF {
+  // Mutual references between two interfaces
+  interface Node;
+
+  interface Graph {
+    Node root();
+    void addNode(in Node n);
+  };
+
+  interface Node {
+    Graph owner();
+  };
+
+  // Forward-declared types used before their definitions in data types
+  interface Item;
+  typedef sequence<Item> ItemList;
+  typedef Item ItemAlias;
+
+  struct Holder {
+    Item item;
+    ItemList items;
+  };
+
+  union Choice switch (long) {
+    case 1: Item item;
+    case 2: long number;
+  };
+
+  interface Item {
+    void itemMethod();
+  };
+
+  // Inheriting is allowed once the definition has been seen
+  interface SubItem : Item {
+    void subMethod();
+  };
+
+  // Redundant declarations are allowed
+  interface Item;
+  interface Twice;
+  interface Twice;
+  interface Twice {
+  };
+
+  // Declared but never defined in this file
+  interface Undefined;
+
+  // Defined only after the module is reopened below
+  interface Reopened;
+};
+
+module moduleF {
+  // A forward declaration in one module body, defined after reopening it
+  interface Reopened {
+    void reopenedMethod();
+  };
+};

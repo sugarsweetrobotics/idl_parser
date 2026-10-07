@@ -14,6 +14,7 @@ class IDLModule(node.IDLNode):
             self._name = global_namespace
 
         self._interfaces = []
+        self._forward_interfaces = []
         self._typedefs = []
         self._structs = []
         self._enums = []
@@ -114,6 +115,13 @@ class IDLModule(node.IDLNode):
                 s = interface.IDLInterface(name_, self)
                 s.parse_tokens(token_buf, filepath=filepath)
 
+                if s.is_forward:
+                    # Forward declaration ("interface A;"): remember the name only.
+                    # The definition, if any, is added to interfaces when it appears.
+                    if name_ not in self._forward_interfaces:
+                        self._forward_interfaces.append(name_)
+                    continue
+
                 s_ = self.interface_by_name(name_)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Interface Defined (%s)\n' % name_)
@@ -196,6 +204,17 @@ class IDLModule(node.IDLNode):
             if i.name == name:
                 return i
         return None
+
+    @property
+    def forward_interfaces(self):
+        """Names of interfaces forward-declared ("interface A;") in this module,
+        in declaration order, whether or not they are defined later."""
+        return list(self._forward_interfaces)
+
+    @property
+    def undefined_forward_interfaces(self):
+        """Forward-declared interface names that have no definition in this module."""
+        return [n for n in self._forward_interfaces if self.interface_by_name(n) is None]
 
     def for_each_interface(self, func):
         retval = []

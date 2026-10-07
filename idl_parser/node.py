@@ -104,17 +104,40 @@ class IDLNode(object):
         find_root(self)
         return roots[0]
 
+    def is_pending_forward_interface(self, typename):
+        """True if typename names an interface that has been forward-declared
+        ("interface A;") but whose definition has not been parsed yet.
+
+        Such a type may legally be used (e.g. as a member, typedef or argument
+        type) before its definition, so it must not be reported as unknown.
+        """
+        name = str(typename).strip()
+        if name.startswith(self.sep):
+            name = name[len(self.sep):]
+        if len(self.root_node.find_types(name)) > 0:
+            return False
+        found = []
+        def walk(m):
+            prefix = m.full_path.lstrip(':')
+            for n in getattr(m, 'forward_interfaces', []):
+                full = prefix + self.sep + n if prefix else n
+                if name == n or name == full:
+                    found.append(full)
+            for sub in getattr(m, 'modules', []):
+                walk(sub)
+        walk(self.root_node)
+        return len(found) > 0
+
     def refine_typename(self, typ):
         global_module = self.root_node
         if typ.name.find('sequence') >= 0:
             name = typ.name[typ.name.find('<')+1 : typ.name.find('>')].strip()
             typs = global_module.find_types(name)
             if len(typs) == 0:
-                typ__ = typ
-            else:
-                typ__  = typs[0]
+                # Not resolvable yet (e.g. a forward-declared interface): keep the inner name
+                return 'sequence < ' + name + ' >'
 
-            return 'sequence < ' + typ__.name + ' >'
+            return 'sequence < ' + typs[0].name + ' >'
         else:
             typs = global_module.find_types(typ.name)
             if len(typs) == 0:
