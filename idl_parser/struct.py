@@ -81,8 +81,8 @@ class IDLMember(node.IDLNode):
 
 
     def post_process(self):
-        if self._type.classname == 'IDLBasicType' and self.is_pending_forward_interface(self._type.name):
-            return # forward-declared interface; resolved via .type once it is defined
+        if self._type.classname == 'IDLBasicType' and self.is_pending_forward_declaration(self._type.name):
+            return # forward-declared type; resolved via .type once it is defined
         self._type._name = self.refine_typename(self.type)
 
 
@@ -93,7 +93,13 @@ class IDLStruct(node.IDLNode):
         self._verbose = False #True
         self._members = []
         self._keys = None
+        self._forward = False
         self.sep = '::'
+
+    @property
+    def is_forward(self):
+        """True if this node came from a forward declaration ("struct A;")."""
+        return self._forward
 
     @property
     def keys(self):
@@ -156,9 +162,12 @@ class IDLStruct(node.IDLNode):
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
         ln, fn, kakko = token_buf.pop()
+        if kakko == ';': # Forward declaration (struct A;)
+            self._forward = True
+            return
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
-            raise exception.InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of struct "%s"' % self.name)
 
         block_tokens = []
         while True:

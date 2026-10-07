@@ -279,6 +279,17 @@ class IDLNode(object):
         Such a type may legally be used (e.g. as a member, typedef or argument
         type) before its definition, so it must not be reported as unknown.
         """
+        return self._is_pending_forward(typename, ('forward_interfaces',))
+
+    def is_pending_forward_declaration(self, typename):
+        """True if typename names an interface, struct or union that has been
+        forward-declared ("interface A;", "struct A;", "union A;") but whose
+        definition has not been parsed yet.
+        """
+        return self._is_pending_forward(
+            typename, ('forward_interfaces', 'forward_structs', 'forward_unions'))
+
+    def _is_pending_forward(self, typename, kinds):
         name = str(typename).strip()
         if name.startswith(self.sep):
             name = name[len(self.sep):]
@@ -287,10 +298,11 @@ class IDLNode(object):
         found = []
         def walk(m):
             prefix = m.full_path.lstrip(':')
-            for n in getattr(m, 'forward_interfaces', []):
-                full = prefix + self.sep + n if prefix else n
-                if name == n or name == full:
-                    found.append(full)
+            for kind in kinds:
+                for n in getattr(m, kind, []):
+                    full = prefix + self.sep + n if prefix else n
+                    if name == n or name == full:
+                        found.append(full)
             for sub in getattr(m, 'modules', []):
                 walk(sub)
         walk(self.root_node)
