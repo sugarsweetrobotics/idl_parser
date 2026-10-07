@@ -50,6 +50,37 @@ def split_tokens(line):
     return tokens
 
 
+def _is_literal(token):
+    return '"' in token or "'" in token
+
+
+def join_brackets(tokens):
+    """Join tokens across the spaces just inside ``[ ]`` and ``< >``,
+    so that ``long a[ 5 ]`` and ``string< 8 >`` give ``a[5]`` and
+    ``string<8>``, also when the brackets span lines.
+
+    ``tokens`` is a list of ``(line_number, file_name, token)``. A token
+    that ends with ``[`` or ``<`` is joined with the next one, and a token
+    that starts with ``]`` or ``>`` is joined with the previous one. String
+    and character literals are never joined, so the spaces in
+    ``"[ x ]"`` are kept (issue #53). The joined token keeps the line
+    number of its first part.
+    """
+    out = []
+    join_next = False
+    for line_number, file_name, t in tokens:
+        literal = _is_literal(t)
+        if out and not literal and not _is_literal(out[-1][2]) and \
+                (join_next or t[0] in ']>'):
+            ln, fn, prev = out[-1]
+            out[-1] = (ln, fn, prev + t)
+        else:
+            out.append((line_number, file_name, t))
+        last = out[-1][2]
+        join_next = not _is_literal(last) and last[-1] in '[<'
+    return out
+
+
 class TokenBuffer():
 
     def __init__(self, lines):
@@ -58,6 +89,7 @@ class TokenBuffer():
         for line_number, file_name, line in lines:
             for t in split_tokens(line):
                 self._tokens.append((line_number, file_name, t))
+        self._tokens = join_brackets(self._tokens)
 
     @property
     def t_debug(self):

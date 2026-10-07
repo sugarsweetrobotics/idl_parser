@@ -1,5 +1,22 @@
 import os, sys
 import re
+import functools
+import warnings
+
+try:
+    from warnings import deprecated as _deprecated
+except ImportError:  # Python < 3.13 (PEP 702)
+    def _deprecated(message, *, category=DeprecationWarning, stacklevel=1):
+        """Small stand-in for :func:`warnings.deprecated` (Python 3.13+):
+        warn with ``category`` each time the function is called."""
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                warnings.warn(message, category=category, stacklevel=stacklevel + 1)
+                return func(*args, **kwargs)
+            wrapper.__deprecated__ = message
+            return wrapper
+        return decorator
 
 from . import  module, token_buffer, pragma as idl_pragma
 from .token_buffer import _literal_end
@@ -74,7 +91,20 @@ class IDLParser():
     def dirs(self):
         return self._dirs
 
+    @_deprecated('IDLParser.prepare_input() is no longer used by load() and '
+                'does not look at string literals (issue #53). '
+                'load() and parse() now handle spaces inside "[ ]" and "< >" by themselves.')
     def prepare_input(self, data):
+        """Remove whitespace just inside ``[ ]`` and ``< >`` in ``data``.
+
+        No longer used by :meth:`load`: the same joining is now done on
+        tokens outside literals and comments, for :meth:`load` and
+        :meth:`parse` alike (see :func:`idl_parser.token_buffer.join_brackets`,
+        issue #53). Kept for compatibility; it does not look at literals.
+
+        .. deprecated:: 0.2.1
+           Calling it emits a :class:`DeprecationWarning`.
+        """
         from re import compile, UNICODE, MULTILINE
         flags = UNICODE | MULTILINE
 
@@ -96,7 +126,6 @@ class IDLParser():
 
     def load(self, input_str, include_dirs=[], filepath=None):
         self._dirs = self._dirs + include_dirs
-        input_str = self.prepare_input(input_str)
         lines = [(i+1, filepath, l) for i, l in enumerate(input_str.split('\n'))]
         self.parse_lines(lines, filepath=filepath)
         return self._global_module
