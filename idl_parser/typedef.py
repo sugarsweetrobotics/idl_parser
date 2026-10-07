@@ -83,4 +83,5 @@ class IDLTypedef(node.IDLNode):
     def _post_process(self):
         if self._type.classname == 'IDLBasicType' and self.is_pending_forward_declaration(self._type.name):
             return # forward-declared type; resolved via .type once it is defined
+        self.check_element_types(self._type) # sequence / array elements (issue #67)
         self._type._name = self.refine_typename(self.type)
