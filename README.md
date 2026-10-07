@@ -77,6 +77,7 @@ More examples are in the [examples](examples/) folder:
 | [`example.py`](examples/example.py) | interfaces, typedefs, unions and structs |
 | [`union_example.py`](examples/union_example.py) | unions: discriminator kinds, case and `default` labels, member types |
 | [`annotation_example.py`](examples/annotation_example.py) | IDL 4 annotations (`@key`, `@range`, ...) and struct keys |
+| [`scoped_name_example.py`](examples/scoped_name_example.py) | same-named types in several modules: relative (`X`, `C::X`) and absolute (`::B::X`) names |
 
 Run them with e.g. `python examples/union_example.py` (in a source checkout no install is needed).
 
