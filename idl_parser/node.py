@@ -308,6 +308,42 @@ class IDLNode(object):
         walk(self.root_node)
         return len(found) > 0
 
+    def check_element_types(self, typ):
+        """Raise InvalidDataTypeException if an element type of the sequence
+        or array ``typ`` (nested ones included) is not declared (issue #67).
+
+        A type that has been forward-declared ("interface A;", "struct A;",
+        "union A;") may be used before its definition, as with a direct member.
+        """
+        from . import exception
+        while getattr(typ, 'is_sequence', False) or getattr(typ, 'is_array', False):
+            typ = typ.inner_type
+            if typ.classname != 'IDLBasicType':
+                continue
+            name = typ.name.strip()
+            if name.startswith(self.sep):
+                name = name[len(self.sep):]
+            if len(self.root_node.find_types(name)) > 0:
+                continue
+            if self.is_pending_forward_declaration(name):
+                continue
+            if self._is_enclosing_definition(name):
+                continue # recursive type: "struct Node { sequence<Node> children; };"
+            print('Can not find Data Type (%s)\n' % typ.name)
+            raise exception.InvalidDataTypeException(
+                message='Can not find Data Type (%s)' % typ.name)
+
+    def _is_enclosing_definition(self, name):
+        """True if name is a struct or union that encloses this node and is
+        still being parsed (so it is not registered in its module yet)."""
+        n = self.parent
+        while n is not None and not n.is_root:
+            if n.classname in ('IDLStruct', 'IDLUnion'):
+                if name == n.name or name == n.full_path.lstrip(':'):
+                    return True
+            n = n.parent
+        return False
+
     def refine_typename(self, typ):
         return self._refine_typename(typ.name)
 
