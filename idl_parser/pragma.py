@@ -12,10 +12,24 @@ available as :attr:`idl_parser.struct.IDLStruct.keys` (combined with members
 annotated with ``@key``; see there).  Other pragmas
 (``#pragma prefix``, ``#pragma once``, vendor-specific ones, ...) are only
 recorded.
+
+Each key name of a keylist is checked against the members of the target
+struct (issue #38).  A key may name a member of a nested struct with
+dot-separated names (``#pragma keylist T a.b``).  Keys that cannot be found
+are kept as written in :attr:`IDLStruct.keys` so that existing IDL files are
+still accepted, but a :class:`KeylistWarning` is issued and they are listed
+in :attr:`IDLPragma.unresolved_keys`.
 """
 import re
+import warnings
+
+from . import exception
 
 _PRAGMA_RE = re.compile(r'^#\s*pragma\b(.*)$')
+
+
+class KeylistWarning(UserWarning):
+    """Issued when a ``#pragma keylist`` key does not name a member of the struct."""
 
 
 def match_pragma(line):
@@ -46,6 +60,7 @@ class IDLPragma(object):
         self._line_number = line_number
         self._filepath = filepath
         self._target = None
+        self._unresolved_keys = None
 
     @property
     def name(self):
@@ -94,6 +109,26 @@ class IDLPragma(object):
         """For a keylist, the :class:`IDLStruct` it applies to, or ``None`` if not found."""
         return self._target
 
+    @property
+    def unresolved_keys(self):
+        """For a keylist whose target was found, the key names that do not
+        name a member of the target struct (``[]`` when all are valid).
+        ``None`` for other pragmas or when the target has not been found."""
+        if self._unresolved_keys is None:
+            return None
+        return list(self._unresolved_keys)
+
+    def _check_keys(self):
+        self._unresolved_keys = [k for k in self.keys
+                                 if not _key_exists(self._target, k)]
+        for k in self._unresolved_keys:
+            where = self._filepath if self._filepath is not None else '<string>'
+            if self._line_number is not None:
+                where += ', line %s' % self._line_number
+            warnings.warn('%s: #pragma keylist %s: %r is not a member of %s'
+                          % (where, self.type_name, k, self._target.full_path),
+                          KeylistWarning, stacklevel=2)
+
     def _resolve(self, global_module):
         """Find the target struct of a keylist and attach the keys to it.
 
@@ -121,11 +156,37 @@ class IDLPragma(object):
             if node is not None:
                 node._set_keys(self.keys)
                 self._target = node
+                self._check_keys()
                 return True
         return False
 
     def __repr__(self):
         return '<IDLPragma #pragma %s>' % ' '.join([self._name] + self._arguments)
+
+
+def _key_exists(struct, key):
+    """True if ``key`` (``'a'`` or ``'a.b.c'``) names a member of ``struct``.
+
+    Every name except the last must be a member whose type is a struct
+    (typedefs are followed).
+    """
+    names = key.split('.')
+    node = struct
+    for i, name in enumerate(names):
+        if not name or node is None or not getattr(node, 'is_struct', False):
+            return False
+        member = node.member_by_name(name)
+        if member is None:
+            return False
+        if i == len(names) - 1:
+            return True
+        try:
+            node = member.type
+            while getattr(node, 'is_typedef', False):
+                node = node.type
+        except exception.InvalidDataTypeException:
+            return False
+    return True
 
 
 def _find_struct(global_module, path):
