@@ -4,8 +4,10 @@ from idl_parser import parser
 from idl_parser.type import IDLType
 from idl_parser.exception import IDLParserException
 
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
 
-idl_path = 'idls/invalid_idl.idl'
+
+idl_path = os.path.join(IDL_DIR, 'invalid_idl.idl')
 
 class InvalidIDLTestFunctions(unittest.TestCase):
     def setUp(self):

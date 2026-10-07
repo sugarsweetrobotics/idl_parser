@@ -2,7 +2,9 @@ import os
 import unittest
 from idl_parser import parser
 
-idl_dir = 'idls/issue12_subpath'
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+
+idl_dir = os.path.join(IDL_DIR, 'issue12_subpath')
 
 
 class Issue12SubPathIncludeTest(unittest.TestCase):

@@ -5,6 +5,8 @@ import unittest
 
 from idl_parser import parser
 
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+
 
 def load(text):
     p = parser.IDLParser()
@@ -15,7 +17,7 @@ class PragmaTest(unittest.TestCase):
 
     def setUp(self):
         self.parser = parser.IDLParser()
-        with open('idls/issue28_pragma_keylist.idl', 'r') as f:
+        with open(os.path.join(IDL_DIR, 'issue28_pragma_keylist.idl'), 'r') as f:
             self.g = self.parser.load(f.read())
         self.m = self.g.module_by_name('M')
 
@@ -87,7 +89,7 @@ class PragmaTest(unittest.TestCase):
         self.assertEqual(p.pragmas, [])
 
     def test_issue9_idl_keys(self):
-        with open('idls/issue9_const_pragma.idl', 'r') as f:
+        with open(os.path.join(IDL_DIR, 'issue9_const_pragma.idl'), 'r') as f:
             g = parser.IDLParser().load(f.read())
         for st in g.structs:
             self.assertEqual(st.keys, ['WatcherID'])

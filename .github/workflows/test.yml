@@ -30,7 +30,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Tests open IDL files by relative path (idls/...), so run from the repository root.
       - name: Run tests
         run: python -m unittest discover --start-directory tests --pattern '*_test.py' --top-level-directory . --verbose
 

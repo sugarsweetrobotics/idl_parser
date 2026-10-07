@@ -7,7 +7,9 @@ from . import multimodule_test
 from . import generalization_test
 from . import invalid_idl_test
 
-idl_path = 'idls/basic_module_test.idl'
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+
+idl_path = os.path.join(IDL_DIR, 'basic_module_test.idl')
 
 class BasicTestFunctions(unittest.TestCase):
     def setUp(self):

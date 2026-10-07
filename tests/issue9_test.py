@@ -3,8 +3,11 @@
 The IDL files are taken from the issue and intentionally keep their
 tab characters.
 """
+import os
 import unittest
 from idl_parser import parser
+
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
 
 
 def load(path):
@@ -15,7 +18,7 @@ def load(path):
 class Issue9Test(unittest.TestCase):
 
     def test_tabs_and_bounded_string(self):
-        g = load('idls/issue9_tabs_bounded_string.idl')
+        g = load(os.path.join(IDL_DIR, 'issue9_tabs_bounded_string.idl'))
         s = g.module_by_name('Test').struct_by_name('arrays_8dd2d413')
         self.assertEqual(len(s.members), 20)
 
@@ -41,7 +44,7 @@ class Issue9Test(unittest.TestCase):
         self.assertIsNone(char0.bound)
 
     def test_const_without_spaces_and_pragma(self):
-        g = load('idls/issue9_const_pragma.idl')
+        g = load(os.path.join(IDL_DIR, 'issue9_const_pragma.idl'))
         self.assertEqual([st.name for st in g.structs],
                          ['logevent_heartbeat_407c55f4', 'logevent_logLevel_df5f83b3'])
         consts = {c.name: (c.typename, c.value) for c in g.consts}
@@ -53,7 +56,7 @@ class Issue9Test(unittest.TestCase):
         })
 
     def test_whitespace_variants(self):
-        g = load('idls/issue9_whitespace_variants.idl')
+        g = load(os.path.join(IDL_DIR, 'issue9_whitespace_variants.idl'))
         self.assertEqual(g.const_by_name('MAXLEN').value, '16')
 
         e = g.module_by_name('E')

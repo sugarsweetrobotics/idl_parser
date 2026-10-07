@@ -1,7 +1,10 @@
+import os
 import unittest
 from idl_parser import parser
 
-idl_dir = 'idls/circular'
+IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+
+idl_dir = os.path.join(IDL_DIR, 'circular')
 
 
 class IncludeTestFunctions(unittest.TestCase):
