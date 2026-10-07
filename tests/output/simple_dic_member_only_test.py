@@ -1,7 +1,4 @@
-"""Cover to_simple_dic(member_only=True).
-
-The run of the examples moved to examples_test.py.
-"""
+"""Cover to_simple_dic(member_only=True)."""
 import unittest
 
 from idl_parser import parser

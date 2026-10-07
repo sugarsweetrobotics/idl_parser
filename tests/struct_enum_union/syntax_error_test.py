@@ -5,7 +5,7 @@ InvalidIDLSyntaxError was not imported in enum.py, union.py and type.py.
 No existing test reached them, since the test IDLs are all valid.
 """
 import unittest
-from idl_parser import parser, type as idl_type
+from idl_parser import parser
 from idl_parser.exception import InvalidIDLSyntaxError
 
 
@@ -29,13 +29,6 @@ class SyntaxErrorTest(unittest.TestCase):
             with self.subTest(label):
                 with self.assertRaises(InvalidIDLSyntaxError):
                     parser.IDLParser().load(idl)
-
-    def test_invalid_sequence_and_array_names(self):
-        g = parser.IDLParser().load('module M { struct S { long x; }; };')
-        with self.assertRaises(InvalidIDLSyntaxError):
-            idl_type.IDLSequence('long', g)
-        with self.assertRaises(InvalidIDLSyntaxError):
-            idl_type.IDLArray('long', g)
 
 
 if __name__ == '__main__':

@@ -1,11 +1,13 @@
+"""Forward declarations of interfaces ("interface A;")."""
 import os
 import contextlib
 import io
 import unittest
 from idl_parser import parser
 from idl_parser import exception
+from tests import support
 
-IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+IDL_DIR = support.IDL_DIR
 
 
 idl_path = os.path.join(IDL_DIR, 'forward_declaration.idl')

@@ -17,8 +17,9 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from tests import support
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = support.ROOT
 EXAMPLES_DIR = os.path.join(ROOT, 'examples')
 
 
