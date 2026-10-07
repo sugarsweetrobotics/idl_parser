@@ -81,6 +81,6 @@ class IDLTypedef(node.IDLNode):
         self._post_process()
 
     def _post_process(self):
-        if self._type.classname == 'IDLBasicType' and self.is_pending_forward_interface(self._type.name):
-            return # forward-declared interface; resolved via .type once it is defined
+        if self._type.classname == 'IDLBasicType' and self.is_pending_forward_declaration(self._type.name):
+            return # forward-declared type; resolved via .type once it is defined
         self._type._name = self.refine_typename(self.type)

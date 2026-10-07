@@ -96,8 +96,8 @@ class IDLUnionMember(node.IDLNode):
         return self.type
 
     def post_process(self):
-        if self._type.classname == 'IDLBasicType' and self.is_pending_forward_interface(self._type.name):
-            return # forward-declared interface; resolved via .type once it is defined
+        if self._type.classname == 'IDLBasicType' and self.is_pending_forward_declaration(self._type.name):
+            return # forward-declared type; resolved via .type once it is defined
         self._type._name = self.refine_typename(self.type)
 
 class IDLUnion(node.IDLNode):
@@ -107,7 +107,13 @@ class IDLUnion(node.IDLNode):
         self._verbose = True
         self._descriminator_kind = None
         self._members = []
+        self._forward = False
         self.sep = '::'
+
+    @property
+    def is_forward(self):
+        """True if this node came from a forward declaration ("union A;")."""
+        return self._forward
 
     @property
     def full_path(self):
@@ -133,6 +139,11 @@ class IDLUnion(node.IDLNode):
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
+
+        if token_buf.peek()[2] == ';': # Forward declaration (union A;)
+            token_buf.pop()
+            self._forward = True
+            return
 
         self.parse_descriminator_kind(token_buf)
 

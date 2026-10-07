@@ -18,10 +18,12 @@ class IDLModule(node.IDLNode):
         self._forward_interfaces = []
         self._typedefs = []
         self._structs = []
+        self._forward_structs = []
         self._enums = []
         self._bitmasks = []
         self._bitsets = []
         self._unions = []
+        self._forward_unions = []
         self._consts = []
         self._modules = []
 
@@ -122,6 +124,12 @@ class IDLModule(node.IDLNode):
                 s = struct.IDLStruct(name_, self)
                 s._add_annotations(pending_annotations)
                 s.parse_tokens(token_buf, filepath=filepath)
+                if s.is_forward:
+                    # Forward declaration ("struct A;"): remember the name only.
+                    # The definition, if any, is added to structs when it appears.
+                    if name_ not in self._forward_structs:
+                        self._forward_structs.append(name_)
+                    continue
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
                 #    raise InvalidIDLSyntaxError
@@ -184,6 +192,11 @@ class IDLModule(node.IDLNode):
                 s = union.IDLUnion(name_, self)
                 s._add_annotations(pending_annotations)
                 s.parse_tokens(token_buf, filepath)
+                if s.is_forward:
+                    # Forward declaration ("union A;"): remember the name only.
+                    if name_ not in self._forward_unions:
+                        self._forward_unions.append(name_)
+                    continue
                 s_ = self.union_by_name(name_)
                 if s_:
                     if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
@@ -325,6 +338,17 @@ class IDLModule(node.IDLNode):
                 return s
         return None
 
+    @property
+    def forward_structs(self):
+        """Names of structs forward-declared ("struct A;") in this module,
+        in declaration order, whether or not they are defined later."""
+        return list(self._forward_structs)
+
+    @property
+    def undefined_forward_structs(self):
+        """Forward-declared struct names that have no definition in this module."""
+        return [n for n in self._forward_structs if self.struct_by_name(n) is None]
+
     def for_each_struct(self, func, filter=None):
         retval = []
         for m in self.structs:
@@ -387,6 +411,17 @@ class IDLModule(node.IDLNode):
             if u.name == name:
                 return u
         return None
+
+    @property
+    def forward_unions(self):
+        """Names of unions forward-declared ("union A;") in this module,
+        in declaration order, whether or not they are defined later."""
+        return list(self._forward_unions)
+
+    @property
+    def undefined_forward_unions(self):
+        """Forward-declared union names that have no definition in this module."""
+        return [n for n in self._forward_unions if self.union_by_name(n) is None]
 
     def for_each_union(self, func):
         retval = []
