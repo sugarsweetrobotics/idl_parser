@@ -21,7 +21,7 @@ class Issue9Test(unittest.TestCase):
 
         expected = {
             'TestID': 'long',
-            'private_revCode': 'string<8>',
+            'private_revCode': 'string',
             'char0': 'string',
             'longLong0': 'long long[5]',
             'unsignedShort0': 'unsigned short[5]',
@@ -60,22 +60,29 @@ class Issue9Test(unittest.TestCase):
         self.assertEqual([(c.name, c.value) for c in e.consts],
                          [('A', '1'), ('B', '2'), ('C', '3')])
 
-        self.assertEqual(e.typedef_by_name('Name8').type.bound, 8)
+        name8 = e.typedef_by_name('Name8').type
+        self.assertEqual(name8.name, 'string')
+        self.assertEqual(name8.bound, 8)
         # A bound given by a constant name is kept as written
-        self.assertEqual(e.typedef_by_name('WName').type.name, 'wstring<MAXLEN>')
+        self.assertEqual(e.typedef_by_name('WName').type.name, 'wstring')
         self.assertEqual(e.typedef_by_name('WName').type.bound, 'MAXLEN')
 
         s = e.struct_by_name('S')
-        # 'string <4>' is normalized to 'string<4>'
-        self.assertEqual(s.member_by_name('a').type.name, 'string<4>')
+        # Bounded strings keep the base type name; the bound is separate.
+        # Spaces as in 'string <4>' do not matter.
+        a = s.member_by_name('a').type
+        self.assertEqual(a.name, 'string')
+        self.assertEqual(a.bound, 4)
         arr = s.member_by_name('arr').type
         self.assertEqual(arr.size, 3)
+        self.assertEqual(arr.inner_type.name, 'string')
         self.assertEqual(arr.inner_type.bound, 2)
+        self.assertEqual(str(arr), 'string[3]')
 
         op = e.interface_by_name('I').method_by_name('op')
-        self.assertEqual(op.returns.name, 'string<8>')
-        self.assertEqual([(a.direction, a.type.name, a.name) for a in op.arguments],
-                         [('in', 'string<4>', 'x'), ('out', 'long', 'y')])
+        self.assertEqual((op.returns.name, op.returns.bound), ('string', 8))
+        self.assertEqual([(a.direction, a.type.name, a.type.bound, a.name) for a in op.arguments],
+                         [('in', 'string', 4, 'x'), ('out', 'long', None, 'y')])
 
         self.assertEqual([v.name for v in e.enum_by_name('Color').values],
                          ['RED', 'GREEN'])

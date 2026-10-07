@@ -283,8 +283,9 @@ class IDLPrimitive(IDLTypeBase):
     def __init__(self, name, parent):
         bounded = parse_bounded_string(name)
         if bounded is not None:
-            # Normalize 'string < 8 >' etc. to 'string<8>'
-            name = '%s<%s>' % bounded
+            # A bounded string keeps its base type name ('string<8>' -> 'string');
+            # the length limit is available via .bound
+            name = bounded[0]
         super(IDLPrimitive, self).__init__('IDLPrimitive', name, parent.root_node)
         self._verbose = True
         self._is_primitive = True
@@ -292,7 +293,9 @@ class IDLPrimitive(IDLTypeBase):
 
     @property
     def bound(self):
-        """Maximum length of a bounded string ('string<8>' -> 8). None if unbounded."""
+        """Maximum length of a bounded string ('string<8>' -> 8).
+        A constant name is returned as written ('string<MAXLEN>' -> 'MAXLEN').
+        None for an unbounded string and for other primitive types."""
         return self._bound
 
     @property
