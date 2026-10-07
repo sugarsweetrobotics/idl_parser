@@ -104,7 +104,7 @@ class IDLUnion(node.IDLNode):
         dic = { 'union %s' % name : [v.to_simple_dic(recursive=recursive) for v in self.members] }
 
         if member_only:
-            return dic.values()[0]
+            return list(dic.values())[0]
         return dic
 
     def to_dic(self):

@@ -1,8 +1,6 @@
-"""
+"""Example: parse an IDL string and print interfaces, typedefs, unions and structs."""
 
-"""
-
-def  test():
+def test():
     from idl_parser import parser
     _parser = parser.IDLParser()
     idl_str = '''
@@ -57,36 +55,36 @@ module my_module {
     global_module = _parser.load(idl_str)
     my_module = global_module.module_by_name('my_module')
     dataGetter = my_module.interface_by_name('DataGetter')
-    print 'DataGetter interface'
+    print('DataGetter interface')
     for m in dataGetter.methods:
-      print '- method:'
-      print '  name:', m.name
-      print '  returns:', m.returns.name
-      print '  arguments:'
-      for a in m.arguments:
-        print '    name:', a.name
-        print '    type:', a.type
-        print '    direction:', a.direction
+        print('- method:')
+        print('  name:', m.name)
+        print('  returns:', m.returns.name)
+        print('  arguments:')
+        for a in m.arguments:
+            print('    name:', a.name)
+            print('    type:', a.type)
+            print('    direction:', a.direction)
 
     doubleSeq = my_module.typedef_by_name('DoubleSeq')
-    print 'typedef %s %s' % (doubleSeq.type.name, doubleSeq.name)
+    print('typedef %s %s' % (doubleSeq.type.name, doubleSeq.name))
 
     unionType = my_module.union_by_name('UnionType')
-    print 'descriminator kind: %s' % unionType.descriminator_kind
+    print('descriminator kind: %s' % unionType.descriminator_kind)
     for m in unionType.members:
-        print '- member:'
-        print '  name:', m.name
-        print '  type:', m.type.name
-        print 'descriminator value associations:'
+        print('- member:')
+        print('  name:', m.name)
+        print('  type:', m.type.name)
+        print('  descriminator value associations:')
         for a in m.descriminator_value_associations:
-            print '    %s' % a
+            print('    %s' % a)
 
     timedDoubleSeq = my_module.struct_by_name('TimedDoubleSeq')
-    print 'TimedDoubleSeq'
+    print('TimedDoubleSeq')
     for m in timedDoubleSeq.members:
-      print '- member:'
-      print '  name:', m.name
-      print '  type:', m.type.name
+        print('- member:')
+        print('  name:', m.name)
+        print('  type:', m.type.name)
 
 
 if __name__ == '__main__':
