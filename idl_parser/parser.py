@@ -154,24 +154,20 @@ class IDLParser():
 
     def includes(self, idl_path):
         included_filepaths = []
-        included_filenames = []
-        f = open(idl_path, 'r')
-        lines = []
-        for line in f:
-            if line.find('#include') >= 0:
-                if line.find('"') >= 0:
-                    file = line[line.find('"')+1:line.rfind('"')].strip()
-                elif line.find('<') >= 0:
-                    file = line[line.find('<')+1:line.rfind('>')].strip()
-                included_filenames.append(file)
-        def get_fullpath(idl_path):
-            if os.path.basename(idl_path) in included_filenames:
-                included_filepaths.append(idl_path)
-                included_filenames.remove(os.path.basename(idl_path))
-
-        self.for_each_idl(get_fullpath, find_all=True)
-        if len(included_filenames) > 0:
-            raise exception.IDLCanNotFindException()
+        with open(idl_path, 'r') as f:
+            for line in f:
+                if line.find('#include') >= 0:
+                    if line.find('"') >= 0:
+                        file = line[line.find('"')+1:line.rfind('"')].strip()
+                    elif line.find('<') >= 0:
+                        file = line[line.find('<')+1:line.rfind('>')].strip()
+                    else:
+                        continue
+                    p = self._resolve_include(file, current_file=idl_path)
+                    if p is None:
+                        raise exception.IDLCanNotFindException()
+                    if p not in included_filepaths:
+                        included_filepaths.append(p)
 
         return included_filepaths
 
@@ -227,6 +223,33 @@ class IDLParser():
         if self._verbose: logger.deindent()
         return retval
 
+    def _resolve_include(self, filename, current_file=None):
+        """ Find the IDL file named by an ``#include`` directive.
+
+        ``filename`` may contain a sub path such as ``std/msg/Header.idl``
+        (issue #12). Like a C preprocessor, the path is tried relative to
+        the directory of the including file first, then relative to each
+        include directory. If nothing is found, fall back to the old
+        behaviour of matching the base name of IDLs in the include
+        directories.
+
+        :returns: Path of the found IDL, or None.
+        """
+        candidates = []
+        if os.path.isabs(filename):
+            candidates.append(filename)
+        else:
+            if current_file is not None:
+                candidates.append(os.path.join(os.path.dirname(os.path.abspath(current_file)), filename))
+            for d in self._dirs:
+                candidates.append(os.path.join(d, filename))
+        for c in candidates:
+            if os.path.isfile(c):
+                if self._verbose: logger.write('Found %s\n' % c)
+                return c
+
+        return self._find_idl(os.path.basename(filename), lambda p: p)
+
     def _paste_include(self, lines, pasted=None):
         """ Expand #include directives in-place.
 
@@ -244,9 +267,6 @@ class IDLParser():
         for line_number, file_name, line in lines:
             output_line = ''
             if line.startswith('#include'):
-                def _include_paste(filepath):
-                    return filepath
-
                 if line.find('"') >= 7:
                     filename = line[line.find('"')+1 : line.rfind('"')]
                 elif line.find('<') >= 7:
@@ -256,7 +276,7 @@ class IDLParser():
 
                 if filename is not None:
                     if self._verbose: logger.write('Find Includes %s\n' % filename)
-                    p = self._find_idl(filename, _include_paste)
+                    p = self._resolve_include(filename.strip(), current_file=file_name)
                     if p is None:
                         if self._verbose: logger.write(' # IDL (%s) can not be found.\n' % filename)
                         raise exception.IDLCanNotFindException

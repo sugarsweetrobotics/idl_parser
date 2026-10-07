@@ -1,0 +1,7 @@
+#include "std/msg/Header.idl"
+
+module relative { 
+  struct Stamped {
+    std::msg::Header header;
+  };
+};
