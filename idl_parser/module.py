@@ -465,13 +465,25 @@ class IDLModule(node.IDLNode):
         if type.is_primitive(full_typename):
             return [type.IDLType(full_typename, self)]
         typenode = []
+        # A fully qualified name may start with '::' ("::M::A", issue #69).
+        # full_path has no leading '::' ("M::A"), so drop it before comparing.
+        name = str(full_typename).strip()
+        absolute = name.startswith('::')
+        if absolute:
+            name = name.lstrip(':').strip()
 
-        def parse_node(s, name=str(full_typename)):
-            if parent:
-                if parent.full_path + '::' + name.strip() == s.full_path or name.strip() == s.full_path:
+        def parse_node(s):
+            full_path = s.full_path.lstrip(':')
+            if absolute:
+                # '::X' always names X from the global scope
+                if full_path == name:
+                    typenode.append(s)
+            elif parent:
+                prefix = parent.full_path.lstrip(':')
+                if (prefix + '::' + name if prefix else name) == full_path or name == full_path:
                     typenode.append(s)
             else:
-                if s.name == name.strip() or s.full_path == name.strip():
+                if s.name == name or full_path == name:
                     typenode.append(s)
 
         def parse_module(m):
