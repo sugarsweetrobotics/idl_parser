@@ -68,7 +68,7 @@ class MemberTypeSimpleDicTest(unittest.TestCase):
             'WithSeqInline': [{'sequence<long> q': {'sequence<long>': 'long'}}],
             'WithArray': [{'long[3] a': 'long[3]'}],
             'WithStruct': [{'T t': ['long s']}],
-            'WithEnum': ['enum e'],
+            'WithEnum': [{'E e': [{'A': 0}, {'B': 1}]}],
             'WithBitmask': [{'F f': [{'F1': 0}, {'F2': 1}]}],
             'WithBitset': [{'BS bs': [{'b': 'bitfield<3, octet>'}]}],
             'WithSeqTypedef': [{'DSeq d': {'typedef sequence<double> DSeq':

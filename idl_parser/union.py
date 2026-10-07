@@ -52,8 +52,6 @@ class IDLUnionMember(node.IDLNode):
         if recursive:
             if self.type.is_primitive:
                 return str(self.type) + ' ' + self.name
-            elif self.type.obj.is_enum:
-                return str('enum') + ' ' + self.name
             dic = {str(self.type) +' ' + self.name :
                    self.type.obj.to_simple_dic(recursive=recursive, member_only=True)}
             return dic
