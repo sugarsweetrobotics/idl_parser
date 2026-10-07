@@ -157,7 +157,11 @@ class IDLInterface(node.IDLNode):
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
         if quiet:
             return 'interface %s' % self.name
-        dic = { 'interface ' + self.name : [m.to_simple_dic() for m in self.methods] }
+        # The first entry is always {'inherits': [...]}; it is an empty list
+        # for an interface without base interfaces.
+        entries = [{'inherits' : [i.full_path for i in self.inheritances]}]
+        entries += [m.to_simple_dic() for m in self.methods]
+        dic = { 'interface ' + self.name : entries }
         return dic
 
     def to_dic(self):
