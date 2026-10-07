@@ -85,7 +85,7 @@ class UnionExampleTest(unittest.TestCase):
         cls.text = run_main('union_example')
 
     def test_lists_unions(self):
-        self.assertIn("unions in module shapes: ['Shape', 'Value', 'OptionalDouble']", self.text)
+        self.assertIn("unions in module shapes: ['Shape', 'Value', 'Reading', 'OptionalDouble']", self.text)
 
     def test_discriminator_kinds(self):
         self.assertIn('union shapes::Shape switch (ShapeKind)', self.text)
@@ -103,6 +103,13 @@ class UnionExampleTest(unittest.TestCase):
         self.assertIn('case -1, 0 -> error_message: primitive string', self.text)
         self.assertIn('Value with discriminator -1 holds: error_message', self.text)
         self.assertIn('Value with discriminator 1 holds: integer_value', self.text)
+
+    def test_default_label(self):
+        self.assertIn('default -> raw_points: typedef shapes::PointSeq = sequence of Point2D', self.text)
+        self.assertIn('case POINT / default -> position: struct shapes::Point2D (members: x, y)', self.text)
+        self.assertIn('Value with any other discriminator holds: raw_points', self.text)
+        self.assertIn('Shape default member: None', self.text)
+        self.assertIn('"is_default": false', self.text)
 
     def test_lookup_and_nesting(self):
         self.assertIn('Shape.rect full path: shapes::Shape::rect', self.text)

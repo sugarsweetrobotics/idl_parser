@@ -10,6 +10,7 @@ class IDLUnionMember(node.IDLNode):
         self._verbose = True
         self._type = None
         self._descriminator_value_associations = []
+        self._is_default = False
         self.sep = '::'
 
     @property
@@ -21,16 +22,21 @@ class IDLUnionMember(node.IDLNode):
 
         annotations, blocks = node.parse_annotations(blocks)
         self._add_annotations(annotations)
-        while True:
-            if blocks[0] != 'case':
+        while blocks:
+            if blocks[0] == 'case':
+                blocks.pop(0)
+                if len(blocks) < 2:
+                    if self._verbose: sys.stdout.write('# Error. No value after "case".\n')
+                    raise exception.InvalidIDLSyntaxError()
+                self._descriminator_value_associations.append(blocks.pop(0))
+            elif blocks[0] == 'default':
+                blocks.pop(0)
+                self._is_default = True
+            else:
                 break
-            blocks.pop(0)
-            token = blocks.pop(0)
-            self._descriminator_value_associations.append(token)
-            token = blocks.pop(0)
-            if token != ':':
-                if self._verbose: sys.stdout.write('# Error. No ":" after case value.\n')
-                raise exception.InvalidDataTypeException()
+            if not blocks or blocks.pop(0) != ':':
+                if self._verbose: sys.stdout.write('# Error. No ":" after case label.\n')
+                raise exception.InvalidIDLSyntaxError()
 
         annotations, blocks = node.parse_annotations(blocks)
         self._add_annotations(annotations)
@@ -57,6 +63,7 @@ class IDLUnionMember(node.IDLNode):
     def to_dic(self):
         dic = { 'name' : self.name,
                 'descriminator_value_associations' : self.descriminator_value_associations,
+                'is_default' : self.is_default,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
                 'type' : self.type.name }
@@ -74,7 +81,13 @@ class IDLUnionMember(node.IDLNode):
 
     @property
     def descriminator_value_associations(self):
+        """The ``case`` label values that select this member (``default`` is not included)."""
         return self._descriminator_value_associations
+
+    @property
+    def is_default(self):
+        """True if this member has the ``default:`` label."""
+        return self._is_default
 
     def get_type(self, extract_typedef=False):
         if extract_typedef:
@@ -170,6 +183,9 @@ class IDLUnion(node.IDLNode):
     def _parse_block(self, blocks):
         v = IDLUnionMember(self)
         v.parse_blocks(blocks, self.filepath)
+        if v.is_default and self.default_member is not None:
+            if self._verbose: sys.stdout.write('# Error. Union "%s" has more than one "default" label.\n' % self.name)
+            raise exception.InvalidIDLSyntaxError()
         self._members.append(v)
 
     def _post_process(self):
@@ -189,6 +205,15 @@ class IDLUnion(node.IDLNode):
                 return m
 
         return None
+
+    @property
+    def default_member(self):
+        """The member with the ``default:`` label, or None."""
+        for m in self._members:
+            if m.is_default:
+                return m
+        return None
+
     def forEachMember(self, func):
         for m in self._members:
             func(m)
