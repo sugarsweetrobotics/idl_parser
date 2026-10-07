@@ -1,7 +1,17 @@
-"""Example: parse an IDL string and print interfaces, typedefs, unions and structs."""
+"""Example: parse an IDL string and print interfaces, typedefs, unions and structs.
 
-def test():
-    from idl_parser import parser
+Run (no install needed in a checkout)::
+
+    python examples/example.py
+
+See also ``union_example.py`` and ``annotation_example.py`` in this folder.
+"""
+import _path  # noqa: F401  (use the idl_parser of this checkout)
+
+from idl_parser import parser
+
+
+def main():
     _parser = parser.IDLParser()
     idl_str = '''
 module my_module {
@@ -88,4 +98,4 @@ module my_module {
 
 
 if __name__ == '__main__':
-    test()
+    main()

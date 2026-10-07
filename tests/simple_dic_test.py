@@ -1,24 +1,10 @@
-"""Keep example.py runnable on Python 3 and cover to_simple_dic(member_only=True)."""
-import contextlib
-import io
+"""Cover to_simple_dic(member_only=True).
+
+The run of the examples moved to examples_test.py.
+"""
 import unittest
 
-import example
 from idl_parser import parser
-
-
-class ExampleTest(unittest.TestCase):
-
-    def test_example_runs(self):
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            example.test()
-        text = out.getvalue()
-        self.assertIn('DataGetter interface', text)
-        self.assertIn('  name: getData', text)
-        self.assertIn('    direction: out', text)
-        self.assertIn('descriminator kind: UNION_DESCRIMINATOR_KIND', text)
-        self.assertIn('TimedDoubleSeq', text)
 
 
 class SimpleDicMemberOnlyTest(unittest.TestCase):
