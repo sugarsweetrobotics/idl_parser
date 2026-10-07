@@ -98,7 +98,7 @@ class GeneralizationExtendedTestFunctions(unittest.TestCase):
 
 
 class GeneralizationSimpleDicTestFunctions(unittest.TestCase):
-    """to_simple_dic(): an 'inherits' entry is added only for derived interfaces."""
+    """to_simple_dic(): the first entry is always {'inherits': [...]}."""
 
     @classmethod
     def setUpClass(cls):
@@ -106,9 +106,16 @@ class GeneralizationSimpleDicTestFunctions(unittest.TestCase):
             cls.m = parser.IDLParser().load(idlf.read())
         cls.moduleP = cls.m.module_by_name('moduleP')
 
-    def test_no_inheritance_is_unchanged(self):
+    def test_no_inheritance_has_empty_inherits(self):
         self.assertEqual(self.moduleP.interface_by_name('Base').to_simple_dic(),
-                         {'interface Base': [{'methodBase': {'returns': 'void', 'params': []}}]})
+                         {'interface Base': [
+                             {'inherits': []},
+                             {'methodBase': {'returns': 'void', 'params': []}}]})
+
+    def test_empty_interface(self):
+        m = parser.IDLParser().load('module M { interface Empty {}; };')
+        self.assertEqual(m.module_by_name('M').interface_by_name('Empty').to_simple_dic(),
+                         {'interface Empty': [{'inherits': []}]})
 
     def test_inherits_entry_comes_first(self):
         self.assertEqual(self.moduleP.interface_by_name('Derived').to_simple_dic(),
@@ -134,7 +141,10 @@ class GeneralizationSimpleDicTestFunctions(unittest.TestCase):
     def test_module_output(self):
         dic = self.moduleP.to_simple_dic()
         interfaces = {list(e)[0]: e[list(e)[0]] for e in dic['module moduleP'] if list(e)[0].startswith('interface ')}
-        self.assertNotIn({'inherits': []}, interfaces['interface Base'])
+        for name, entries in interfaces.items():
+            with self.subTest(interface=name):
+                self.assertIn('inherits', entries[0])
+        self.assertEqual(interfaces['interface Base'][0], {'inherits': []})
         self.assertEqual(interfaces['interface Grandchild'][0], {'inherits': ['moduleP::Derived']})
 
 
