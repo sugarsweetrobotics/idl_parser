@@ -1,0 +1,20 @@
+const	long	MAXLEN=16;
+module	E	{
+	const long A=1;
+	const long B= 2;
+	const long C =3;
+	typedef	string<8>	Name8;
+	typedef wstring< MAXLEN >	WName;
+	typedef sequence<long>	LongSeq;
+	enum	Color	{	RED,	GREEN	};
+	struct	S	{
+		string <4>	a;
+		string<2>	arr[3];
+		Name8	n;
+		LongSeq	q;
+		Color	c;
+	};
+	interface	I	{
+		string<8>	op(in	string<4>	x,	out	long	y);
+	};
+};

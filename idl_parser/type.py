@@ -1,4 +1,4 @@
-import os, sys, traceback
+import os, sys, traceback, re
 
 from . import node
 from . import exception
@@ -15,8 +15,30 @@ primitive = [
     'string',
     'wstring']
 
+# Bounded strings such as 'string<8>' or 'wstring< MAX_LEN >' (issue #9).
+_bounded_string = re.compile(r'^(w?string)\s*<\s*([A-Za-z0-9_:]+)\s*>$')
+
+def parse_bounded_string(name):
+    """Return (base, bound) for a bounded string type name, otherwise None.
+    bound is an int for a numeric literal, or the name as written (e.g. a const)."""
+    m = _bounded_string.match(name.strip())
+    if not m:
+        return None
+    base, bound = m.group(1), m.group(2)
+    try:
+        bound = int(bound)
+    except ValueError:
+        pass
+    return (base, bound)
+
+def is_string(name):
+    name = name.strip()
+    return name in ('string', 'wstring') or parse_bounded_string(name) is not None
+
 def is_primitive(name):
-    for n in name.split(' '):
+    if parse_bounded_string(name) is not None:
+        return True
+    for n in name.split():
         if n in primitive:
             return True
     return False
@@ -259,9 +281,23 @@ class IDLArray(IDLTypeBase):
 
 class IDLPrimitive(IDLTypeBase):
     def __init__(self, name, parent):
+        bounded = parse_bounded_string(name)
+        if bounded is not None:
+            # Normalize 'string < 8 >' etc. to 'string<8>'
+            name = '%s<%s>' % bounded
         super(IDLPrimitive, self).__init__('IDLPrimitive', name, parent.root_node)
         self._verbose = True
         self._is_primitive = True
+        self._bound = bounded[1] if bounded is not None else None
+
+    @property
+    def bound(self):
+        """Maximum length of a bounded string ('string<8>' -> 8). None if unbounded."""
+        return self._bound
+
+    @property
+    def is_bounded_string(self):
+        return self._bound is not None
     @property
     def full_path(self):
         return (self.parent.full_path + self.sep + self.name).strip()

@@ -38,7 +38,7 @@ class IDLParser():
 
     def is_primitive(self, name, except_string=False):
         if except_string:
-            if name == 'string' or name == 'wstring':
+            if idl_type.is_string(name):
                 return False
         return idl_type.is_primitive(name)
 
@@ -50,16 +50,18 @@ class IDLParser():
         from re import compile, UNICODE, MULTILINE
         flags = UNICODE | MULTILINE
 
-        pattern = compile('\[[ \n]+', flags)
+        # Remove whitespace (spaces, tabs, newlines) just inside brackets
+        # so that e.g. 'long a[ 5 ]' and 'string< 8 >' become single tokens.
+        pattern = compile(r'\[\s+', flags)
         data = pattern.sub('[', data)
 
-        pattern = compile('[ \n]+\]', flags)
+        pattern = compile(r'\s+\]', flags)
         data = pattern.sub(']', data)
 
-        pattern = compile('\<[ \n]+', flags)
+        pattern = compile(r'\<\s+', flags)
         data = pattern.sub('<', data)
 
-        pattern = compile('[ \n]+\>', flags)
+        pattern = compile(r'\s+\>', flags)
         data = pattern.sub('>', data)
 
         return data
@@ -261,7 +263,7 @@ class IDLParser():
             if line.find('//') >= 0:
                 line = line[:line.find('//')]
 
-            for token in line.split(' '):
+            for token in line.split():
 
                 if in_comment and token.find('*/') >= 0:
                     in_comment = False
@@ -286,6 +288,7 @@ class IDLParser():
                     if token.find('(') >= 0:
                         token = token.replace('(', ' ( ')
                     token = token.replace(',', ' , ')
+                    token = token.replace('=', ' = ')
                     token = token.replace(')', ' ) ')
                     token = token.replace('}', ' } ')
                     output_line = output_line + ' ' + token.strip()
@@ -304,16 +307,16 @@ class IDLParser():
             while offset < len(lines):
                 line_number, file_name, line = lines[offset]
                 if line.startswith('#define'):
-                    def_token = line.split(' ')[1]
+                    def_token = line.split()[1]
                     def_tokens.append(def_token)
                     offset = offset + 1
                 elif line.startswith('#ifdef'):
-                    def_token = line.split(' ')[1]
+                    def_token = line.split()[1]
                     offset = offset + 1
                     _parse(def_token in def_tokens)
 
                 elif line.startswith('#ifndef'):
-                    def_token = line.split(' ')[1]
+                    def_token = line.split()[1]
                     offset = offset + 1
                     _parse(not def_token in def_tokens)
 
