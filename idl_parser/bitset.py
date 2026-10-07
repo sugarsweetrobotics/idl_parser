@@ -15,7 +15,7 @@ after the bits of the base bitset. A bitset holds at most 64 bits.
 import re
 
 from . import node, exception
-from .bitmask import parse_int, split_annotations
+from .bitmask import parse_int
 sep = '::'
 
 MAX_BITS = 64
@@ -77,11 +77,11 @@ class IDLBitfield(node.IDLNode):
         return {(self.name or ''): 'bitfield<%d, %s>' % (self.bits, self.type)}
 
     def to_dic(self):
-        return {'name': self.name,
+        return self._with_annotations({'name': self.name,
                 'classname': self.classname,
                 'bits': self.bits,
                 'type': self.type,
-                'position': self.position}
+                'position': self.position})
 
 
 class IDLBitset(node.IDLNode):
@@ -139,12 +139,12 @@ class IDLBitset(node.IDLNode):
         return {'bitset %s' % name: fields}
 
     def to_dic(self):
-        return {'name': self.name,
+        return self._with_annotations({'name': self.name,
                 'filepath': self.filepath,
                 'classname': self.classname,
                 'base': self._base.full_path if self._base else None,
                 'bit_size': self.bit_size,
-                'bitfields': [b.to_dic() for b in self.bitfields]}
+                'bitfields': [b.to_dic() for b in self.bitfields]})
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
@@ -175,7 +175,7 @@ class IDLBitset(node.IDLNode):
                 block.append(token)
 
     def _parse_bitfield(self, block, ln, fn):
-        _, rest = split_annotations(block)
+        annotations, rest = node.parse_annotations(block)
         decl = ' '.join(rest)
         m = _bitfield.match(decl)
         if not m:
@@ -197,6 +197,7 @@ class IDLBitset(node.IDLNode):
                 raise exception.InvalidIDLSyntaxError(ln, fn, 'Invalid bitfield "%s" in bitset "%s"' % (decl, self.name))
             b = IDLBitfield(n, bits, typename, self._own_bits, self)
             b._filepath = self.filepath
+            b._add_annotations(annotations)
             self._bitfields.append(b)
             self._own_bits += bits
 

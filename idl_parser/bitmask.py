@@ -52,10 +52,10 @@ class IDLBitValue(node.IDLNode):
         return {self.name: self.position}
 
     def to_dic(self):
-        return {'name': self.name,
+        return self._with_annotations({'name': self.name,
                 'classname': self.classname,
                 'position': self.position,
-                'value': self.value}
+                'value': self.value})
 
 
 class IDLBitmask(node.IDLNode):
@@ -65,9 +65,10 @@ class IDLBitmask(node.IDLNode):
         self._verbose = False
         self._values = []
         self._bit_bound = DEFAULT_BIT_BOUND
-        for aname, args in (annotations or []):
-            if aname == 'bit_bound' and len(args) == 1:
-                self._bit_bound = self._parse_bound(args[0])
+        self._add_annotations(annotations or [])
+        a = self.annotation_by_name('bit_bound')
+        if a is not None:
+            self._bit_bound = self._parse_bound(a.value)
 
     def _parse_bound(self, literal):
         bound = parse_int(literal)
@@ -106,11 +107,11 @@ class IDLBitmask(node.IDLNode):
         return {'bitmask %s' % name: [v.to_simple_dic() for v in self.values]}
 
     def to_dic(self):
-        return {'name': self.name,
+        return self._with_annotations({'name': self.name,
                 'filepath': self.filepath,
                 'classname': self.classname,
                 'bit_bound': self.bit_bound,
-                'values': [v.to_dic() for v in self.values]}
+                'values': [v.to_dic() for v in self.values]})
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath
@@ -119,26 +120,31 @@ class IDLBitmask(node.IDLNode):
             raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of bitmask "%s"' % self.name)
 
         block = []
+        depth = 0  # inside the parentheses of an annotation, e.g. @foo(a, b)
         while True:
             ln, fn, token = token_buf.pop()
             if token is None:
                 raise exception.InvalidIDLSyntaxError(ln, fn, 'No "}" in the declaration of bitmask "%s"' % self.name)
-            elif token == '}':
+            elif token == '}' and depth == 0:
                 if block:
                     self._parse_block(block, ln, fn)
                 ln, fn, token = token_buf.pop()
                 if token != ';':
                     raise exception.InvalidIDLSyntaxError(ln, fn, 'No ";" after "}" in the declaration of bitmask "%s"' % self.name)
                 break
-            elif token == ',':
+            elif token == ',' and depth == 0:
                 self._parse_block(block, ln, fn)
                 block = []
             else:
+                if token == '(':
+                    depth += 1
+                elif token == ')':
+                    depth -= 1
                 block.append(token)
 
     def _parse_block(self, block, ln, fn):
         # block: [annotation tokens...] NAME
-        annotations, rest = split_annotations(block)
+        annotations, rest = node.parse_annotations(block)
         if len(rest) != 1:
             raise exception.InvalidIDLSyntaxError(ln, fn, 'Invalid value "%s" in bitmask "%s"' % (' '.join(block), self.name))
 
@@ -146,11 +152,11 @@ class IDLBitmask(node.IDLNode):
             position = self._values[-1].position + 1
         else:
             position = 0
-        for aname, args in annotations:
-            if aname == 'position' and len(args) == 1:
-                position = parse_int(args[0])
+        for a in annotations:
+            if a.name == 'position':
+                position = parse_int(a.value)
                 if position is None:
-                    raise exception.InvalidIDLSyntaxError(ln, fn, 'Invalid @position(%s) in bitmask "%s"' % (args[0], self.name))
+                    raise exception.InvalidIDLSyntaxError(ln, fn, 'Invalid %s in bitmask "%s"' % (a, self.name))
 
         if not 0 <= position < self.bit_bound:
             raise exception.InvalidIDLSyntaxError(
@@ -164,33 +170,6 @@ class IDLBitmask(node.IDLNode):
 
         v = IDLBitValue(rest[0], position, self)
         v._filepath = self.filepath
+        v._add_annotations(annotations)
         self._values.append(v)
 
-
-def split_annotations(tokens):
-    """Split leading annotations off a token list.
-
-    Returns ``([(name, [args...]), ...], remaining_tokens)``.
-    ``['@position', '(', '3', ')', 'X']`` -> ``([('position', ['3'])], ['X'])``.
-    """
-    annotations = []
-    i = 0
-    while i < len(tokens) and tokens[i].startswith('@'):
-        name = tokens[i][1:]
-        args = []
-        i += 1
-        if i < len(tokens) and tokens[i] == '(':
-            i += 1
-            arg = []
-            while i < len(tokens) and tokens[i] != ')':
-                if tokens[i] == ',':
-                    args.append(' '.join(arg))
-                    arg = []
-                else:
-                    arg.append(tokens[i])
-                i += 1
-            if arg:
-                args.append(' '.join(arg))
-            i += 1  # ')'
-        annotations.append((name, args))
-    return annotations, tokens[i:]

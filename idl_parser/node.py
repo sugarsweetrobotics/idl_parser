@@ -1,3 +1,121 @@
+"""Base class of all nodes, and IDL annotations (``@name(...)``)."""
+from .exception import InvalidIDLSyntaxError
+
+
+class IDLAnnotation(object):
+    """An annotation such as ``@key``, ``@bit_bound(8)`` or ``@range(min=0, max=10)``.
+
+    Arguments are kept as written in the IDL (strings keep their quotes;
+    whitespace inside them may be normalized by the tokenizer).
+    """
+
+    def __init__(self, name, args=None, params=None):
+        self._name = name
+        self._args = list(args or [])
+        self._params = dict(params or {})
+
+    @property
+    def name(self):
+        """Name without ``@`` (``'key'``, ``'bit_bound'``)."""
+        return self._name
+
+    @property
+    def args(self):
+        """Positional arguments (``@bit_bound(8)`` -> ``['8']``)."""
+        return list(self._args)
+
+    @property
+    def params(self):
+        """Named arguments (``@range(min=0, max=10)`` -> ``{'min': '0', 'max': '10'}``)."""
+        return dict(self._params)
+
+    @property
+    def value(self):
+        """The single argument (``@bit_bound(8)`` and ``@bit_bound(value=8)`` -> ``'8'``),
+        or None when there is none or more than one."""
+        if len(self._args) == 1 and not self._params:
+            return self._args[0]
+        if not self._args and list(self._params) == ['value']:
+            return self._params['value']
+        return None
+
+    def __str__(self):
+        items = self._args + ['%s=%s' % kv for kv in self._params.items()]
+        if not items:
+            return '@' + self._name
+        return '@%s(%s)' % (self._name, ', '.join(items))
+
+    def __repr__(self):
+        return '<IDLAnnotation %s>' % str(self)
+
+    def to_dic(self):
+        return {'name': self._name, 'args': self.args, 'params': self.params}
+
+
+def parse_annotations(tokens):
+    """Split leading annotations off a token list.
+
+    Returns ``([IDLAnnotation, ...], remaining_tokens)``.
+    ``['@range', '(', 'min', '=', '0', ',', 'max', '=', '9', ')', 'long', 'x']``
+    -> ``([@range(min=0, max=9)], ['long', 'x'])``.
+    """
+    annotations = []
+    i = 0
+    while i < len(tokens) and tokens[i].startswith('@') and len(tokens[i]) > 1:
+        name = tokens[i][1:]
+        i += 1
+        arg_tokens = []
+        if i < len(tokens) and tokens[i] == '(':
+            end = matching_paren(tokens, i)
+            if end is None:
+                raise InvalidIDLSyntaxError(message='No ")" in annotation "@%s"' % name)
+            arg_tokens = tokens[i + 1:end]
+            i = end + 1
+        annotations.append(_make_annotation(name, arg_tokens))
+    return annotations, tokens[i:]
+
+
+def matching_paren(tokens, start):
+    """Index of the ")" matching the "(" at tokens[start], or None."""
+    depth = 0
+    for j in range(start, len(tokens)):
+        if tokens[j] == '(':
+            depth += 1
+        elif tokens[j] == ')':
+            depth -= 1
+            if depth == 0:
+                return j
+    return None
+
+
+def split_top_level(tokens, sep):
+    """Split tokens at ``sep`` tokens that are not inside parentheses."""
+    parts, part, depth = [], [], 0
+    for t in tokens:
+        if t == '(':
+            depth += 1
+        elif t == ')':
+            depth -= 1
+        if t == sep and depth == 0:
+            parts.append(part)
+            part = []
+        else:
+            part.append(t)
+    parts.append(part)
+    return parts
+
+
+def _make_annotation(name, arg_tokens):
+    args, params = [], {}
+    if arg_tokens:
+        for part in split_top_level(arg_tokens, ','):
+            if len(part) >= 3 and part[1] == '=':
+                params[part[0]] = ' '.join(part[2:])
+            elif part:
+                args.append(' '.join(part))
+    return IDLAnnotation(name, args, params)
+
+
 class IDLNode(object):
     def __init__(self, classname, name, parent):
         self._classname = classname
@@ -5,6 +123,31 @@ class IDLNode(object):
         self._name = name
         self._filepath = None
         self.sep = '::'
+        self._annotations = []
+
+    @property
+    def annotations(self):
+        """Annotations written before this definition (list of :class:`IDLAnnotation`)."""
+        return list(self._annotations)
+
+    def annotation_by_name(self, name):
+        """The annotation named ``name`` (without ``@``), or None. The last one wins."""
+        for a in reversed(self._annotations):
+            if a.name == name:
+                return a
+        return None
+
+    def has_annotation(self, name):
+        return self.annotation_by_name(name) is not None
+
+    def _add_annotations(self, annotations):
+        self._annotations.extend(annotations)
+
+    def _with_annotations(self, dic):
+        """Add 'annotations' to a to_dic() result when there are any."""
+        if self._annotations:
+            dic['annotations'] = [a.to_dic() for a in self._annotations]
+        return dic
 
     @property
     def filepath(self):

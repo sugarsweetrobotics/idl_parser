@@ -17,6 +17,8 @@ class IDLMember(node.IDLNode):
 
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
+        annotations, blocks = node.parse_annotations(blocks)
+        self._add_annotations(annotations)
         name, typ = self._name_and_type(blocks)
         if name.find('[') >= 0:
             name_ = name[:name.find('[')]
@@ -42,7 +44,7 @@ class IDLMember(node.IDLNode):
                 'filepath' : self.filepath,
                 'classname' : self.classname,
                 'type' : str(self.type) }
-        return dic
+        return self._with_annotations(dic)
 
     @property
     def type(self):
@@ -122,7 +124,7 @@ class IDLStruct(node.IDLNode):
                 'members' : [v.to_dic() for v in self.members] }
         if self.has_keylist:
             dic['keys'] = self.keys
-        return dic
+        return self._with_annotations(dic)
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath = filepath

@@ -15,6 +15,8 @@ class IDLArgument(node.IDLNode):
 
     def parse_blocks(self, blocks, filepath=None):
         self._filepath= filepath
+        annotations, blocks = node.parse_annotations(blocks)
+        self._add_annotations(annotations)
         directions = ['in', 'out', 'inout']
         self._dir = 'in'
         if blocks[0] in directions:
@@ -35,7 +37,7 @@ class IDLArgument(node.IDLNode):
                 'type' : str(self.type),
                 'direction' : self.direction,
                 'filepath' : self.filepath }
-        return dic
+        return self._with_annotations(dic)
 
     @property
     def direction(self):
@@ -60,6 +62,8 @@ class IDLMethod(node.IDLNode):
     def parse_blocks(self, blocks, filepath=None):
         self._filepath=filepath
 
+        annotations, blocks = node.parse_annotations(blocks)
+        self._add_annotations(annotations)
         if blocks[0] == 'oneway':
             self._oneway = True
             blocks.pop(0)
@@ -80,6 +84,15 @@ class IDLMethod(node.IDLNode):
             if index == len(blocks):
                 break
             token = blocks[index]
+            if token.startswith('@') and index + 1 < len(blocks) and blocks[index + 1] == '(':
+                # Annotation of an argument with parameters, e.g. @range(min=0, max=9):
+                # keep its "(", "," and ")" out of the argument list splitting.
+                end = node.matching_paren(blocks, index + 1)
+                if end is None:
+                    raise exception.InvalidIDLSyntaxError(message='No ")" in annotation "%s" of "%s"' % (token, self._name))
+                argument_blocks.extend(blocks[index:end + 1])
+                index = end + 1
+                continue
             if token == ',' or token == ')':
                 if len(argument_blocks) == 0:
                     break
@@ -104,7 +117,7 @@ class IDLMethod(node.IDLNode):
                 'classname' : self.classname,
                 'returns' : str(self._returns),
                 'arguments' : [a.to_dic() for a in self.arguments]}
-        return dic
+        return self._with_annotations(dic)
 
     @property
     def returns(self):
@@ -170,7 +183,7 @@ class IDLInterface(node.IDLNode):
                 'classname' : self.classname,
                 'inheritances' : [i.full_path for i in self.inheritances],
                 'methods' : [m.to_dic() for m in self.methods] }
-        return dic
+        return self._with_annotations(dic)
 
     def _all_interfaces(self):
         """Interfaces seen so far, keyed by full path without a leading '::'.
