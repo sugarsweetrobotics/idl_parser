@@ -1,0 +1,42 @@
+"""Malformed enum / union definitions must raise InvalidIDLSyntaxError.
+
+These error paths used to raise NameError instead, because
+InvalidIDLSyntaxError was not imported in enum.py, union.py and type.py.
+No existing test reached them, since the test IDLs are all valid.
+"""
+import unittest
+from idl_parser import parser, type as idl_type
+from idl_parser.exception import InvalidIDLSyntaxError
+
+
+INVALID_IDLS = {
+    'enum without "{"': 'enum E A, B };',
+    'enum without "}"': 'enum E { A, B ;',
+    'enum without ";" after "}"': 'enum E { A } struct S { long x; };',
+    'union without "switch"': 'union U long',
+    'union without "("': 'union U switch long',
+    'union without ")"': 'union U switch ( long ] {',
+    'union without "{"': 'union U switch ( long ) case',
+    'union without "}"': 'union U switch ( long ) { case 1 : long a ;',
+    'union without ";" after "}"': 'union U switch ( long ) { case 1 : long a ; } struct',
+}
+
+
+class SyntaxErrorTest(unittest.TestCase):
+
+    def test_invalid_enum_and_union(self):
+        for label, idl in INVALID_IDLS.items():
+            with self.subTest(label):
+                with self.assertRaises(InvalidIDLSyntaxError):
+                    parser.IDLParser().load(idl)
+
+    def test_invalid_sequence_and_array_names(self):
+        g = parser.IDLParser().load('module M { struct S { long x; }; };')
+        with self.assertRaises(InvalidIDLSyntaxError):
+            idl_type.IDLSequence('long', g)
+        with self.assertRaises(InvalidIDLSyntaxError):
+            idl_type.IDLArray('long', g)
+
+
+if __name__ == '__main__':
+    unittest.main()

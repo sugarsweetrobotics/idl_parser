@@ -122,7 +122,7 @@ class IDLUnion(node.IDLNode):
         ln, fn, token = token_buf.pop()
         if token != '{':
             if self._verbose: sys.stdout.write('# Error. No kokka "{".\n')
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
         while True:
@@ -130,13 +130,13 @@ class IDLUnion(node.IDLNode):
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
-                raise InvalidIDLSyntaxError()
+                raise exception.InvalidIDLSyntaxError()
 
             elif token == '}':
                 ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
-                    raise InvalidIDLSyntaxError()
+                    raise exception.InvalidIDLSyntaxError()
                 break
 
             if token == ';':
@@ -151,17 +151,17 @@ class IDLUnion(node.IDLNode):
         ln, fn, token = token_buf.pop()
         if token != 'switch':
             if self._verbose: sys.stdout.write('# Error. Union definition missing "switch".\n')
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
         ln, fn, token = token_buf.pop()
         if token != '(':
             if self._verbose: sys.stdout.write('# Error. No "(".\n')
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
         ln, fn, token = token_buf.pop()
         self._descriminator_kind = token
         ln, fn, token = token_buf.pop()
         if token != ')':
             if self._verbose: sys.stdout.write('# Error. No ")".\n')
-            raise InvalidIDLSyntaxError()
+            raise exception.InvalidIDLSyntaxError()
 
     def _parse_block(self, blocks):
         v = IDLUnionMember(self)
