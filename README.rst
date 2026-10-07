@@ -79,6 +79,7 @@ More examples are in the ``examples`` folder of the repository:
 - ``example.py``: interfaces, typedefs, unions and structs
 - ``union_example.py``: unions (discriminator kinds, case and ``default`` labels, member types)
 - ``annotation_example.py``: IDL 4 annotations (``@key``, ``@range``, ...) and struct keys
+- ``scoped_name_example.py``: same-named types in several modules (relative ``X``, ``C::X`` and absolute ``::B::X`` names)
 
 https://github.com/sugarsweetrobotics/idl_parser/tree/main/examples
 

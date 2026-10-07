@@ -50,7 +50,8 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
 
     def test_examples_exist(self):
         names = [os.path.basename(p) for p in example_scripts()]
-        for name in ('example.py', 'union_example.py', 'annotation_example.py'):
+        for name in ('example.py', 'union_example.py', 'annotation_example.py',
+                     'scoped_name_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -172,6 +173,45 @@ class AnnotationExampleTest(unittest.TestCase):
     def test_to_dic(self):
         self.assertIn('"name": "extensibility"', self.text)
         self.assertIn('"APPENDABLE"', self.text)
+
+
+class ScopedNameExampleTest(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('scoped_name_example')
+
+    def assertResolved(self, label, written, definition):
+        for line in self.text.splitlines():
+            if line.split() == [*label.split(), written, '->', definition]:
+                return
+        self.fail('no line for %s %s -> %s in output:\n%s' % (label, written, definition, self.text))
+
+    def test_relative_names(self):
+        self.assertResolved('current() returns', 'Point', 'robot::arm::Point')
+        self.assertResolved('move_joint(p)', 'robot::Point', 'robot::Point')
+        self.assertResolved('move_to(p)', 'geometry::Point', 'geometry::Point')
+        self.assertResolved('move_to_3d(p)', 'geometry::d3::Point', 'geometry::d3::Point')
+
+    def test_absolute_names(self):
+        self.assertResolved('mark(p)', '::Point', '::Point')
+        self.assertResolved('move_arm(p)', '::robot::arm::Point', 'robot::arm::Point')
+
+    def test_struct_members(self):
+        self.assertIn('  joint                  -> robot::Point', self.text)
+        self.assertIn('  arm                    -> robot::arm::Point', self.text)
+        self.assertIn('  path                   -> sequence of geometry::Point', self.text)
+        self.assertIn('  marker                 -> ::Point', self.text)
+
+    def test_typedef_and_names(self):
+        self.assertIn('typedef geometry::Origin -> geometry::Point', self.text)
+        self.assertIn('name: Point, ref_name: geometry::Point, full path: geometry::Point', self.text)
+
+    def test_find_types(self):
+        self.assertIn("scope=robot::arm): ['robot::arm::Point']", self.text)
+        self.assertIn("scope=robot):      ['robot::Point']", self.text)
+        self.assertIn("(no scope):        ['::Point', 'geometry::Point', 'geometry::d3::Point', "
+                      "'robot::Point', 'robot::arm::Point']", self.text)
 
 
 if __name__ == '__main__':
