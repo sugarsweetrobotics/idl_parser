@@ -138,6 +138,12 @@ class IDLInterface(node.IDLNode):
         self._verbose = True
         self._methods = []
         self._inheritances = []
+        self._forward = False
+
+    @property
+    def is_forward(self):
+        """True if this node came from a forward declaration ("interface A;")."""
+        return self._forward
 
     @property
     def inheritances(self):
@@ -163,15 +169,23 @@ class IDLInterface(node.IDLNode):
         return dic
 
     def _all_interfaces(self):
-        """All interfaces defined so far, keyed by full path without a leading '::'."""
-        found = {}
+        """Interfaces seen so far, keyed by full path without a leading '::'.
+
+        Returns (defined, forward): defined maps paths to IDLInterface objects,
+        forward is the set of paths that have only been forward-declared.
+        """
+        defined = {}
+        forward = set()
         def walk(m):
+            prefix = m.full_path.lstrip(':')
             for i in m.interfaces:
-                found[i.full_path.lstrip(':')] = i
+                defined[i.full_path.lstrip(':')] = i
+            for n in m.forward_interfaces:
+                forward.add(prefix + sep + n if prefix else n)
             for sub in m.modules:
                 walk(sub)
         walk(self.root_node)
-        return found
+        return defined, forward - set(defined)
 
     def _resolve_inheritance(self, name, ln, fn):
         """Resolve a base interface name following the OMG IDL scoping rules.
@@ -180,7 +194,7 @@ class IDLInterface(node.IDLNode):
         scoped) name is looked up in the enclosing scope first and then in
         each outer scope in turn, so the innermost declaration wins.
         """
-        interfaces = self._all_interfaces()
+        interfaces, forward = self._all_interfaces()
         if name.startswith(sep):
             candidates = [name[len(sep):]]
         else:
@@ -193,13 +207,22 @@ class IDLInterface(node.IDLNode):
         for c in candidates:
             if c in interfaces:
                 return interfaces[c]
-        msg = 'Can not find "%s" interface which is generalization of "%s"' % (name, self.name)
+            if c in forward:
+                # OMG IDL: inheriting from an interface whose definition has
+                # not been seen yet (only forward-declared) is an error.
+                msg = '"%s" is only forward-declared; its definition must appear before "%s" inherits from it' % (name, self.name)
+                if self._verbose: sys.stdout.write('# Error. %s\n' % msg)
+                raise exception.IDLCanNotFindException(ln, fn, msg)
+        msg ='Can not find "%s" interface which is generalization of "%s"' % (name, self.name)
         if self._verbose: sys.stdout.write('# Error. %s\n' % msg)
         raise exception.IDLCanNotFindException(ln, fn, msg)
 
     def parse_tokens(self, token_buf, filepath=None):
         self._filepath=filepath
         ln, fn, token = token_buf.pop()
+        if token == ';': # Forward declaration (interface A;)
+            self._forward = True
+            return
         pending_name = None
         if token is not None and token.startswith(':') and not token.startswith(sep) and token != ':':
             # "B :A" reaches here as the single token ":A"
