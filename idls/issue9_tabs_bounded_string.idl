@@ -1,0 +1,25 @@
+module Test {
+struct arrays_8dd2d413 {
+	  long	TestID;
+	  string<8>	private_revCode; //private
+	  double	private_sndStamp; //private
+	  double	private_rcvStamp; //private
+	  long		private_seqNum; //private
+	  long		private_origin; //private
+	  long		private_host; //private
+	  boolean	boolean0[5];
+	  octet	byte0[5];
+	  string	char0;
+	  short	short0[5];
+	  long	int0[5];
+	  long	long0[5];
+	  long long	longLong0[5];
+	  octet	octet0[5];
+	  unsigned short	unsignedShort0[5];
+	  unsigned long	unsignedInt0[5];
+	  unsigned long	unsignedLong0[5];
+	  float	float0[5];
+	  double	double0[5];
+	};
+#pragma keylist arrays_8dd2d413 TestID
+};

@@ -1,0 +1,28 @@
+struct logevent_heartbeat_407c55f4 {
+	  long	WatcherID;
+	  string<8>	private_revCode; //private
+	  double	private_sndStamp; //private
+	  double	private_rcvStamp; //private
+	  long		private_seqNum; //private
+	  long		private_origin; //private
+	  long		private_host; //private
+	  boolean	heartbeat;
+	  long	priority;
+	};
+#pragma keylist logevent_heartbeat_407c55f4 WatcherID
+		const long Watcher_shared_AlarmSeverity_None=1;
+		const long Watcher_shared_AlarmSeverity_Warning=2;
+		const long Watcher_shared_AlarmSeverity_Serious=3;
+		const long Watcher_shared_AlarmSeverity_Critical=4;
+struct logevent_logLevel_df5f83b3 {
+	  long	WatcherID;
+	  string<8>	private_revCode; //private
+	  double	private_sndStamp; //private
+	  double	private_rcvStamp; //private
+	  long		private_seqNum; //private
+	  long		private_origin; //private
+	  long		private_host; //private
+	  long	level;
+	  long	priority;
+	};
+#pragma keylist logevent_logLevel_df5f83b3 WatcherID

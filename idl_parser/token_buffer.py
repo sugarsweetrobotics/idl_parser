@@ -6,7 +6,7 @@ class TokenBuffer():
         self._tokens = []
         self._token_offset = 0
         for line_number, file_name, line in lines:
-            ts = line.split(' ')
+            ts = line.split()
             for t in ts:
                 if len(t.strip()) != 0:
                     self._tokens.append((line_number, file_name, t.strip()))
