@@ -70,6 +70,16 @@ for m in timedDoubleSeq.members:
   print('  name:', m.name)
   print('  type:', m.type.name)
 ```
+More examples are in the [examples](examples/) folder:
+
+| File | Shows |
+|---|---|
+| [`example.py`](examples/example.py) | interfaces, typedefs, unions and structs |
+| [`union_example.py`](examples/union_example.py) | unions: discriminator kinds, case labels, member types |
+| [`annotation_example.py`](examples/annotation_example.py) | IDL 4 annotations (`@key`, `@range`, ...) and struct keys |
+
+Run them with e.g. `python examples/union_example.py` (in a source checkout no install is needed).
+
 ## How to install
     sudo pip install idl_parser
 
