@@ -3,6 +3,7 @@
 Shows how to get
 - the discriminator type of a union (enum, integer, boolean),
 - which case labels select each member (including several labels for one member),
+- the ``default:`` member (``is_default`` / ``default_member``),
 - each member's type: primitive, struct, typedef of a sequence, or array,
 - a union used as a struct member,
 - the union as a plain dict (``to_dic``).
@@ -55,6 +56,17 @@ module shapes {
       long long integer_value;
     case 2:
       double matrix[3][3];
+    default:
+      PointSeq raw_points;
+  };
+
+  // "default" can share a member with "case" labels.
+  union Reading switch (ShapeKind) {
+    case CIRCLE:
+      double radius;
+    case POINT:
+    default:
+      Point2D position;
   };
 
   // Discriminator is boolean.
@@ -96,8 +108,12 @@ def describe_type(t):
 def print_union(union):
     print('union %s switch (%s)' % (union.full_path, union.descriminator_kind))
     for member in union.members:
-        labels = ', '.join(member.descriminator_value_associations)
-        print('  case %s -> %s: %s' % (labels, member.name, describe_type(member.type)))
+        labels = []
+        if member.descriminator_value_associations:
+            labels.append('case ' + ', '.join(member.descriminator_value_associations))
+        if member.is_default:
+            labels.append('default')
+        print('  %s -> %s: %s' % (' / '.join(labels), member.name, describe_type(member.type)))
 
 
 def main():
@@ -122,6 +138,9 @@ def main():
     for label in ('-1', '0', '1', '2'):
         selected = [m.name for m in value.members if label in m.descriminator_value_associations]
         print('Value with discriminator %s holds: %s' % (label, selected[0]))
+    # Any other discriminator value selects the default member (if there is one).
+    print('Value with any other discriminator holds: %s' % value.default_member.name)
+    print('Shape default member:', shape.default_member)
     print()
 
     # The discriminator kind is a name; resolve it to its enum to list the labels.
