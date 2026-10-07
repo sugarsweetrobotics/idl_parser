@@ -13,7 +13,10 @@ primitive = [
     'float',
     'double',
     'string',
-    'wstring']
+    'wstring',
+    # IDL 4.2 explicitly-sized integer types (issue #18)
+    'int8', 'int16', 'int32', 'int64',
+    'uint8', 'uint16', 'uint32', 'uint64']
 
 # Bounded strings such as 'string<8>' or 'wstring< MAX_LEN >' (issue #9).
 _bounded_string = re.compile(r'^(w?string)\s*<\s*([A-Za-z0-9_:]+)\s*>$')
