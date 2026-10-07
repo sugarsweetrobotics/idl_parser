@@ -150,6 +150,23 @@ class IDLNode(object):
         return dic
 
     @property
+    def obj(self):
+        """The definition this node stands for: the node itself.
+
+        A member's ``type`` is either an :class:`~idl_parser.type.IDLBasicType`
+        (an unresolved name, whose ``obj`` looks up the definition) or the
+        definition node itself (``IDLStruct``, ``IDLEnum``, ``IDLTypedef`` ...).
+        Giving every node ``obj`` lets callers write ``member.type.obj`` in
+        both cases (issues #30, #43).
+        """
+        return self
+
+    def __str__(self):
+        """The name, so that ``str(member.type)`` is a type name such as ``'T'``
+        whether or not the type has been resolved to its definition."""
+        return self.name
+
+    @property
     def filepath(self):
         return self._filepath
 

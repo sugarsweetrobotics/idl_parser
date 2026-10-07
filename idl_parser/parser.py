@@ -452,12 +452,21 @@ class IDLParser():
             code = code + '0'
         elif typ.is_typedef:
             code = code + self.generate_constructor_python(typ.type)
+        elif typ.is_enum:
+            # IDL enumerators belong to the scope enclosing the enum
+            # (module M { enum E { A, B }; } -> M::A), as in omniORBpy
+            if typ.values:
+                scope = typ.parent.full_path
+                code = code + (scope + '::' if scope else '') + typ.values[0].name
+            else:
+                code = code + '0'
+        elif typ.is_bitmask or typ.is_bitset:
+            code = code + '0'
         elif typ.is_struct:
-            code = code + typ.full_path + '('
+            code = code + typ.full_path.lstrip(':') + '('  # '::T' at global scope -> 'T'
             for m in typ.members:
-                if m.type.is_primitive:
-                    code = code + self.generate_constructor_python(m.type) + ', '
-                else:
-                    code = code + self.generate_constructor_python(m.type.obj) + ', '
-            code = code[:-2] + ')'
+                code = code + self.generate_constructor_python(m.type.obj) + ', '
+            if typ.members:
+                code = code[:-2]
+            code = code + ')'
         return code.replace('::', '.')
