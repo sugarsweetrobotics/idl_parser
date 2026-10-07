@@ -15,6 +15,16 @@ class IDLMember(node.IDLNode):
     def full_path(self):
         return self.parent.full_path + self.sep + self.name
 
+    @property
+    def is_key(self):
+        """True if annotated with ``@key`` or ``@key(TRUE)`` (not ``@key(FALSE)``).
+        ``#pragma keylist`` is not considered; see :attr:`IDLStruct.keys`."""
+        a = self.annotation_by_name('key')
+        if a is None:
+            return False
+        value = a.value
+        return value is None or value.strip().upper() != 'FALSE'
+
     def parse_blocks(self, blocks, filepath=None):
         self._filepath = filepath
         annotations, blocks = node.parse_annotations(blocks)
@@ -87,17 +97,34 @@ class IDLStruct(node.IDLNode):
 
     @property
     def keys(self):
-        """Key member names given by ``#pragma keylist`` (e.g. ``['TestID']``).
+        """Key member names (e.g. ``['TestID']``), from ``#pragma keylist`` and ``@key``.
 
-        An empty list when the struct has no keylist, or a keylist without
-        keys (``#pragma keylist T``). Use :attr:`has_keylist` to tell these apart.
+        Keys of ``#pragma keylist`` come first in their order, followed by the
+        members annotated with ``@key`` (or ``@key(TRUE)``) that the keylist
+        does not name, in member order. When the two disagree, the keylist
+        wins: a member named by the keylist is a key even with ``@key(FALSE)``.
+
+        An empty list when the struct has no keys, or a keylist without keys
+        (``#pragma keylist T``). Use :attr:`has_keylist` to tell these apart.
         """
-        return list(self._keys) if self._keys is not None else []
+        keys = list(self._keys) if self._keys is not None else []
+        return keys + [k for k in self.annotated_keys if k not in keys]
 
     @property
     def has_keylist(self):
-        """True if a ``#pragma keylist`` names this struct."""
-        return self._keys is not None
+        """True if a ``#pragma keylist`` names this struct, or a member has ``@key``
+        (``@key(FALSE)`` alone does not count)."""
+        return self._keys is not None or len(self.annotated_keys) > 0
+
+    @property
+    def pragma_keys(self):
+        """Key member names given by ``#pragma keylist`` only, or None without a keylist."""
+        return list(self._keys) if self._keys is not None else None
+
+    @property
+    def annotated_keys(self):
+        """Names of the members annotated with ``@key`` or ``@key(TRUE)``, in member order."""
+        return [m.name for m in self._members if m.is_key]
 
     def _set_keys(self, keys):
         self._keys = list(keys)

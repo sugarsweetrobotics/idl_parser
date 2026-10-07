@@ -8,7 +8,8 @@ Each one is kept as an :class:`IDLPragma` and is available from
 ``#pragma keylist <type> [<member> ...]`` (OpenSplice DDS) is interpreted:
 the named struct is looked up after the whole input has been parsed, so the
 struct may be defined before or after the pragma, and its key members are
-available as :attr:`idl_parser.struct.IDLStruct.keys`.  Other pragmas
+available as :attr:`idl_parser.struct.IDLStruct.keys` (combined with members
+annotated with ``@key``; see there).  Other pragmas
 (``#pragma prefix``, ``#pragma once``, vendor-specific ones, ...) are only
 recorded.
 """
