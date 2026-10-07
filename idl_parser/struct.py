@@ -80,7 +80,25 @@ class IDLStruct(node.IDLNode):
         super(IDLStruct, self).__init__('IDLStruct', name.strip(), parent)
         self._verbose = False #True
         self._members = []
+        self._keys = None
         self.sep = '::'
+
+    @property
+    def keys(self):
+        """Key member names given by ``#pragma keylist`` (e.g. ``['TestID']``).
+
+        An empty list when the struct has no keylist, or a keylist without
+        keys (``#pragma keylist T``). Use :attr:`has_keylist` to tell these apart.
+        """
+        return list(self._keys) if self._keys is not None else []
+
+    @property
+    def has_keylist(self):
+        """True if a ``#pragma keylist`` names this struct."""
+        return self._keys is not None
+
+    def _set_keys(self, keys):
+        self._keys = list(keys)
 
     @property
     def full_path(self):
@@ -102,6 +120,8 @@ class IDLStruct(node.IDLNode):
         dic = { 'name' : self.name,
                 'classname' : self.classname,
                 'members' : [v.to_dic() for v in self.members] }
+        if self.has_keylist:
+            dic['keys'] = self.keys
         return dic
 
     def parse_tokens(self, token_buf, filepath=None):

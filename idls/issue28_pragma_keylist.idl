@@ -1,0 +1,45 @@
+// Regression IDL for issues #10 / #28 (#pragma handling).
+#pragma prefix "example.org"
+
+// keylist written before its struct
+#pragma keylist M::Later id
+
+module M {
+  struct A {
+    long id;
+#pragma keylist A id
+    long x;
+  };
+
+  struct Multi {
+    long a;
+    string b;
+    double c;
+  };
+#pragma keylist Multi a b
+
+  struct NoKey {
+    long v;
+  };
+#pragma keylist NoKey
+
+  struct Plain {
+    long v;
+  };
+
+  module Inner {
+    struct A {
+      long inner_id;
+    };
+#pragma keylist A inner_id
+  };
+
+  struct Later {
+    long id;
+    long y;
+  };
+};
+
+// pragma arguments containing IDL keywords at file level
+#pragma vendor struct module interface { } ;
+#pragma keylist ::M::Plain v

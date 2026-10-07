@@ -13,6 +13,7 @@ API Reference
    idl_parser.union
    idl_parser.typedef
    idl_parser.const
+   idl_parser.pragma
    idl_parser.type
    idl_parser.node
    idl_parser.token_buffer

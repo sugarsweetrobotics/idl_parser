@@ -1,7 +1,7 @@
 import os, sys
 import re
 
-from . import  module, token_buffer
+from . import  module, token_buffer, pragma as idl_pragma
 from . import type as idl_type
 from . import exception 
 
@@ -31,10 +31,22 @@ class IDLParser():
         self._dirs = idl_dirs
         self._verbose = verbose
         self._parsed_files = []
+        self._pragmas = []
 
     @property
     def global_module(self):
         return self._global_module
+
+    @property
+    def pragmas(self):
+        """All ``#pragma`` directives found so far, as :class:`~idl_parser.pragma.IDLPragma`.
+
+        ``#pragma`` lines are removed before parsing, so they never affect the
+        parse result. ``#pragma keylist`` entries are applied to their struct
+        (see :attr:`idl_parser.struct.IDLStruct.keys`); a keylist whose struct
+        has not been found has ``target`` set to ``None``.
+        """
+        return list(self._pragmas)
 
     def is_primitive(self, name, except_string=False):
         if except_string:
@@ -114,9 +126,31 @@ class IDLParser():
         lines = self._clear_comments(lines)
         lines = self._paste_include(lines)
         lines = self._clear_ifdef(lines)
+        lines = self._extract_pragmas(lines)
 
         self._token_buf = token_buffer.TokenBuffer(lines)
         self._global_module.parse_tokens(self._token_buf, filepath=filepath)
+        self._apply_pragmas()
+
+    def _extract_pragmas(self, lines):
+        """Remove ``#pragma`` lines and remember them (issues #10 / #28)."""
+        lines, pragmas = idl_pragma.extract_pragmas(lines)
+        # An included file is parsed on its own and also pasted into the
+        # including file, so the same pragma can be seen twice.
+        known = set((p.filepath, p.line_number) for p in self._pragmas)
+        for p in pragmas:
+            key = (p.filepath, p.line_number)
+            if p.filepath is not None and key in known:
+                continue
+            known.add(key)
+            self._pragmas.append(p)
+        return lines
+
+    def _apply_pragmas(self):
+        # Retried after every parse so that a keylist may come before the
+        # struct it names, even when the struct is in a file parsed later.
+        for p in self._pragmas:
+            p._resolve(self._global_module)
 
     def includes(self, idl_path):
         included_filepaths = []
