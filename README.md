@@ -87,5 +87,5 @@ Run them with e.g. `python examples/union_example.py` (in a source checkout no i
 * author: Yuki Suga
 * copyright: Yuki Suga
 * contact: please open an issue on [GitHub Issues](https://github.com/sugarsweetrobotics/idl_parser/issues)
-* license: GPLv3
+* license: GPLv3 or later (GPL-3.0-or-later, see [LICENSE](LICENSE))
 
