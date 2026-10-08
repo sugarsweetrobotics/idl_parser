@@ -1,0 +1,23 @@
+{
+  "python.testing.unittestEnabled": true,
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "${workspaceFolder}/tests",
+    "-p",
+    "*_test.py"
+  ],
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.diagnosticMode": "workspace",
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true,
+  "editor.rulers": [
+    88
+  ],
+  "terminal.integrated.env.osx": {
+    "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"
+  }
+}
