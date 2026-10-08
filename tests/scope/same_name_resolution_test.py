@@ -36,12 +36,20 @@ NESTED = ('module A { struct X { long a; }; module C { struct X { long ac; }; };
 
 
 class TwoModulesTestFunctions(unittest.TestCase):
-    """A::X and B::X, referenced from module B."""
+    """Category: Modules, scopes and type name resolution / カテゴリ: モジュール・スコープ・型名解決
+
+    A::X and B::X, referenced from module B (issue #72).
+    module B から参照する A::X と B::X(#72)。
+    """
 
     cases = [('X', 'B::X'), ('B::X', 'B::X'), ('::B::X', 'B::X'),
              ('A::X', 'A::X'), ('::A::X', 'A::X')]
 
     def test_method_argument_and_return(self):
+        """With A::X and B::X, X / B::X / ::B::X in method arguments and return values resolve correctly.
+
+        A::X と B::X がある時、メソッド引数・戻り値の X/B::X/::B::X が正しく解決される。
+        """
         for ref, expected in self.cases:
             with self.subTest(ref=ref):
                 r = load(AB + 'interface Y { %s f(in %s x); }; };' % (ref, ref))
@@ -50,6 +58,10 @@ class TwoModulesTestFunctions(unittest.TestCase):
                 self.assertEqual(path(m.returns.obj), expected)
 
     def test_struct_member(self):
+        """Resolution of struct members, arrays and sequences when types share a name.
+
+        同名型がある時の struct メンバー・配列・sequence の解決。
+        """
         for ref, expected in self.cases:
             with self.subTest(ref=ref):
                 r = load(AB + 'struct S { %s m; %s a[2]; sequence<%s> s; }; };' % (ref, ref, ref))
@@ -59,6 +71,10 @@ class TwoModulesTestFunctions(unittest.TestCase):
                 self.assertEqual(path(s.members[2].type.inner_type.obj), expected)
 
     def test_union_member(self):
+        """Resolution of union members when types share a name.
+
+        同名型がある時の union メンバーの解決。
+        """
         for ref, expected in self.cases:
             with self.subTest(ref=ref):
                 r = load(AB + 'union U switch (long) { case 1: %s x; }; };' % ref)
@@ -66,6 +82,10 @@ class TwoModulesTestFunctions(unittest.TestCase):
                 self.assertEqual(path(u.members[0].type), expected)
 
     def test_typedef(self):
+        """Resolution of typedefs when types share a name.
+
+        同名型がある時の typedef の解決。
+        """
         for ref, expected in self.cases:
             with self.subTest(ref=ref):
                 r = load(AB + 'typedef %s T; };' % ref)
@@ -73,6 +93,10 @@ class TwoModulesTestFunctions(unittest.TestCase):
                 self.assertEqual(path(t.type), expected)
 
     def test_typedef_resolved_in_its_own_scope(self):
+        """The type of a typedef is resolved in the typedef's own scope.
+
+        typedef の中身は typedef 自身のスコープで解決される。
+        """
         # T is defined in A as X, so it is A::X even when used from B
         r = load('module A { struct X { long a; }; typedef X T; }; '
                  'module B { struct X { long b; }; struct S { A::T t; }; };')
@@ -81,6 +105,10 @@ class TwoModulesTestFunctions(unittest.TestCase):
         self.assertEqual(path(t.type), 'A::X')
 
     def test_name_is_kept_short(self):
+        """A type's name is the short name; ref_name is the name as written.
+
+        型の name は短い名前、ref_name は書いた名前のまま。
+        """
         # The name of a type is still the name of the definition
         r = load(AB + 'interface Y { void f(in A::X x); }; };')
         t = r.module_by_name('B').interface_by_name('Y').methods[0].arguments[0].type
@@ -89,9 +117,17 @@ class TwoModulesTestFunctions(unittest.TestCase):
 
 
 class NestedModulesTestFunctions(unittest.TestCase):
-    """A::X, A::C::X, B::X and B::C::X, referenced from B::C::D::Y."""
+    """Category: Modules, scopes and type name resolution / カテゴリ: モジュール・スコープ・型名解決
+
+    A::X, A::C::X, B::X and B::C::X, referenced from B::C::D::Y (issue #72).
+    B::C::D::Y から参照する A::X, A::C::X, B::X, B::C::X(#72)。
+    """
 
     def test_references(self):
+        """In nested modules, every combination of relative and absolute names resolves correctly.
+
+        入れ子モジュールで相対名・絶対名の全組み合わせが正しく解決される。
+        """
         cases = [('X', 'B::C::X'), ('C::X', 'B::C::X'),
                  ('B::X', 'B::X'), ('B::C::X', 'B::C::X'),
                  ('A::X', 'A::X'), ('A::C::X', 'A::C::X'),
@@ -105,6 +141,10 @@ class NestedModulesTestFunctions(unittest.TestCase):
                 self.assertEqual(path(y.methods[0].returns.obj), expected)
 
     def test_outer_scope(self):
+        """A name not found in the inner scope is looked up in the outer scopes.
+
+        内側にない名前は外側スコープから探す。
+        """
         # Not found in B::C, so X is B::X
         r = load('struct X { long g; }; module A { struct X { long a; }; }; '
                  'module B { struct X { long b; }; module C { struct S { X m; }; }; };')
@@ -112,6 +152,10 @@ class NestedModulesTestFunctions(unittest.TestCase):
         self.assertEqual(path(s.members[0].type), 'B::X')
 
     def test_global_scope(self):
+        """A type at global scope can be referenced as X or ::X.
+
+        グローバルスコープの型を X/::X で参照できる。
+        """
         r = load('struct X { long g; }; module A { struct X { long a; }; }; '
                  'module B { struct S { X m; ::X g; }; };')
         s = r.module_by_name('B').struct_by_name('S')
@@ -119,14 +163,27 @@ class NestedModulesTestFunctions(unittest.TestCase):
         self.assertEqual(path(s.members[1].type), 'X')
 
     def test_absolute_name_is_not_relative(self):
+        """::C::X is not resolved as a relative name (error).
+
+        ::C::X は相対名として解決しない(エラー)。
+        """
         # '::C::X' is not B::C::X
         with self.assertRaises(exception.InvalidDataTypeException):
             load('module B { module C { struct X { long bc; }; }; struct S { ::C::X m; }; };')
 
 
 class FindTypesTestFunctions(unittest.TestCase):
+    """Category: Modules, scopes and type name resolution / カテゴリ: モジュール・スコープ・型名解決
+
+    find_types() with and without scope (issue #72).
+    scope 指定あり/なしの find_types()(#72)。
+    """
 
     def test_find_types_with_scope(self):
+        """find_types(scope=) returns the one type for that scope.
+
+        find_types(scope=) がスコープに応じた1件を返す。
+        """
         r = load(AB + '};')
         b = r.module_by_name('B')
         self.assertEqual([path(t) for t in r.find_types('X', scope=b)], ['B::X'])
@@ -134,6 +191,10 @@ class FindTypesTestFunctions(unittest.TestCase):
         self.assertEqual([path(t) for t in r.find_types('::A::X', scope=b)], ['A::X'])
 
     def test_find_types_without_scope(self):
+        """find_types() without scope returns every type with that name.
+
+        find_types() を scope なしで呼ぶと同名型を全部返す。
+        """
         # Without a scope, every definition with the name is returned as before
         r = load(AB + '};')
         self.assertEqual(sorted(path(t) for t in r.find_types('X')), ['A::X', 'B::X'])

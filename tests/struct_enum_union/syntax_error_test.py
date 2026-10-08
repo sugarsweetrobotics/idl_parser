@@ -23,8 +23,17 @@ INVALID_IDLS = {
 
 
 class SyntaxErrorTest(unittest.TestCase):
+    """Category: Structs, enums and unions / カテゴリ: struct・enum・union
+
+    Malformed enum / union definitions raise InvalidIDLSyntaxError.
+    不正な enum/union 定義は InvalidIDLSyntaxError になる。
+    """
 
     def test_invalid_enum_and_union(self):
+        """Malformed enum / union definitions raise InvalidIDLSyntaxError (not NameError).
+
+        不正な enum/union 定義で(NameError でなく)InvalidIDLSyntaxError。
+        """
         for label, idl in INVALID_IDLS.items():
             with self.subTest(label):
                 with self.assertRaises(InvalidIDLSyntaxError):

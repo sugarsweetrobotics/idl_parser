@@ -30,8 +30,17 @@ UNSUPPORTED = {
 
 
 class Issue39Test(unittest.TestCase):
+    """Category: Modules, scopes and type name resolution / カテゴリ: モジュール・スコープ・型名解決
+
+    An unsupported "{ ... }" block does not end the enclosing module (issue #39).
+    未対応の "{ ... }" ブロックで外側の module が閉じない(#39)。
+    """
 
     def test_following_definitions_keep_their_scope(self):
+        """Definitions after an unsupported "{ }" block (exception etc.) stay in their module.
+
+        未対応の { } ブロック(exception など)の後の定義がモジュールから外れない。
+        """
         for label, decl in UNSUPPORTED.items():
             with self.subTest(label):
                 g = load('module M {\n  struct A { long a; };\n  ' + decl + TRAILER)
@@ -44,11 +53,19 @@ class Issue39Test(unittest.TestCase):
                 self.assertEqual([s.full_path for s in n.structs], ['N::T'])
 
     def test_unsupported_block_at_global_scope(self):
+        """Scopes stay correct after a "{ }" block at global scope.
+
+        グローバルスコープの { } ブロックの後も正しいスコープになる。
+        """
         g = load('bitmask F { X, Y };\nstruct S { long x; };\nmodule N { struct T { long x; }; };')
         self.assertEqual([s.full_path for s in g.structs], ['::S'])
         self.assertEqual([m.name for m in g.modules], ['N'])
 
     def test_unclosed_unsupported_block_raises(self):
+        """An unclosed "{ }" block raises InvalidIDLSyntaxError.
+
+        閉じていない { } ブロックで InvalidIDLSyntaxError。
+        """
         with self.assertRaises(InvalidIDLSyntaxError):
             load('module M { bitmask F { X, Y ;\n struct S { long x; }; ')
 

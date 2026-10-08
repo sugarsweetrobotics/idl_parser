@@ -23,6 +23,11 @@ VALUES = [{'A': 0}, {'B': 1}]
 
 
 class EnumMemberSimpleDicTest(unittest.TestCase):
+    """Category: Dictionary output and code generation / カテゴリ: 辞書出力・コード生成
+
+    to_simple_dic(recursive=True) expands enum members (issue #60).
+    to_simple_dic(recursive=True) が enum メンバーを展開する(#60)。
+    """
 
     def setUp(self):
         self.m = parser.IDLParser().load(IDL).module_by_name('M')
@@ -31,32 +36,64 @@ class EnumMemberSimpleDicTest(unittest.TestCase):
         return self.m.struct_by_name('S').to_simple_dic(recursive=True)['struct S']
 
     def test_direct_member(self):
+        """to_simple_dic(recursive=True): an enum member is expanded with its values.
+
+        to_simple_dic(recursive=True): enum 型メンバーが値付きで展開される。
+        """
         self.assertEqual(self._members()[0], {'E e': VALUES})
 
     def test_sequence_of_enum(self):
+        """to_simple_dic(recursive=True): a sequence<enum> member.
+
+        to_simple_dic(recursive=True): sequence<enum> メンバー。
+        """
         self.assertEqual(self._members()[1], {'sequence<E> se': {'sequence<E>': VALUES}})
 
     def test_typedef_of_enum(self):
+        """to_simple_dic(recursive=True): a member whose type is a typedef of an enum.
+
+        to_simple_dic(recursive=True): enum の typedef メンバー。
+        """
         self.assertEqual(self._members()[2], {'EAlias ea': {'typedef E EAlias': VALUES}})
 
     def test_typedef_of_sequence_of_enum(self):
+        """to_simple_dic(recursive=True): a member whose type is a typedef of sequence<enum>.
+
+        to_simple_dic(recursive=True): sequence<enum> の typedef メンバー。
+        """
         self.assertEqual(self._members()[3],
                          {'ESeq es': {'typedef sequence<E> ESeq': {'sequence<E>': VALUES}}})
 
     def test_same_shape_as_bitmask(self):
+        """to_simple_dic(recursive=True): enums and bitmasks expand to the same shape.
+
+        to_simple_dic(recursive=True): enum と bitmask の展開形が揃っている。
+        """
         self.assertEqual(self._members()[4], {'F f': [{'F1': 0}, {'F2': 1}]})
 
     def test_union_member(self):
+        """to_simple_dic(recursive=True): an enum member of a union.
+
+        to_simple_dic(recursive=True): union の enum 型メンバー。
+        """
         self.assertEqual(self.m.union_by_name('U').to_simple_dic(recursive=True),
                          {'union U': [{'E ue': VALUES}, 'long l']})
 
     def test_enum_itself_unchanged(self):
+        """to_simple_dic() of the enum itself is unchanged.
+
+        enum 自体の to_simple_dic() は従来どおり。
+        """
         e = self.m.enum_by_name('E')
         self.assertEqual(e.to_simple_dic(), {'enum E': VALUES})
         self.assertEqual(e.to_simple_dic(member_only=True), VALUES)
         self.assertEqual(e.to_simple_dic(quiet=True), 'enum E')
 
     def test_non_recursive_unchanged(self):
+        """Output with recursive=False is unchanged.
+
+        recursive=False の出力は従来どおり。
+        """
         self.assertEqual(self.m.struct_by_name('S').to_simple_dic()['struct S'][0], {'e': 'E'})
 
 

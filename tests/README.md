@@ -44,3 +44,24 @@ python -m unittest tests.scope.same_name_resolution_test
 
 New test files must end in `_test.py` and go in the directory that matches
 what they check.
+
+## Docstrings
+
+Every test class and test method has a docstring in English and Japanese.
+The first line is the English summary; `unittest -v` prints it next to the
+test name.
+
+```python
+class UnionDefaultTest(unittest.TestCase):
+    """Category: Structs, enums and unions / カテゴリ: struct・enum・union
+
+    Union members with a "default:" label (issue #48).
+    "default:" ラベルを持つ union メンバー(#48)。
+    """
+
+    def test_default_only(self):
+        """A union with only a default member.
+
+        default メンバーだけの union。
+        """
+```

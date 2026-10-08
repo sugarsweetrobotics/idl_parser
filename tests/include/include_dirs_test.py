@@ -8,10 +8,20 @@ IDL_DIR = support.IDL_DIR
 
 
 class MultiModuleTestFunctions(unittest.TestCase):
+    """Category: Include and file loading / カテゴリ: include・ファイル読込
+
+    #include resolved through include_dirs.
+    include_dirs を使った #include の解決。
+    """
+
     def setUp(self):
         pass
 
     def test_include(self):
+        """Modules and structs of an #included IDL are read (with include_dirs).
+
+        #include した IDL の module/struct が読める(include_dirs 指定)。
+        """
         parser_ = parser.IDLParser()
         with open(os.path.join(IDL_DIR, 'including_idl.idl'), 'r') as idlf:
             m = parser_.load(idlf.read(), include_dirs=[IDL_DIR])

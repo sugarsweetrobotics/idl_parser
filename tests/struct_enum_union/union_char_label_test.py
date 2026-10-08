@@ -16,8 +16,17 @@ def labels(union):
 
 
 class Issue49Test(unittest.TestCase):
+    """Category: Structs, enums and unions / カテゴリ: struct・enum・union
+
+    Union case labels written as char literals (issue #49).
+    文字リテラルで書いた union の case ラベル(#49)。
+    """
 
     def test_char_literal_case_labels(self):
+        """Case labels that are char literals, as in "case 'a':".
+
+        case 'a': のような文字リテラルの case ラベル。
+        """
         g = load('''module M {
   union W switch (char) {
     case 'a': long x;
@@ -29,6 +38,10 @@ class Issue49Test(unittest.TestCase):
         self.assertEqual([m.name for m in u.members], ['x', 'o'])
 
     def test_symbols_and_escapes_in_char_literal(self):
+        """Labels with symbols and escapes in char literals, such as ':' and '\\n'.
+
+        ':' や '\\n' などの記号・エスケープを含む文字リテラルのラベル。
+        """
         g = load(r'''module M {
   union W switch (char) {
     case ':': long colon;
@@ -46,6 +59,10 @@ class Issue49Test(unittest.TestCase):
                          ['colon', 'newline', 'quote', 'backslash', 'semicolon', 'slash'])
 
     def test_wide_char_literal(self):
+        """A label that is a wide char literal, L'a'.
+
+        L'a' のワイド文字リテラルのラベル。
+        """
         g = load('''module M {
   union V switch (wchar) {
     case L'a': long x;
@@ -56,6 +73,10 @@ class Issue49Test(unittest.TestCase):
         self.assertEqual(labels(u)[0], ["L'a'"])
 
     def test_space_before_colon_and_several_labels(self):
+        """A space before ":" and several case labels.
+
+        : の前の空白と複数 case ラベル。
+        """
         g = load('''module M {
   union W switch (char) {
     case 'a' : case 'b':
@@ -66,6 +87,10 @@ class Issue49Test(unittest.TestCase):
         self.assertEqual(labels(u), [["'a'", "'b'"]])
 
     def test_other_labels_still_work(self):
+        """Labels such as enum values and negative integers still work.
+
+        enum 値・負の整数などのラベルも従来どおり動く。
+        """
         g = load('''module M {
   enum E { A, B };
   union U switch (E) { case M::A: long a; case B: long b; };
