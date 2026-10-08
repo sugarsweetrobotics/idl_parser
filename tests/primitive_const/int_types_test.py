@@ -6,8 +6,9 @@ InvalidDataTypeException because they were not known primitive types.
 import os
 import unittest
 from idl_parser import parser, type as idl_type
+from tests import support
 
-IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+IDL_DIR = support.IDL_DIR
 
 
 INT_TYPES = ['int8', 'int16', 'int32', 'int64',

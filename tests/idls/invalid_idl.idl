@@ -3,7 +3,7 @@
  * LINE 10 MISSES ";"
  */
 
-moduleA {
+module moduleA {
 
   struct invalid_struct {
     double double_value;

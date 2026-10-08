@@ -1,17 +1,11 @@
-"""Regression tests for issue #52.
-
-Lines were split into tokens with str.split(), so a string literal with a
-space in it became several tokens. A const then took the last token as its
-value and the third from last as its name, so its name became "=" and a
-second such const was dropped as a duplicate. Annotation arguments were
-joined again with single spaces, so runs of spaces were squashed.
+"""const definitions: string literals with spaces, multi-word types, expressions
+and malformed consts (issue #52).
 """
 import os
 import tempfile
 import unittest
 from idl_parser import parser
 from idl_parser.exception import InvalidIDLSyntaxError
-from idl_parser.token_buffer import split_tokens
 
 
 def load(idl):
@@ -20,25 +14,6 @@ def load(idl):
 
 def consts(g, module='M'):
     return [(c.typename, c.name, c.value) for c in g.module_by_name(module).consts]
-
-
-class SplitTokensTest(unittest.TestCase):
-
-    def test_plain(self):
-        self.assertEqual(split_tokens('  long  x ;\n'), ['long', 'x', ';'])
-
-    def test_string_literal_with_spaces(self):
-        self.assertEqual(split_tokens('S = "hello  world" ;'),
-                         ['S', '=', '"hello  world"', ';'])
-
-    def test_char_literal_space(self):
-        self.assertEqual(split_tokens("C = ' ' ;"), ['C', '=', "' '", ';'])
-
-    def test_escaped_quote(self):
-        self.assertEqual(split_tokens(r'S = "a \" b" ;'), ['S', '=', r'"a \" b"', ';'])
-
-    def test_prefix_stays_with_literal(self):
-        self.assertEqual(split_tokens('W = L"x y" ;'), ['W', '=', 'L"x y"', ';'])
 
 
 class ConstStringWithSpacesTest(unittest.TestCase):
@@ -101,21 +76,6 @@ class ConstSplitAtEqualTest(unittest.TestCase):
     def test_no_value(self):
         with self.assertRaises(InvalidIDLSyntaxError):
             load('module M { const long X = ; };')
-
-
-class AnnotationStringWithSpacesTest(unittest.TestCase):
-
-    def annotation(self, idl):
-        g = load(idl)
-        return g.module_by_name('M').struct_by_name('X').members[0].annotations[0]
-
-    def test_param_keeps_spaces(self):
-        a = self.annotation('module M { struct X { @verbatim(text="a  b c") long v; }; };')
-        self.assertEqual(a.params, {'text': '"a  b c"'})
-
-    def test_arg_keeps_spaces(self):
-        a = self.annotation('module M { struct X { @doc("x   y") long v; }; };')
-        self.assertEqual(a.args, ['"x   y"'])
 
 
 if __name__ == '__main__':

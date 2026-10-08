@@ -11,13 +11,14 @@ import tempfile
 import unittest
 from idl_parser import parser
 from idl_parser.exception import InvalidIDLSyntaxError
+from tests import support
 
 
 def load(idl):
     return parser.IDLParser().load(idl)
 
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = support.ROOT
 
 CHILD = '''
 import sys

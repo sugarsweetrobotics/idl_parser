@@ -1,8 +1,10 @@
+"""#include of mutually including / diamond-shaped IDL files (issue #6)."""
 import os
 import unittest
 from idl_parser import parser
+from tests import support
 
-IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+IDL_DIR = support.IDL_DIR
 
 idl_dir = os.path.join(IDL_DIR, 'circular')
 

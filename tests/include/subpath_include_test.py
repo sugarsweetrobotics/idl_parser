@@ -1,8 +1,10 @@
+"""#include with a sub path such as "std/msg/Header.idl" (issue #12)."""
 import os
 import unittest
 from idl_parser import parser
+from tests import support
 
-IDL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'idls')
+IDL_DIR = support.IDL_DIR
 
 idl_dir = os.path.join(IDL_DIR, 'issue12_subpath')
 

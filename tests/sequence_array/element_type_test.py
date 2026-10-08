@@ -1,11 +1,10 @@
-"""Regression tests for issue #67.
+"""Element types of sequences and arrays must be declared (issue #67).
 
 An undeclared type used directly as a member raised InvalidDataTypeException,
 but the same type used as the element type of a sequence<> or an array was
 accepted, and the parsed result failed later (e.g. ``inner_type.obj`` was None).
-Element types of sequences and arrays (nested and bounded ones included) are
-now checked the same way. Forward-declared interfaces, structs and unions may
-still be used before their definition.
+Forward-declared element types are covered in
+tests/forward_declaration/element_type_forward_test.py.
 """
 import contextlib
 import io
@@ -77,28 +76,6 @@ class DeclaredElementTypeTestFunctions(unittest.TestCase):
         idl = ('module M { struct A { long x; }; module N { struct S { sequence<A> a; }; }; };'
                ' module K { struct S { sequence<M::A> a; sequence< ::M::A> b; }; };')
         load(idl)
-
-    def test_forward_struct(self):
-        M = load('module M { struct F; struct G { sequence<F> fs; F arr[2]; };'
-                 ' struct F { long x; }; };').module_by_name('M')
-        fs = M.struct_by_name('G').members[0].type
-        self.assertIs(fs.inner_type.obj, M.struct_by_name('F'))
-
-    def test_forward_union(self):
-        M = load('module M { union U; typedef sequence<U> US;'
-                 ' union U switch (long) { case 1: long x; }; };').module_by_name('M')
-        self.assertIs(M.typedef_by_name('US').type.inner_type.obj, M.union_by_name('U'))
-
-    def test_forward_interface(self):
-        M = load('module M { interface I; struct S { sequence<I> is_; };'
-                 ' interface I { void f(); }; };').module_by_name('M')
-        self.assertIs(M.struct_by_name('S').members[0].type.inner_type.obj,
-                      M.interface_by_name('I'))
-
-    def test_forward_without_definition(self):
-        # Unchanged: a forward-declared type that is never defined is accepted
-        M = load('module M { struct F; struct G { sequence<F> fs; }; };').module_by_name('M')
-        self.assertEqual(M.undefined_forward_structs, ['F'])
 
     def test_recursive_struct(self):
         M = load('module M { struct Node { long v; sequence<Node> children; }; };'
