@@ -1,3 +1,4 @@
+"""IDL structs and their members."""
 import os, sys, traceback
 
 from . import node
@@ -5,6 +6,10 @@ from . import type as idl_type
 from . import exception
 
 class IDLMember(node.IDLNode):
+    """A member of a struct, such as ``long x;`` or ``@key string id;``.
+
+    :param parent: The :class:`IDLStruct` the member belongs to.
+    """
     def __init__(self, parent):
         super(IDLMember, self).__init__('IDLMember', '', parent)
         self._verbose = True
@@ -13,6 +18,7 @@ class IDLMember(node.IDLNode):
 
     @property
     def full_path(self):
+        """Scoped name (``'M::T::x'``)."""
         return self.parent.full_path + self.sep + self.name
 
     @property
@@ -26,6 +32,11 @@ class IDLMember(node.IDLNode):
         return value is None or value.strip().upper() != 'FALSE'
 
     def parse_blocks(self, blocks, filepath=None):
+        """Read the member from its tokens (``['@key', 'long', 'x']``).
+
+        An array size written after the name (``long a[3]``) becomes part of
+        the type.
+        """
         self._filepath = filepath
         annotations, blocks = node.parse_annotations(blocks)
         self._add_annotations(annotations)
@@ -38,6 +49,11 @@ class IDLMember(node.IDLNode):
         self._type = idl_type.IDLType(typ, self)
 
     def to_simple_dic(self, recursive=False, member_only=False):
+        """A compact summary: ``{name: type_name}``.
+
+        :param recursive: Expand non-primitive types to their own summary:
+            ``{'TYPE NAME': ...}``.
+        """
         if recursive:
             if self.type.is_primitive:
                 return str(self.type) + ' ' + self.name
@@ -48,6 +64,7 @@ class IDLMember(node.IDLNode):
         return dic
 
     def to_dic(self):
+        """The member as a plain dict (for JSON or YAML output)."""
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
@@ -56,6 +73,16 @@ class IDLMember(node.IDLNode):
 
     @property
     def type(self):
+        """Type of the member.
+
+        A primitive, sequence or array type is an
+        :class:`~idl_parser.type.IDLTypeBase`; a named type is resolved to its
+        definition (:class:`IDLStruct`, :class:`~idl_parser.typedef.IDLTypedef`,
+        :class:`~idl_parser.enum.IDLEnum`, ...).
+
+        :raises ~idl_parser.exception.InvalidDataTypeException: The named type is
+            not defined.
+        """
         if self._type.classname == 'IDLBasicType': # Struct
             typs = self._type.resolve() # from this member's scope (issue #72)
             if len(typs) == 0:
@@ -66,6 +93,11 @@ class IDLMember(node.IDLNode):
 
 
     def get_type(self, extract_typedef=False):
+        """Type of the member, like :attr:`type`.
+
+        :param extract_typedef: If the type is a typedef, return the type it
+            stands for instead (one level only).
+        """
         if extract_typedef:
             if self.type.is_typedef:
                 return self.type.type
@@ -73,6 +105,13 @@ class IDLMember(node.IDLNode):
 
 
     def post_process(self):
+        """Check the type and replace its name by the name of its definition.
+
+        Called by :class:`IDLStruct` after all members have been read.
+
+        :raises ~idl_parser.exception.InvalidDataTypeException: An element type
+            of a sequence or array is not defined.
+        """
         if self._type.classname == 'IDLBasicType' and self.is_pending_forward_declaration(self._type.name):
             return # forward-declared type; resolved via .type once it is defined
         self.check_element_types(self._type) # sequence / array elements (issue #67)
@@ -80,7 +119,11 @@ class IDLMember(node.IDLNode):
 
 
 class IDLStruct(node.IDLNode):
+    """A ``struct`` and its members.
 
+    :param name: Struct name.
+    :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
+    """
     def __init__(self, name, parent):
         super(IDLStruct, self).__init__('IDLStruct', name.strip(), parent)
         self._verbose = False #True
@@ -130,9 +173,17 @@ class IDLStruct(node.IDLNode):
 
     @property
     def full_path(self):
+        """Scoped name (``'M::T'``; ``'::T'`` at the global scope)."""
         return (self.parent.full_path + self.sep + self.name).strip()
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        """A compact summary: ``{'struct NAME': [member summaries]}``.
+
+        :param quiet: Return only ``'struct NAME'``.
+        :param full_path: Use :attr:`full_path` as the name.
+        :param recursive: Expand member types (see :meth:`IDLMember.to_simple_dic`).
+        :param member_only: Return only the list of member summaries.
+        """
         name = self.full_path if full_path else self.name
         if quiet:
             return 'struct %s' % name
@@ -145,6 +196,10 @@ class IDLStruct(node.IDLNode):
 
 
     def to_dic(self):
+        """The struct as a plain dict (for JSON or YAML output).
+
+        ``'keys'`` is included when the struct has keys (see :attr:`has_keylist`).
+        """
         dic = { 'name' : self.name,
                 'classname' : self.classname,
                 'members' : [v.to_dic() for v in self.members] }
@@ -153,6 +208,15 @@ class IDLStruct(node.IDLNode):
         return self._with_annotations(dic)
 
     def parse_tokens(self, token_buf, filepath=None):
+        """Parse the struct from ``token_buf``, starting after its name.
+
+        Reads a forward declaration (``;``) or the body up to ``};``.
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
+            not valid IDL.
+        :raises ~idl_parser.exception.InvalidDataTypeException: A member type is
+            not defined.
+        """
         self._filepath = filepath
         ln, fn, kakko = token_buf.pop()
         if kakko == ';': # Forward declaration (struct A;)
@@ -195,14 +259,17 @@ class IDLStruct(node.IDLNode):
 
     @property
     def members(self):
+        """Members (list of :class:`IDLMember`), in order."""
         return self._members
 
     def member_by_name(self, name):
+        """The member named ``name``, or None."""
         for m in self._members:
             if m.name == name:
                 return m
 
         return None
     def forEachMember(self, func):
+        """Call ``func`` with each member."""
         for m in self._members:
             func(m)

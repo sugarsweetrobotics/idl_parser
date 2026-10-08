@@ -1,3 +1,11 @@
+"""The entry point: :class:`IDLParser` reads IDL text or files.
+
+Before the definitions are parsed, the input is preprocessed: comments are
+removed, ``#include`` directives are expanded, ``#define`` / ``#ifdef`` /
+``#ifndef`` / ``#endif`` are applied and ``#pragma`` lines are taken out
+(see :mod:`idl_parser.pragma`). Every definition ends up in the
+:attr:`IDLParser.global_module` tree.
+"""
 import os, sys
 import re
 import functools
@@ -25,18 +33,26 @@ from . import exception
 
 
 class ConsoleTracker():
+    """Writes indented progress messages to stdout for ``verbose=True``.
+
+    :meth:`indent` and :meth:`deindent` change the indentation of the
+    following :meth:`write` calls by two spaces.
+    """
     def __init__(self):
         self._indent = 0
         pass
 
     def write(self, *args):
+        """Write ``args`` to stdout after the current indentation."""
         sys.stdout.write('  ' * self._indent)
         sys.stdout.write(*args)
 
     def indent(self):
+        """Indent the following messages one more level."""
         self._indent = self._indent+1
 
     def deindent(self):
+        """Indent the following messages one level less (not below zero)."""
         self._indent = self._indent-1
         if self._indent < 0: self._indent = 0
 
@@ -58,7 +74,19 @@ def _format_code(code):
     return re.sub(r'\s+', ' ', code)
 
 class IDLParser():
+    """Parser of OMG IDL.
 
+    Each call of :meth:`load` or :meth:`parse` adds its definitions to the same
+    :attr:`global_module`, so several inputs can be combined::
+
+        p = IDLParser(idl_dirs=['/path/to/idl'])
+        p.parse(idls=['/path/to/idl/a.idl'])
+        a = p.global_module.module_by_name('A')
+
+    :param idl_dirs: Include directories, searched for ``#include`` files and
+        by :meth:`for_each_idl`.
+    :param verbose: Print progress messages to stdout.
+    """
     def __init__(self, idl_dirs=[], verbose=False):
         self._global_module = module.IDLModule()
         self._dirs = idl_dirs
@@ -68,6 +96,9 @@ class IDLParser():
 
     @property
     def global_module(self):
+        """The global scope (:class:`~idl_parser.module.IDLModule`) holding
+        everything parsed so far.
+        """
         return self._global_module
 
     @property
@@ -82,6 +113,12 @@ class IDLParser():
         return list(self._pragmas)
 
     def is_primitive(self, name, except_string=False):
+        """True if ``name`` is a primitive type name (``long``, ``string<8>``, ...).
+
+        :param name: Type name.
+        :param except_string: Return False for ``string`` and ``wstring``
+            (bounded ones included).
+        """
         if except_string:
             if idl_type.is_string(name):
                 return False
@@ -89,6 +126,7 @@ class IDLParser():
 
     @property
     def dirs(self):
+        """Include directories (list of paths), in search order."""
         return self._dirs
 
     @_deprecated('IDLParser.prepare_input() is no longer used by load() and '
@@ -125,6 +163,16 @@ class IDLParser():
         return data
 
     def load(self, input_str, include_dirs=[], filepath=None):
+        """Parse IDL text and return :attr:`global_module`.
+
+        :param input_str: IDL text.
+        :param include_dirs: Directories added to :attr:`dirs` (they stay added)
+            to look for ``#include`` files.
+        :param filepath: File name recorded in the parsed nodes and pragmas, and
+            the base for ``#include "..."`` relative paths. ``None`` if the text
+            does not come from a file.
+        :returns: :attr:`global_module`.
+        """
         self._dirs = self._dirs + include_dirs
         lines = [(i+1, filepath, l) for i, l in enumerate(input_str.split('\n'))]
         self.parse_lines(lines, filepath=filepath)
@@ -145,6 +193,12 @@ class IDLParser():
         if self._verbose: logger.deindent()
 
     def parse_idl(self, idl_path):
+        """Parse one IDL file into :attr:`global_module`.
+
+        A file that has already been parsed by this parser is skipped.
+
+        :param idl_path: Path of the IDL file.
+        """
         if idl_path in self._parsed_files:
             if self._verbose:
                 logger.write('Parsing IDL(%s) but ALREADY PARSED.\n' % idl_path)
@@ -168,6 +222,11 @@ class IDLParser():
             logger.write('Parsed IDL (%s)\n' % idl_path)
 
     def parse_lines(self, lines, filepath=None):
+        """Preprocess and parse lines into :attr:`global_module`.
+
+        :param lines: List of ``(line_number, file_name, line)`` tuples.
+        :param filepath: File name recorded in the parsed nodes.
+        """
         lines = self._clear_comments(lines)
         lines = self._paste_include(lines)
         lines = self._clear_ifdef(lines)
@@ -198,6 +257,16 @@ class IDLParser():
             p._resolve(self._global_module)
 
     def includes(self, idl_path):
+        """Paths of the files named by the ``#include`` directives of an IDL file.
+
+        Only the given file is read (included files are not followed), and each
+        path appears once, in order.
+
+        :param idl_path: Path of the IDL file.
+        :returns: List of paths.
+        :raises ~idl_parser.exception.IDLCanNotFindException: An included file
+            can not be found.
+        """
         included_filepaths = []
         with open(idl_path, 'r') as f:
             for line in f:
@@ -438,6 +507,17 @@ class IDLParser():
 
 
     def generate_constructor_python(self, typ):
+        """Python expression that builds the default value of ``typ``.
+
+        Intended for generating Python (omniORBpy style) code: ``0`` for
+        primitive types, bitmasks and bitsets, ``[]`` for sequences, a list for
+        arrays, the first enumerator for enums, and a constructor call with the
+        member defaults for structs. Scoped names use ``.``
+        (a struct ``M::T { long x; }`` gives ``'M.T(0)'``).
+
+        :param typ: A type or definition node, such as ``member.type``.
+        :returns: The expression as a string.
+        """
         code = ''
         if typ.is_sequence:
             code = code + '[]'

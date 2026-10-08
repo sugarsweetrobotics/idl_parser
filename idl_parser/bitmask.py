@@ -46,12 +46,15 @@ class IDLBitValue(node.IDLNode):
 
     @property
     def full_path(self):
+        """Scoped name (``'M::Flags::FLAG_A'``)."""
         return self.parent.full_path + sep + self.name
 
     def to_simple_dic(self):
+        """A compact summary: ``{name: position}``."""
         return {self.name: self.position}
 
     def to_dic(self):
+        """The value as a plain dict (for JSON or YAML output)."""
         return self._with_annotations({'name': self.name,
                 'classname': self.classname,
                 'position': self.position,
@@ -59,7 +62,15 @@ class IDLBitValue(node.IDLNode):
 
 
 class IDLBitmask(node.IDLNode):
+    """A ``bitmask`` and its values.
 
+    :param name: Bitmask name.
+    :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
+    :param annotations: Annotations written before the bitmask; ``@bit_bound``
+        sets :attr:`bit_bound`.
+    :raises ~idl_parser.exception.InvalidIDLSyntaxError: ``@bit_bound`` is not
+        in 1..64.
+    """
     def __init__(self, name, parent, annotations=None):
         super(IDLBitmask, self).__init__('IDLBitmask', name, parent)
         self._verbose = False
@@ -80,6 +91,7 @@ class IDLBitmask(node.IDLNode):
 
     @property
     def full_path(self):
+        """Scoped name (``'M::Flags'``; ``'::Flags'`` at the global scope)."""
         return self.parent.full_path + sep + self.name
 
     @property
@@ -93,12 +105,19 @@ class IDLBitmask(node.IDLNode):
         return self._values
 
     def value_by_name(self, name):
+        """The value named ``name`` (an :class:`IDLBitValue`), or None."""
         for v in self._values:
             if v.name == name:
                 return v
         return None
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        """A compact summary: ``{'bitmask NAME': [{name: position}, ...]}``.
+
+        :param quiet: Return only ``'bitmask NAME'``.
+        :param full_path: Use :attr:`full_path` as the name.
+        :param member_only: Return only the list of value summaries.
+        """
         name = self.full_path if full_path else self.name
         if quiet:
             return 'bitmask %s' % name
@@ -107,6 +126,7 @@ class IDLBitmask(node.IDLNode):
         return {'bitmask %s' % name: [v.to_simple_dic() for v in self.values]}
 
     def to_dic(self):
+        """The bitmask as a plain dict (for JSON or YAML output)."""
         return self._with_annotations({'name': self.name,
                 'filepath': self.filepath,
                 'classname': self.classname,
@@ -114,6 +134,11 @@ class IDLBitmask(node.IDLNode):
                 'values': [v.to_dic() for v in self.values]})
 
     def parse_tokens(self, token_buf, filepath=None):
+        """Parse the bitmask from ``token_buf``, starting after its name, up to ``};``.
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
+            not valid IDL, or a position is out of :attr:`bit_bound` or used twice.
+        """
         self._filepath = filepath
         ln, fn, token = token_buf.pop()
         if token != '{':

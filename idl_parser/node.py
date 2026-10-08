@@ -49,6 +49,7 @@ class IDLAnnotation(object):
         return '<IDLAnnotation %s>' % str(self)
 
     def to_dic(self):
+        """The annotation as a plain dict: ``{'name': ..., 'args': [...], 'params': {...}}``."""
         return {'name': self._name, 'args': self.args, 'params': self.params}
 
 
@@ -117,6 +118,16 @@ def _make_annotation(name, arg_tokens):
 
 
 class IDLNode(object):
+    """Base class of all nodes of the parse tree.
+
+    Every node has a :attr:`name`, a :attr:`parent` (``None`` for the global
+    module) and the :attr:`annotations` written before it. The ``is_*``
+    properties tell the kind of node.
+
+    :param classname: Kind of the node (``'IDLStruct'``, ...), see :attr:`classname`.
+    :param name: Name of the node.
+    :param parent: Enclosing node.
+    """
     def __init__(self, classname, name, parent):
         self._classname = classname
         self._parent = parent
@@ -138,6 +149,7 @@ class IDLNode(object):
         return None
 
     def has_annotation(self, name):
+        """True if an annotation named ``name`` (without ``@``) is written."""
         return self.annotation_by_name(name) is not None
 
     def _add_annotations(self, annotations):
@@ -168,64 +180,79 @@ class IDLNode(object):
 
     @property
     def filepath(self):
+        """File the node was defined in, or None (e.g. for :meth:`idl_parser.parser.IDLParser.load` without ``filepath``)."""
         return self._filepath
 
     @property
     def is_array(self):
+        """True for an array type (:class:`~idl_parser.type.IDLArray`)."""
         return self._classname == 'IDLArray'
 
     @property
     def is_void(self):
+        """True for ``void`` (:class:`~idl_parser.type.IDLVoid`)."""
         return self._classname == 'IDLVoid'
 
     @property
     def is_struct(self):
+        """True for a struct (:class:`~idl_parser.struct.IDLStruct`)."""
         return self._classname == 'IDLStruct'
 
     @property
     def is_typedef(self):
+        """True for a typedef (:class:`~idl_parser.typedef.IDLTypedef`)."""
         return self._classname == 'IDLTypedef'
 
     @property
     def is_sequence(self):
+        """True for a sequence type (:class:`~idl_parser.type.IDLSequence`)."""
         return self._classname == 'IDLSequence'
 
     @property
     def is_primitive(self):
+        """True for a primitive type (:class:`~idl_parser.type.IDLPrimitive`)."""
         return self._classname == 'IDLPrimitive'
 
     @property
     def is_interface(self):
+        """True for an interface (:class:`~idl_parser.interface.IDLInterface`)."""
         return self._classname == 'IDLInterface'
 
     @property
     def is_enum(self):
+        """True for an enum (:class:`~idl_parser.enum.IDLEnum`)."""
         return self._classname == 'IDLEnum'
 
     @property
     def is_bitmask(self):
+        """True for a bitmask (:class:`~idl_parser.bitmask.IDLBitmask`)."""
         return self._classname == 'IDLBitmask'
 
     @property
     def is_bitset(self):
+        """True for a bitset (:class:`~idl_parser.bitset.IDLBitset`)."""
         return self._classname == 'IDLBitset'
 
     @property
     def is_union(self):
+        """True for a union (:class:`~idl_parser.union.IDLUnion`)."""
         return self._classname == 'IDLUnion'
 
     @property
     def is_const(self):
+        """True for a constant (:class:`~idl_parser.const.IDLConst`)."""
         return self._classname == 'IDLConst'
 
     @property
     def classname(self):
+        """Kind of the node as a string (``'IDLStruct'``, ``'IDLPrimitive'``, ...)."""
         return self._classname
 
 
 
     @property
     def name(self):
+        """Name of the node, without its scope (``'T'`` for ``M::T``)."""
         return self._name
 
     @property
@@ -234,12 +261,14 @@ class IDLNode(object):
 
     @property
     def basename(self):
+        """Last part of a scoped :attr:`name` (``'A::B'`` -> ``'B'``)."""
         if self.name.find(self.sep) > 0:
             return self.name[self.name.rfind('::')+2:]
         return self.name
 
     @property
     def pathname(self):
+        """Scope part of a scoped :attr:`name` (``'A::B'`` -> ``'A'``), or ``''``."""
         if self.name.find(self.sep) > 0:
             return self.name[:self.name.rfind('::')]
         return ''
@@ -247,6 +276,7 @@ class IDLNode(object):
 
     @property
     def parent(self):
+        """Enclosing node, or None for the global module."""
         return self._parent
 
     def _name_and_type(self, blocks):
@@ -259,10 +289,12 @@ class IDLNode(object):
 
     @property
     def is_root(self):
+        """True for the global module (the node without a parent)."""
         return self.parent == None
 
     @property
     def root_node(self):
+        """The global module (:class:`~idl_parser.module.IDLModule`) this node belongs to."""
         roots = []
         def find_root(n):
             if n.is_root:
@@ -345,6 +377,12 @@ class IDLNode(object):
         return False
 
     def refine_typename(self, typ):
+        """Name of the definition that the type ``typ`` refers to.
+
+        Sequences keep their form with refined element types
+        (``'sequence < T >'``), bounded strings give their base type, and a name
+        that can not be resolved yet is returned as written.
+        """
         return self._refine_typename(typ.name)
 
     def _lookup_scope(self):
