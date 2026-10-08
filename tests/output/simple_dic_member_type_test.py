@@ -31,11 +31,20 @@ module M {
 
 
 class MemberTypeSimpleDicTest(unittest.TestCase):
+    """Category: Dictionary output and code generation / カテゴリ: 辞書出力・コード生成
+
+    Member type names in to_simple_dic() / to_dic() (issues #30, #43).
+    to_simple_dic()/to_dic() のメンバー型名(#30, #43)。
+    """
 
     def setUp(self):
         self.m = parser.IDLParser().load(IDL).module_by_name('M')
 
     def test_type_name_not_object_repr(self):
+        """to_simple_dic(): struct / enum / bitmask / bitset / typedef members show type names, not object reprs.
+
+        to_simple_dic(): struct/enum/bitmask/bitset/typedef 型メンバーがオブジェクト表現でなく型名で出る。
+        """
         cases = {
             'WithStruct': {'t': 'T'},
             'WithEnum': {'e': 'E'},
@@ -51,18 +60,34 @@ class MemberTypeSimpleDicTest(unittest.TestCase):
                                  {'struct %s' % name: [member]})
 
     def test_union_type_name(self):
+        """to_simple_dic(): union members also show type names.
+
+        to_simple_dic(): union メンバーも型名で出る。
+        """
         self.assertEqual(self.m.union_by_name('U').to_simple_dic(),
                          {'union U': [{'t': 'T'}, {'l': 'long'}]})
 
     def test_to_dic_type_name(self):
+        """to_dic(): type of a struct-typed member is the type name.
+
+        to_dic(): struct 型メンバーの type が型名。
+        """
         member = self.m.struct_by_name('WithStruct').to_dic()['members'][0]
         self.assertEqual(member['type'], 'T')
 
     def test_typedef_of_struct(self):
+        """to_simple_dic(): a typedef of a struct.
+
+        to_simple_dic(): struct の typedef。
+        """
         self.assertEqual(self.m.typedef_by_name('TAlias').to_simple_dic(),
                          'typedef T TAlias')
 
     def test_recursive(self):
+        """to_simple_dic(recursive=True) expands each kind of member type.
+
+        to_simple_dic(recursive=True) で各種メンバー型が展開される。
+        """
         cases = {
             'P': ['long x'],
             'WithSeqInline': [{'sequence<long> q': {'sequence<long>': 'long'}}],
@@ -82,6 +107,10 @@ class MemberTypeSimpleDicTest(unittest.TestCase):
                                  {'struct %s' % name: members})
 
     def test_union_recursive(self):
+        """to_simple_dic(recursive=True) of a union.
+
+        union の to_simple_dic(recursive=True)。
+        """
         self.assertEqual(self.m.union_by_name('U').to_simple_dic(recursive=True),
                          {'union U': [{'T t': ['long s']}, 'long l']})
 

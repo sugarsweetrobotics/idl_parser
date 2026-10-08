@@ -11,10 +11,20 @@ idl_path = os.path.join(IDL_DIR, 'basic_module_test.idl')
 
 
 class BasicTestFunctions(unittest.TestCase):
+    """Category: Sequences, arrays and typedefs / カテゴリ: sequence・array・typedef
+
+    Typedefs, sequences and arrays in basic_module_test.idl.
+    basic_module_test.idl の typedef・sequence・配列。
+    """
+
     def setUp(self):
         pass
 
     def test_typedef_types(self):
+        """Typedefs of primitives, structs and others.
+
+        プリミティブ・struct などの typedef。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())
@@ -33,6 +43,10 @@ class BasicTestFunctions(unittest.TestCase):
             pass
 
     def test_sequence_test(self):
+        """Sequence typedefs and their element types.
+
+        sequence の typedef と要素型。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())
@@ -47,6 +61,10 @@ class BasicTestFunctions(unittest.TestCase):
             self.assertEqual(seq_double.inner_type.name, 'double')
             
     def test_arraye_test(self):
+        """Typedefs of multi-dimensional arrays.
+
+        多次元配列の typedef。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())

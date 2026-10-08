@@ -11,10 +11,20 @@ idl_path = os.path.join(IDL_DIR, 'basic_module_test.idl')
 
 
 class BasicTestFunctions(unittest.TestCase):
+    """Category: Lexing, preprocessing and error line numbers / カテゴリ: 字句解析・前処理・エラー行番号
+
+    Definitions in basic_module_test.idl written with odd spacing.
+    basic_module_test.idl の、空白の入れ方が変則的な定義。
+    """
+
     def setUp(self):
         pass
 
     def test_odd_spaces(self):
+        """Definitions such as arrays written with odd spacing.
+
+        配列などに変則的な空白が入った定義。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())

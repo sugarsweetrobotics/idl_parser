@@ -11,10 +11,20 @@ idl_path = os.path.join(IDL_DIR, 'basic_module_test.idl')
 
 
 class BasicTestFunctions(unittest.TestCase):
+    """Category: Primitive types and constants / カテゴリ: 基本型・定数
+
+    Primitive member types and consts in basic_module_test.idl.
+    basic_module_test.idl のプリミティブ型メンバーと const。
+    """
+
     def setUp(self):
         pass
 
     def test_primitive_types(self):
+        """Struct members of each primitive type.
+
+        各種プリミティブ型の struct メンバー。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())
@@ -50,6 +60,10 @@ class BasicTestFunctions(unittest.TestCase):
 
 
     def test_const_types(self):
+        """Types and values of various consts.
+
+        各種 const の型と値。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())

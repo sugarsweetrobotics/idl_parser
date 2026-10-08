@@ -52,8 +52,17 @@ def consts(g, module='M'):
 
 
 class Issue50Test(unittest.TestCase):
+    """Category: Lexing, preprocessing and error line numbers / カテゴリ: 字句解析・前処理・エラー行番号
+
+    "//" and "/*" inside string literals are not comments (issue #50).
+    文字列リテラル内の "//" と "/*" はコメントではない(#50)。
+    """
 
     def test_url_const_is_kept(self):
+        """"//" in a string is not taken as a comment, so a URL const is kept.
+
+        文字列中の // がコメント扱いされず、URL の const が残る。
+        """
         g = load('''module M {
   const string URL = "http://example.com";
   const long N = 1;
@@ -61,6 +70,10 @@ class Issue50Test(unittest.TestCase):
         self.assertEqual(consts(g), [('URL', '"http://example.com"'), ('N', '1')])
 
     def test_one_line_idl_does_not_hang(self):
+        """load() does not hang on a one-line IDL with "//" or "/*" in a string.
+
+        文字列中の // や /* を含む1行 IDL で load() が止まらない。
+        """
         cases = {
             'module M { const string S = "http://x"; };': '"http://x"',
             'module M { const string S = "a/*b*/c"; };': '"a/*b*/c"',
@@ -73,14 +86,26 @@ class Issue50Test(unittest.TestCase):
                 self.assertEqual(consts(g), [(consts(g)[0][0], value)])
 
     def test_escaped_quote_in_string(self):
+        """A string with an escaped ".
+
+        エスケープした " を含む文字列。
+        """
         g = load_with_timeout(r'module M { const string S = "a\"//b"; const long N = 1; };')
         self.assertEqual(consts(g), [('S', r'"a\"//b"'), ('N', '1')])
 
     def test_punctuation_in_string_is_untouched(self):
+        """, ; = ( ) { } : inside a string are left unchanged.
+
+        文字列中の , ; = ( ) { } : が変更されない。
+        """
         g = load_with_timeout('module M { const string S = "a,b;c=d(e){f}:g"; };')
         self.assertEqual(consts(g), [('S', '"a,b;c=d(e){f}:g"')])
 
     def test_annotation_arguments(self):
+        """"//" in a string argument of an annotation is kept.
+
+        アノテーション引数の文字列中の // が保持される。
+        """
         g = load('module M { @verbatim(language="c++", text="// x") const long C = 3; };')
         a = g.module_by_name('M').const_by_name('C').annotation_by_name('verbatim')
         self.assertEqual(a.params, {'language': '"c++"', 'text': '"// x"'})
@@ -90,6 +115,10 @@ class Issue50Test(unittest.TestCase):
         self.assertEqual(v.annotation_by_name('unit').args, ['"m//s"'])
 
     def test_comments_are_still_removed(self):
+        """Normal // and /* */ comments are still removed.
+
+        通常の // と /* */ コメントは従来どおり除去される。
+        """
         g = load('''module M {
   // const long A = 1;
   const string S = "x"; // "trailing" comment
@@ -99,6 +128,10 @@ class Issue50Test(unittest.TestCase):
         self.assertEqual(consts(g), [('S', '"x"'), ('C', '3'), ('D', '4')])
 
     def test_string_literal_in_included_file(self):
+        """"//" in a string is also kept in an included file.
+
+        include したファイルでも文字列中の // が保持される。
+        """
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, 'inc.idl'), 'w') as f:
                 f.write('module I { const string U = "http://example.com"; };\n')
@@ -107,6 +140,10 @@ class Issue50Test(unittest.TestCase):
         self.assertEqual(consts(g, 'I'), [('U', '"http://example.com"')])
 
     def test_unterminated_input_raises(self):
+        """An unterminated string or definition raises an error instead of hanging.
+
+        終端していない文字列・定義でエラー(停止しない)。
+        """
         for idl in ['module M { const string S = "x"',
                     'module M { const string S = "x',
                     'module M { const long N = 1']:

@@ -22,6 +22,11 @@ def load(idl):
 
 
 class LeadingScopeTestFunctions(unittest.TestCase):
+    """Category: Modules, scopes and type name resolution / カテゴリ: モジュール・スコープ・型名解決
+
+    Type names with a leading "::" (issue #69).
+    先頭に "::" が付いた型名(#69)。
+    """
 
     def assertIsMA(self, obj):
         self.assertIsNotNone(obj)
@@ -29,12 +34,20 @@ class LeadingScopeTestFunctions(unittest.TestCase):
         self.assertEqual(obj.full_path, 'M::A')
 
     def test_find_types(self):
+        """find_types() finds names with a leading ::, such as ::M::A.
+
+        find_types() が ::M::A のような先頭 :: の名前を見つける。
+        """
         r = load(A)
         self.assertEqual(len(r.find_types('M::A')), 1)
         self.assertEqual(len(r.find_types('::M::A')), 1)
         self.assertIsMA(r.find_types('::M::A')[0])
 
     def test_find_types_leading_scope_is_global(self):
+        """A leading :: means the global scope.
+
+        先頭 :: はグローバルスコープを意味する。
+        """
         # '::A' names a global A only, not M::A
         r = load(A)
         self.assertEqual(len(r.find_types('::A')), 0)
@@ -44,30 +57,54 @@ class LeadingScopeTestFunctions(unittest.TestCase):
         self.assertEqual(typs[0].full_path.lstrip(':'), 'A')
 
     def test_struct_member(self):
+        """::M::A in a struct member is resolved.
+
+        struct メンバーの ::M::A が解決される。
+        """
         r = load(A + 'module K { struct S { ::M::A d; }; };')
         m = r.module_by_name('K').struct_by_name('S').members[0]
         self.assertIsMA(m.type.obj)
 
     def test_typedef(self):
+        """::M::A in a typedef is resolved.
+
+        typedef の ::M::A が解決される。
+        """
         r = load(A + 'module K { typedef ::M::A T; };')
         self.assertIsMA(r.module_by_name('K').typedef_by_name('T').type)
 
     def test_union_member(self):
+        """::M::A in a union member is resolved.
+
+        union メンバーの ::M::A が解決される。
+        """
         r = load(A + 'module K { union U switch (long) { case 1: ::M::A a; }; };')
         u = r.module_by_name('K').union_by_name('U')
         self.assertIsMA(u.members[0].type.obj)
 
     def test_sequence_member(self):
+        """The element type of sequence< ::M::A> is resolved.
+
+        sequence< ::M::A> の要素型が解決される。
+        """
         r = load(A + 'module K { struct S { sequence< ::M::A> c; }; };')
         m = r.module_by_name('K').struct_by_name('S').members[0]
         self.assertIsMA(m.type.inner_type.obj)
 
     def test_method_argument(self):
+        """::M::A in a method argument is resolved.
+
+        メソッド引数の ::M::A が解決される。
+        """
         r = load(A + 'module K { interface I { void f(in ::M::A a); }; };')
         i = r.module_by_name('K').interface_by_name('I')
         self.assertIsMA(i.methods[0].arguments[0].type.obj)
 
     def test_typedef_unknown_type(self):
+        """An unknown type in a typedef raises InvalidDataTypeException (not IndexError).
+
+        typedef の未知の型で(IndexError でなく)InvalidDataTypeException。
+        """
         with self.assertRaises(exception.InvalidDataTypeException):
             load(A + 'module K { typedef ::M::Z T; };')
         with self.assertRaises(exception.InvalidDataTypeException):

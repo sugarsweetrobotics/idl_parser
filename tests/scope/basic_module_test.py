@@ -11,10 +11,20 @@ idl_path = os.path.join(IDL_DIR, 'basic_module_test.idl')
 
 
 class BasicTestFunctions(unittest.TestCase):
+    """Category: Modules, scopes and type name resolution / カテゴリ: モジュール・スコープ・型名解決
+
+    The global and named modules of basic_module_test.idl.
+    basic_module_test.idl のグローバル module と名前付き module。
+    """
+
     def setUp(self):
         pass
 
     def test_module(self):
+        """The global and named modules and a struct of basic_module_test.idl.
+
+        basic_module_test.idl のグローバル/名前付き module と struct の取得。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())

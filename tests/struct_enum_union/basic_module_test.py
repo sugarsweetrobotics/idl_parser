@@ -12,10 +12,20 @@ idl_path = os.path.join(IDL_DIR, 'basic_module_test.idl')
 
 
 class BasicTestFunctions(unittest.TestCase):
+    """Category: Structs, enums and unions / カテゴリ: struct・enum・union
+
+    Structs, unions and enums in basic_module_test.idl.
+    basic_module_test.idl の struct・union・enum。
+    """
+
     def setUp(self):
         pass
 
     def test_struct_types(self):
+        """Structs and their member types.
+
+        struct とそのメンバー型。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())
@@ -33,6 +43,10 @@ class BasicTestFunctions(unittest.TestCase):
             self.assertTrue(my_struct.is_struct)
             
     def test_union_types(self):
+        """Union discriminators and members.
+
+        union の判別子とメンバー。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())
@@ -74,6 +88,10 @@ class BasicTestFunctions(unittest.TestCase):
         pass
 
     def test_enum_types(self):
+        """Enum values and their numbers.
+
+        enum の値と番号。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())

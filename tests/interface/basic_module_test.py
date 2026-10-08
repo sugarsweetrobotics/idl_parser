@@ -11,10 +11,20 @@ idl_path = os.path.join(IDL_DIR, 'basic_module_test.idl')
 
 
 class BasicTestFunctions(unittest.TestCase):
+    """Category: Interfaces, operations and inheritance / カテゴリ: interface・operation・継承
+
+    Interfaces and methods in basic_module_test.idl.
+    basic_module_test.idl の interface とメソッド。
+    """
+
     def setUp(self):
         pass
 
     def test_interface_types(self):
+        """Interface methods, return values and arguments (directions and types).
+
+        interface のメソッド・戻り値・引数(向きと型)。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())

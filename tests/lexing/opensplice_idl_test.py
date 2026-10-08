@@ -17,8 +17,17 @@ def load(path):
 
 
 class Issue9Test(unittest.TestCase):
+    """Category: Lexing, preprocessing and error line numbers / カテゴリ: 字句解析・前処理・エラー行番号
+
+    OpenSplice-style IDL files from issue #9 (tabs and spacing variants).
+    issue #9 の OpenSplice 形式の IDL(タブや空白の表記揺れ)。
+    """
 
     def test_tabs_and_bounded_string(self):
+        """OpenSplice-style IDL with tabs, bounded strings and arrays.
+
+        タブ区切り・上限付き string・配列を含む OpenSplice 形式の IDL。
+        """
         g = load(os.path.join(IDL_DIR, 'issue9_tabs_bounded_string.idl'))
         s = g.module_by_name('Test').struct_by_name('arrays_8dd2d413')
         self.assertEqual(len(s.members), 20)
@@ -45,6 +54,10 @@ class Issue9Test(unittest.TestCase):
         self.assertIsNone(char0.bound)
 
     def test_const_without_spaces_and_pragma(self):
+        """OpenSplice-style IDL with consts written without spaces and #pragma.
+
+        空白なしの const と #pragma を含む OpenSplice 形式の IDL。
+        """
         g = load(os.path.join(IDL_DIR, 'issue9_const_pragma.idl'))
         self.assertEqual([st.name for st in g.structs],
                          ['logevent_heartbeat_407c55f4', 'logevent_logLevel_df5f83b3'])
@@ -57,6 +70,10 @@ class Issue9Test(unittest.TestCase):
         })
 
     def test_whitespace_variants(self):
+        """Consts, typedefs and others written with different spacing.
+
+        空白の入れ方が異なる const/typedef などの表記揺れ。
+        """
         g = load(os.path.join(IDL_DIR, 'issue9_whitespace_variants.idl'))
         self.assertEqual(g.const_by_name('MAXLEN').value, '16')
 

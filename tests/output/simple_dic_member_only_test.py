@@ -5,6 +5,11 @@ from idl_parser import parser
 
 
 class SimpleDicMemberOnlyTest(unittest.TestCase):
+    """Category: Dictionary output and code generation / カテゴリ: 辞書出力・コード生成
+
+    to_simple_dic(member_only=True).
+    to_simple_dic(member_only=True)。
+    """
 
     def setUp(self):
         idl = '''
@@ -17,11 +22,19 @@ module M {
         self.m = parser.IDLParser().load(idl).module_by_name('M')
 
     def test_struct_member_only(self):
+        """to_simple_dic(member_only=True) of a struct.
+
+        struct の to_simple_dic(member_only=True)。
+        """
         s = self.m.struct_by_name('S')
         self.assertEqual(list(s.to_simple_dic(member_only=True)),
                          [{'x': 'long'}, {'y': 'double'}])
 
     def test_union_member_only(self):
+        """to_simple_dic(member_only=True) of a union.
+
+        union の to_simple_dic(member_only=True)。
+        """
         u = self.m.union_by_name('U')
         # Must not raise TypeError ('dict_values' object is not subscriptable)
         self.assertEqual(len(list(u.to_simple_dic(member_only=True))), 2)

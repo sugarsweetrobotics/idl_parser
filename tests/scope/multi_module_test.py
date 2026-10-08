@@ -11,10 +11,20 @@ idl_path = os.path.join(IDL_DIR, 'multi_module_test.idl')
 
 
 class MultiModuleTestFunctions(unittest.TestCase):
+    """Category: Modules, scopes and type name resolution / カテゴリ: モジュール・スコープ・型名解決
+
+    Several modules in one IDL, and same-named structs in different modules.
+    1つの IDL 内の複数 module と、別 module の同名 struct。
+    """
+
     def setUp(self):
         pass
 
     def test_module(self):
+        """Each module and struct of an IDL with several modules.
+
+        複数 module を含む IDL の各 module/struct。
+        """
         parser_ = parser.IDLParser()
         with open(idl_path, 'r') as idlf:
             m = parser_.load(idlf.read())
@@ -42,6 +52,10 @@ class MultiModuleTestFunctions(unittest.TestCase):
 
 
     def test_distinguish_same_struct_different_module(self):
+        """Same-named structs in different modules are told apart by full_path.
+
+        別 module の同名 struct を full_path で区別できる。
+        """
         parser_ = parser.IDLParser()
         with open(os.path.join(IDL_DIR, 'multi_module_test.idl'), 'r') as idlf:
             m = parser_.load(idlf.read(), include_dirs=[IDL_DIR])
