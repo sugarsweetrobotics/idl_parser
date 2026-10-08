@@ -1,3 +1,9 @@
+"""IDL modules, including the global scope.
+
+:class:`IDLModule` is also the node returned by
+:meth:`idl_parser.parser.IDLParser.load`: the global scope is a module
+without a name (internally ``'__global__'``).
+"""
 import os, sys, traceback
 
 from . import node, type
@@ -7,7 +13,16 @@ global_namespace = '__global__'
 sep = '::'
 
 class IDLModule(node.IDLNode):
+    """A ``module`` (or the global scope) and the definitions in it.
 
+    Definitions are available by kind (:attr:`structs`, :attr:`interfaces`,
+    ...), by name (:meth:`struct_by_name`, ...) and through callbacks
+    (:meth:`for_each_struct`, ...). A module that is opened again
+    (``module M { ... }; module M { ... };``) is a single node.
+
+    :param name: Module name; ``None`` for the global scope.
+    :param parent: Enclosing module; ``None`` for the global scope.
+    """
     def __init__(self, name=None, parent = None):
         super(IDLModule, self).__init__('IDLModule', name, parent)
         self._verbose = False
@@ -29,10 +44,12 @@ class IDLModule(node.IDLNode):
 
     @property
     def is_global(self):
+        """True if this is the global scope."""
         return self.name == global_namespace
 
     @property
     def full_path(self):
+        """Scoped name of the module (``'A::B'``); ``''`` for the global scope."""
         if self.parent is None:
             return '' # self.name
         else:
@@ -41,6 +58,12 @@ class IDLModule(node.IDLNode):
             return self.parent.full_path + sep + self.name
 
     def to_simple_dic(self, quiet=False):
+        """A compact summary for printing: ``{'module NAME': [...]}``.
+
+        The list holds the ``to_simple_dic()`` of each definition, grouped by kind.
+
+        :param quiet: Passed to the definitions (only their kind and name).
+        """
         dic = {'module %s' % self.name : [s.to_simple_dic(quiet) for s in self.structs] +
                [i.to_simple_dic(quiet) for i in self.interfaces] +
                [m.to_simple_dic(quiet) for m in self.modules] +
@@ -53,6 +76,7 @@ class IDLModule(node.IDLNode):
         return dic
 
     def to_dic(self):
+        """All the contents as plain dicts and lists (for JSON or YAML output)."""
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
@@ -69,6 +93,15 @@ class IDLModule(node.IDLNode):
 
 
     def parse_tokens(self, token_buf, filepath=None):
+        """Parse definitions from ``token_buf`` into this module.
+
+        For a named module, the tokens start at ``{`` and are read up to the
+        matching ``}``; for the global scope, up to the end of the input.
+
+        :param token_buf: :class:`~idl_parser.token_buffer.TokenBuffer` to read from.
+        :param filepath: File name recorded in the parsed nodes.
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The input is not valid IDL.
+        """
         self._filepath = filepath
         if not self.name == global_namespace:
             ln, fn, kakko = token_buf.pop()
@@ -287,15 +320,18 @@ class IDLModule(node.IDLNode):
 
     @property
     def modules(self):
+        """Sub-modules (list of :class:`IDLModule`), in order of appearance."""
         return self._modules
 
     def module_by_name(self, name):
+        """The sub-module named ``name`` (not scoped), or None."""
         for m in self.modules:
             if m.name == name:
                 return m
         return None
 
     def for_each_module(self, func):
+        """Call ``func`` with each sub-module and return the results as a list."""
         retval = []
         for m in self.modules:
             retval.append(func(m))
@@ -303,9 +339,11 @@ class IDLModule(node.IDLNode):
 
     @property
     def interfaces(self):
+        """Interfaces defined directly in this module (list of :class:`~idl_parser.interface.IDLInterface`)."""
         return self._interfaces
 
     def interface_by_name(self, name):
+        """The interface named ``name`` (not scoped) in this module, or None."""
         for i in self.interfaces:
             if i.name == name:
                 return i
@@ -323,6 +361,7 @@ class IDLModule(node.IDLNode):
         return [n for n in self._forward_interfaces if self.interface_by_name(n) is None]
 
     def for_each_interface(self, func):
+        """Call ``func`` with each interface and return the results as a list."""
         retval = []
         for m in self.interfaces:
             retval.append(func(m))
@@ -330,9 +369,11 @@ class IDLModule(node.IDLNode):
 
     @property
     def structs(self):
+        """Structs defined directly in this module (list of :class:`~idl_parser.struct.IDLStruct`)."""
         return self._structs
 
     def struct_by_name(self, name):
+        """The struct named ``name`` (not scoped) in this module, or None."""
         for s in self.structs:
             if s.name == name:
                 return s
@@ -350,6 +391,11 @@ class IDLModule(node.IDLNode):
         return [n for n in self._forward_structs if self.struct_by_name(n) is None]
 
     def for_each_struct(self, func, filter=None):
+        """Call ``func`` with each struct and return the results as a list.
+
+        :param filter: If given, only the structs for which ``filter(struct)`` is
+            true are passed to ``func``.
+        """
         retval = []
         for m in self.structs:
             if filter:
@@ -362,15 +408,18 @@ class IDLModule(node.IDLNode):
 
     @property
     def enums(self):
+        """Enums defined directly in this module (list of :class:`~idl_parser.enum.IDLEnum`)."""
         return self._enums
 
     def enum_by_name(self, name):
+        """The enum named ``name`` (not scoped) in this module, or None."""
         for e in self.enums:
             if e.name == name:
                 return e
         return None
 
     def for_each_enum(self, func):
+        """Call ``func`` with each enum and return the results as a list."""
         retval = []
         for m in self.enums:
             retval.append(func(m))
@@ -378,35 +427,43 @@ class IDLModule(node.IDLNode):
 
     @property
     def bitmasks(self):
+        """Bitmasks defined directly in this module (list of :class:`~idl_parser.bitmask.IDLBitmask`)."""
         return self._bitmasks
 
     def bitmask_by_name(self, name):
+        """The bitmask named ``name`` (not scoped) in this module, or None."""
         for b in self.bitmasks:
             if b.name == name:
                 return b
         return None
 
     def for_each_bitmask(self, func):
+        """Call ``func`` with each bitmask and return the results as a list."""
         return [func(b) for b in self.bitmasks]
 
     @property
     def bitsets(self):
+        """Bitsets defined directly in this module (list of :class:`~idl_parser.bitset.IDLBitset`)."""
         return self._bitsets
 
     def bitset_by_name(self, name):
+        """The bitset named ``name`` (not scoped) in this module, or None."""
         for b in self.bitsets:
             if b.name == name:
                 return b
         return None
 
     def for_each_bitset(self, func):
+        """Call ``func`` with each bitset and return the results as a list."""
         return [func(b) for b in self.bitsets]
 
     @property
     def unions(self):
+        """Unions defined directly in this module (list of :class:`~idl_parser.union.IDLUnion`)."""
         return self._unions
 
     def union_by_name(self, name):
+        """The union named ``name`` (not scoped) in this module, or None."""
         for u in self.unions:
             if u.name == name:
                 return u
@@ -424,6 +481,7 @@ class IDLModule(node.IDLNode):
         return [n for n in self._forward_unions if self.union_by_name(n) is None]
 
     def for_each_union(self, func):
+        """Call ``func`` with each union and return the results as a list."""
         retval = []
         for m in self.unions:
             retval.append(func(m))
@@ -431,15 +489,18 @@ class IDLModule(node.IDLNode):
 
     @property
     def consts(self):
+        """Constants defined directly in this module (list of :class:`~idl_parser.const.IDLConst`)."""
         return self._consts
 
     def const_by_name(self, name):
+        """The constant named ``name`` (not scoped) in this module, or None."""
         for c in self.consts:
             if c.name == name:
                 return c
         return None
 
     def for_each_const(self, func):
+        """Call ``func`` with each constant and return the results as a list."""
         retval = []
         for m in self.consts:
             retval.append(func(m))
@@ -448,15 +509,21 @@ class IDLModule(node.IDLNode):
 
     @property
     def typedefs(self):
+        """Typedefs defined directly in this module (list of :class:`~idl_parser.typedef.IDLTypedef`)."""
         return self._typedefs
 
     def typedef_by_name(self, name):
+        """The typedef named ``name`` (not scoped) in this module, or None."""
         for t in self.typedefs:
             if t.name == name:
                 return t
         return None
 
     def for_each_typedef(self, func):
+        """Call ``func`` with each typedef.
+
+        Unlike the other ``for_each_*`` methods, it returns None.
+        """
         retval = []
         for m in self.typedefs:
             retval.append(func(m))

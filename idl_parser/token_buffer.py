@@ -1,3 +1,4 @@
+"""Splitting preprocessed IDL lines into tokens."""
 def _literal_end(line, start):
     """Index just after the string or character literal starting at
     ``line[start]`` (a ``"`` or ``'``). A backslash escapes the next
@@ -82,7 +83,13 @@ def join_brackets(tokens):
 
 
 class TokenBuffer():
+    """The tokens of the input, read one by one by the parser.
 
+    Each token is a ``(line_number, file_name, token)`` tuple. At the end of
+    the input, :meth:`pop` and :meth:`peek` return ``(-1, '', None)``.
+
+    :param lines: List of ``(line_number, file_name, line)`` tuples.
+    """
     def __init__(self, lines):
         self._tokens = []
         self._token_offset = 0
@@ -93,9 +100,11 @@ class TokenBuffer():
 
     @property
     def t_debug(self):
+        """All the tokens, for debugging."""
         return self._tokens
 
     def pop(self):
+        """Return the next token and consume it."""
         if len(self._tokens) == self._token_offset:
             return (-1, '', None)
         t = self._tokens[self._token_offset]#.strip()

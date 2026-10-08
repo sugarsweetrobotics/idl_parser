@@ -57,6 +57,7 @@ class IDLBitfield(node.IDLNode):
 
     @property
     def is_type_explicit(self):
+        """True if the destination type is written (``bitfield<8, short>``)."""
         return self._typename is not None
 
     @property
@@ -71,12 +72,17 @@ class IDLBitfield(node.IDLNode):
 
     @property
     def full_path(self):
+        """Scoped name (``'M::Header::kind'``; ends with ``::`` for an unnamed bitfield)."""
         return self.parent.full_path + sep + (self.name or '')
 
     def to_simple_dic(self):
+        """A compact summary: ``{name: 'bitfield<BITS, TYPE>'}`` (``''`` as the
+        name of an unnamed bitfield).
+        """
         return {(self.name or ''): 'bitfield<%d, %s>' % (self.bits, self.type)}
 
     def to_dic(self):
+        """The bitfield as a plain dict (for JSON or YAML output)."""
         return self._with_annotations({'name': self.name,
                 'classname': self.classname,
                 'bits': self.bits,
@@ -85,7 +91,11 @@ class IDLBitfield(node.IDLNode):
 
 
 class IDLBitset(node.IDLNode):
+    """A ``bitset`` and its bitfields.
 
+    :param name: Bitset name.
+    :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
+    """
     def __init__(self, name, parent):
         super(IDLBitset, self).__init__('IDLBitset', name, parent)
         self._verbose = False
@@ -95,6 +105,7 @@ class IDLBitset(node.IDLNode):
 
     @property
     def full_path(self):
+        """Scoped name (``'M::Header'``; ``'::Header'`` at the global scope)."""
         return self.parent.full_path + sep + self.name
 
     @property
@@ -124,12 +135,19 @@ class IDLBitset(node.IDLNode):
         return (self._base.members if self._base else []) + own
 
     def bitfield_by_name(self, name):
+        """The named bitfield ``name`` (an :class:`IDLBitfield`; the base bitset is searched too), or None."""
         for b in self.members:
             if b.name == name:
                 return b
         return None
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        """A compact summary: ``{'bitset NAME': [bitfield summaries]}``.
+
+        :param quiet: Return only ``'bitset NAME'``.
+        :param full_path: Use :attr:`full_path` as the name.
+        :param member_only: Return only the list of bitfield summaries.
+        """
         name = self.full_path if full_path else self.name
         if quiet:
             return 'bitset %s' % name
@@ -139,6 +157,7 @@ class IDLBitset(node.IDLNode):
         return {'bitset %s' % name: fields}
 
     def to_dic(self):
+        """The bitset as a plain dict (for JSON or YAML output)."""
         return self._with_annotations({'name': self.name,
                 'filepath': self.filepath,
                 'classname': self.classname,
@@ -147,6 +166,14 @@ class IDLBitset(node.IDLNode):
                 'bitfields': [b.to_dic() for b in self.bitfields]})
 
     def parse_tokens(self, token_buf, filepath=None):
+        """Parse the bitset from ``token_buf``, starting after its name: the
+        optional base bitset (``: Base``) and the body up to ``};``.
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
+            not valid IDL, or the bitset holds more than 64 bits.
+        :raises ~idl_parser.exception.IDLCanNotFindException: The base bitset is
+            not defined.
+        """
         self._filepath = filepath
         ln, fn, token = token_buf.pop()
         if token == ':':

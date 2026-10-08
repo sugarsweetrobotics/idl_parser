@@ -79,10 +79,13 @@ class IDLPragma(object):
 
     @property
     def line_number(self):
+        """Line number of the pragma in :attr:`filepath`."""
         return self._line_number
 
     @property
     def filepath(self):
+        """File the pragma was written in (``None`` for :meth:`idl_parser.parser.IDLParser.load`
+        without ``filepath``)."""
         return self._filepath
 
     @property

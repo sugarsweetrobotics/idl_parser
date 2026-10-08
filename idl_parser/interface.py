@@ -1,3 +1,4 @@
+"""IDL interfaces, their operations and the arguments of the operations."""
 import sys
 from . import node
 from . import exception
@@ -7,6 +8,10 @@ from . import type as idl_type
 sep = '::'
 
 class IDLArgument(node.IDLNode):
+    """An argument of an operation, such as ``in long a``.
+
+    :param parent: The :class:`IDLMethod` the argument belongs to.
+    """
     def __init__(self, parent):
         super(IDLArgument, self).__init__('IDLArgument', '', parent)
         self._verbose = True
@@ -14,6 +19,10 @@ class IDLArgument(node.IDLNode):
         self._type = None
 
     def parse_blocks(self, blocks, filepath=None):
+        """Read the argument from its tokens (``['out', 'T', 't']``).
+
+        The direction may be omitted, in which case it is ``'in'``.
+        """
         self._filepath= filepath
         annotations, blocks = node.parse_annotations(blocks)
         self._add_annotations(annotations)
@@ -28,10 +37,12 @@ class IDLArgument(node.IDLNode):
         self._type = idl_type.IDLType(argument_type, self)
 
     def to_simple_dic(self):
+        """A one-line summary, e.g. ``'out T t'``."""
         dic = '%s %s %s' % (self.direction, self.type, self.name)
         return dic
 
     def to_dic(self):
+        """The argument as a plain dict (for JSON or YAML output)."""
         dic = { 'name' : self.name,
                 'classname' : self.classname,
                 'type' : str(self.type),
@@ -41,18 +52,28 @@ class IDLArgument(node.IDLNode):
 
     @property
     def direction(self):
+        """``'in'``, ``'out'`` or ``'inout'``."""
         return self._dir
 
     @property
     def type(self):
+        """Type of the argument (an :class:`~idl_parser.type.IDLTypeBase`).
+
+        Use ``type.obj`` to get the definition of a non-primitive type.
+        """
         return self._type
 
     def post_process(self):
+        """Replace the type name by the name of its definition."""
         self._type._name = self.refine_typename(self.type)
 
 
 
 class IDLMethod(node.IDLNode):
+    """An operation of an interface, such as ``long f(in long a) raises (E);``.
+
+    :param parent: The :class:`IDLInterface` the operation belongs to.
+    """
     def __init__(self, parent):
         super(IDLMethod, self).__init__('IDLValue', '', parent)
         self._verbose = True
@@ -63,6 +84,12 @@ class IDLMethod(node.IDLNode):
         self._contexts = []
 
     def parse_blocks(self, blocks, filepath=None):
+        """Read the operation from its tokens, up to (not including) the ``;``.
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: Parentheses do not
+            match, or something other than ``raises (...)`` / ``context (...)``
+            follows the arguments.
+        """
         self._filepath=filepath
 
         annotations, blocks = node.parse_annotations(blocks)
@@ -144,11 +171,16 @@ class IDLMethod(node.IDLNode):
             index = close + 1
 
     def to_simple_dic(self):
+        """A compact summary: ``{name: {'returns': ..., 'params': [...]}}``."""
         return {self.name : {
                 'returns' : str(self.returns),
                 'params' : [a.to_simple_dic() for a in self.arguments]}}
 
     def to_dic(self):
+        """The operation as a plain dict (for JSON or YAML output).
+
+        ``'raises'`` and ``'context'`` are included only when they are written.
+        """
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
@@ -162,6 +194,9 @@ class IDLMethod(node.IDLNode):
 
     @property
     def returns(self):
+        """Return type (an :class:`~idl_parser.type.IDLTypeBase`; ``void`` gives an
+        :class:`~idl_parser.type.IDLVoid`).
+        """
         return self._returns
 
     @property
@@ -181,9 +216,11 @@ class IDLMethod(node.IDLNode):
 
     @property
     def arguments(self):
+        """Arguments (list of :class:`IDLArgument`), in order."""
         return self._arguments
 
     def argument_by_name(self, name):
+        """The argument named ``name``, or None."""
         for a in self.arguments:
             if a.name == name:
                 return a
@@ -192,16 +229,22 @@ class IDLMethod(node.IDLNode):
 
 
     def forEachArgument(self, func):
+        """Call ``func`` with each argument."""
         for a in self.arguments:
             func(a)
 
     def post_process(self):
         #self._returns = self.refine_typename(self.returns)
         #self.forEachArgument(lambda a : a.post_process())
+        """Hook called after the interface has been parsed. Does nothing."""
         pass
 
 class IDLInterface(node.IDLNode):
+    """An ``interface`` and its operations.
 
+    :param name: Interface name.
+    :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
+    """
     def __init__(self, name, parent):
         super(IDLInterface, self).__init__('IDLInterface', name, parent)
         self._verbose = True
@@ -221,9 +264,17 @@ class IDLInterface(node.IDLNode):
 
     @property
     def full_path(self):
+        """Scoped name (``'M::I'``; ``'::I'`` at the global scope)."""
         return self.parent.full_path + sep + self.name
 
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        """A compact summary: ``{'interface NAME': [{'inherits': [...]}, ...]}``.
+
+        The first entry lists the full paths of the base interfaces; the rest
+        are the ``to_simple_dic()`` of the operations.
+
+        :param quiet: Return only ``'interface NAME'``.
+        """
         if quiet:
             return 'interface %s' % self.name
         # The first entry is always {'inherits': [...]}; it is an empty list
@@ -234,6 +285,7 @@ class IDLInterface(node.IDLNode):
         return dic
 
     def to_dic(self):
+        """The interface as a plain dict (for JSON or YAML output)."""
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
@@ -291,6 +343,16 @@ class IDLInterface(node.IDLNode):
         raise exception.IDLCanNotFindException(ln, fn, msg)
 
     def parse_tokens(self, token_buf, filepath=None):
+        """Parse the interface from ``token_buf``, starting after its name.
+
+        Reads a forward declaration (``;``), or the optional base interfaces
+        (``: A, B``) and the body up to ``};``.
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
+            not valid IDL.
+        :raises ~idl_parser.exception.IDLCanNotFindException: A base interface is
+            not defined (or only forward-declared).
+        """
         self._filepath=filepath
         ln, fn, token = token_buf.pop()
         if token == ';': # Forward declaration (interface A;)
@@ -358,15 +420,21 @@ class IDLInterface(node.IDLNode):
 
     @property
     def methods(self):
+        """Operations (list of :class:`IDLMethod`), in order."""
         return self._methods
 
     def method_by_name(self, name):
+        """The operation named ``name``, or None.
+
+        Operations of base interfaces are not searched.
+        """
         for m in self.methods:
             if name == m.name:
                 return m
         return None
 
     def forEachMethod(self, func):
+        """Call ``func`` with each operation."""
         for m in self.methods:
             func(m)
 
