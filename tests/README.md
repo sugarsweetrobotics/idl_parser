@@ -6,7 +6,7 @@ docstrings, not in file names.
 
 | Directory | What it covers |
 |---|---|
-| `lexing/` | Comments, string / char literals, token splitting, spacing inside `[ ]` and `< >`, error line numbers |
+| `lexing/` | Comments, string / char literals, token splitting, spacing inside `[ ]` and `< >`, error line numbers, exception messages |
 | `include/` | `#include`: circular and diamond includes, sub paths, include directories |
 | `scope/` | Modules, reopened modules, scoped and absolute (`::M::X`) type names, `find_types()` |
 | `primitive_const/` | Primitive types (including IDL 4.2 `int8` … `uint64`) and `const` definitions |

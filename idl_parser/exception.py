@@ -10,7 +10,8 @@ class IDLParserException(Exception):
     :param message: Description of the error.
     """
     def __init__(self, line_number=None, file_name=None, message='IDLParserException occurred.'):
-        self._className = 'IDLParserException'
+        super(IDLParserException, self).__init__(message)
+        self._className = type(self).__name__
         self._line_number = line_number
         self._file_name = file_name
         self._message = message
@@ -18,15 +19,25 @@ class IDLParserException(Exception):
     @property
     def message(self):
         """The message with the file name, line number and exception class:
-        ``File "a.idl", line 3, (InvalidIDLSyntaxError):"...``.
+        ``File "a.idl", line 3, (InvalidIDLSyntaxError):"..."``.
+
+        The file name and the line number are left out when they are not known.
         """
-        return 'File "' + self.file_name + '", line %s, ' % self.line_number + '(' + self._className + '):"' + self._message
+        text = ''
+        if self.file_name is not None:
+            text += 'File "%s", ' % self.file_name
+        if self.line_number is not None:
+            text += 'line %s, ' % self.line_number
+        return text + '(%s):"%s"' % (self._className, '' if self._message is None else self._message)
+
+    def __str__(self):
+        return self.message
 
     @property
     def line_number(self):
         """Line where the error was found, or None."""
         return self._line_number
-        
+
     @property
     def file_name(self):
         """File where the error was found, or None."""
@@ -36,9 +47,6 @@ class IDLParserException(Exception):
 
 class InvalidIDLSyntaxError(IDLParserException):
     """The input is not valid IDL (a missing ``{``, ``;``, ...)."""
-    def __init__(self, line_number=None, file_name=None, message='IDLParserException occurred.'):
-        super(InvalidIDLSyntaxError, self).__init__(line_number, file_name, message)
-        self._className = 'InvalidIDLSyntaxError'
     pass
 
 class InvalidDataTypeException(IDLParserException):
