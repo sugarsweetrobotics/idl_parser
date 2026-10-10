@@ -2,6 +2,7 @@
 
 [![Test](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/sugarsweetrobotics/idl_parser/actions/workflows/test.yml)
 [![Documentation Status](https://readthedocs.org/projects/idl-parser/badge/?version=latest)](https://idl-parser.readthedocs.io/en/latest/)
+[![codecov](https://codecov.io/gh/sugarsweetrobotics/idl_parser/branch/main/graph/badge.svg)](https://codecov.io/gh/sugarsweetrobotics/idl_parser)
 
 
 ## Description 

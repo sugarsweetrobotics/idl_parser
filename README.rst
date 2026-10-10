@@ -1,7 +1,7 @@
 idl_parser
 ============
 
-|Test Status| |Docs Status|
+|Test Status| |Coverage| |Docs Status|
 
 Description 
 -----------
@@ -106,3 +106,7 @@ Copyright
 .. |Docs Status| image:: https://readthedocs.org/projects/idl-parser/badge/?version=latest
    :target: https://idl-parser.readthedocs.io/en/latest/
    :alt: Documentation Status
+
+.. |Coverage| image:: https://codecov.io/gh/sugarsweetrobotics/idl_parser/branch/main/graph/badge.svg
+   :target: https://codecov.io/gh/sugarsweetrobotics/idl_parser
+   :alt: Coverage

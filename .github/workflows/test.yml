@@ -33,6 +33,32 @@ jobs:
       - name: Run tests
         run: python -m unittest discover --start-directory tests --pattern '*_test.py' --top-level-directory . --verbose
 
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run tests with coverage
+        run: |
+          python -m pip install coverage
+          python -m coverage run --branch --source=idl_parser -m unittest discover --start-directory tests --pattern '*_test.py' --top-level-directory .
+          python -m coverage report
+          python -m coverage xml
+
+      # Uploads coverage.xml to Codecov, which serves the README badge.
+      # Without the CODECOV_TOKEN secret the upload may be rejected; that
+      # must not fail the tests, so errors are not fatal.
+      - uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
   lint:
     name: Check undefined names
     runs-on: ubuntu-latest
