@@ -55,12 +55,13 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The six example scripts exist in examples/.
+        """The seven example scripts exist in examples/.
 
-        examples/ に6つのサンプルスクリプトが存在する。
+        examples/ に7つのサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
-        for name in ('example.py', 'struct_example.py', 'enum_example.py', 'union_example.py',
+        for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
+                     'enum_example.py', 'union_example.py',
                      'annotation_example.py', 'scoped_name_example.py'):
             self.assertIn(name, names)
 
@@ -98,6 +99,38 @@ class ExampleTest(unittest.TestCase):
         self.assertIn('  long add(in long a, in long b)', text)
         self.assertIn('  void reset()', text)
         self.assertIn('  boolean divide(in double a, in double b, out double result)', text)
+
+
+class ArgumentDirectionExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/argument_direction_example.py.
+    examples/argument_direction_example.py の出力。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('argument_direction_example')
+
+    def test_directions(self):
+        """argument_direction_example: the direction (in / out / inout) of each argument.
+
+        argument_direction_example: 各引数の方向(in/out/inout)が出力される。
+        """
+        for line in ('set value in long', 'get value out long', 'increment value inout long',
+                     'divide quotient out double', 'divide count inout long'):
+            self.assertIn(line.split(), [l.split() for l in self.text.splitlines()])
+
+    def test_sends_and_receives(self):
+        """argument_direction_example: what the caller sends and receives, and the signatures.
+
+        argument_direction_example: 呼び出し側が渡す値・受け取る値とシグネチャ。
+        """
+        self.assertRegex(self.text, r'divide +sends: a, b, count +receives: \(return boolean\), quotient, count')
+        self.assertIn('  set(value)', self.text)
+        self.assertIn('  value = get()', self.text)
+        self.assertIn('  value = increment(value)', self.text)
+        self.assertIn('  result, quotient, count = divide(a, b, count)', self.text)
 
 
 class StructExampleTest(unittest.TestCase):

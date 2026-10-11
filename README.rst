@@ -77,6 +77,7 @@ Example
 More examples are in the ``examples`` folder of the repository:
 
 - ``example.py``: the smallest example: a module and an interface
+- ``argument_direction_example.py``: directions of method arguments (``in``, ``out`` and ``inout``)
 - ``struct_example.py``: structs and their member types
 - ``enum_example.py``: enums and their values
 - ``union_example.py``: unions (discriminator kinds, case and ``default`` labels, member types)

@@ -76,6 +76,7 @@ More examples are in the [examples](examples/) folder:
 | File | Shows |
 |---|---|
 | [`example.py`](examples/example.py) | the smallest example: a module and an interface |
+| [`argument_direction_example.py`](examples/argument_direction_example.py) | directions of method arguments: `in`, `out` and `inout` |
 | [`struct_example.py`](examples/struct_example.py) | structs and their member types |
 | [`enum_example.py`](examples/enum_example.py) | enums and their values |
 | [`union_example.py`](examples/union_example.py) | unions: discriminator kinds, case and `default` labels, member types |
