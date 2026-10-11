@@ -55,13 +55,13 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The four example scripts exist in examples/.
+        """The six example scripts exist in examples/.
 
-        examples/ に4つのサンプルスクリプトが存在する。
+        examples/ に6つのサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
-        for name in ('example.py', 'union_example.py', 'annotation_example.py',
-                     'scoped_name_example.py'):
+        for name in ('example.py', 'struct_example.py', 'enum_example.py', 'union_example.py',
+                     'annotation_example.py', 'scoped_name_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -89,17 +89,58 @@ class ExampleTest(unittest.TestCase):
     """
 
     def test_output(self):
-        """The output of example.py contains the key interface, typedef and union lines.
+        """The output of example.py lists the interface and its methods.
 
-        example.py の出力に interface・typedef・union の主要行が含まれる。
+        example.py の出力に interface とそのメソッドが含まれる。
         """
         text = run_main('example')
-        self.assertIn('DataGetter interface', text)
-        self.assertIn('  name: getData', text)
-        self.assertIn('    direction: out', text)
-        self.assertRegex(text, r'typedef sequence ?< ?double ?> DoubleSeq')
-        self.assertIn('descriminator kind: UNION_DESCRIMINATOR_KIND', text)
-        self.assertIn('TimedDoubleSeq', text)
+        self.assertIn('interface my_module::Calculator', text)
+        self.assertIn('  long add(in long a, in long b)', text)
+        self.assertIn('  void reset()', text)
+        self.assertIn('  boolean divide(in double a, in double b, out double result)', text)
+
+
+class StructExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/struct_example.py.
+    examples/struct_example.py の出力。
+    """
+
+    def test_output(self):
+        """struct_example: structs and member types (primitive, struct, array, sequence).
+
+        struct_example: struct 一覧とメンバー型(プリミティブ/struct/array/sequence)。
+        """
+        text = run_main('struct_example')
+        self.assertIn("structs in my_module: ['Time', 'Pose', 'Odometry']", text)
+        self.assertIn('struct my_module::Odometry', text)
+        self.assertRegex(text, r'stamp +struct my_module::Time')
+        self.assertRegex(text, r'frame_id +string')
+        self.assertRegex(text, r'position +array double')
+        self.assertRegex(text, r'covariance +sequence of double')
+        self.assertIn("Odometry.stamp members: [('sec', 'long'), ('nsec', 'long')]", text)
+
+
+class EnumExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/enum_example.py.
+    examples/enum_example.py の出力。
+    """
+
+    def test_output(self):
+        """enum_example: enums, enumerator ordinals and enums used as types.
+
+        enum_example: enum 一覧・列挙子の値・型として使われる enum。
+        """
+        text = run_main('enum_example')
+        self.assertIn("enums in my_module: ['Color', 'ReturnCode']", text)
+        self.assertIn('enum my_module::Color', text)
+        self.assertIn('  RED = 0', text)
+        self.assertIn('BLUE is 2', text)
+        self.assertIn('Light.color is enum? True (my_module::Color)', text)
+        self.assertIn('setColor returns ReturnCode', text)
 
 
 class UnionExampleTest(unittest.TestCase):
