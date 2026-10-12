@@ -30,7 +30,12 @@ class IDLEnumValue(node.IDLNode):
 
     @property
     def full_path(self):
-        return self.full_path + '.' + self.name
+        """Scoped name (``'M::A'``; ``'::A'`` at the global scope).
+
+        As in IDL, the enumerator belongs to the scope enclosing its enum, so
+        the enum name is not part of the path.
+        """
+        return self.parent.parent.full_path + sep + self.name
 
     def to_simple_dic(self):
         """A compact summary: ``{name: value}``."""
