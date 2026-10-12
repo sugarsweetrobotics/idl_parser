@@ -108,6 +108,19 @@ class BasicTestFunctions(unittest.TestCase):
             self.assertEqual(my_enum1.value_by_name('data3').value, 2)
         pass
 
+    def test_enum_value_full_path(self):
+        """An enumerator's full_path is scoped at the module enclosing the enum (issue #79).
+
+        列挙子の full_path は enum を囲むモジュールのスコープになる（issue #79）。
+        """
+        m = parser.IDLParser().load(
+            'module M { module N { enum E { A, B }; }; enum F { C }; }; enum G { D };')
+        n = m.module_by_name('M').module_by_name('N')
+        self.assertEqual(n.enum_by_name('E').value_by_name('A').full_path, 'M::N::A')
+        self.assertEqual(n.enum_by_name('E').value_by_name('B').full_path, 'M::N::B')
+        self.assertEqual(m.module_by_name('M').enum_by_name('F').value_by_name('C').full_path, 'M::C')
+        self.assertEqual(m.enum_by_name('G').value_by_name('D').full_path, '::D')
+
 
 if __name__ == '__main__':
     unittest.main()
