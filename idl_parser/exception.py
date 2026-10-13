@@ -56,3 +56,25 @@ class InvalidDataTypeException(IDLParserException):
 class IDLCanNotFindException(IDLParserException):
     """An ``#include`` file or a base interface / bitset can not be found."""
     pass
+
+
+class IDLParserWarning(UserWarning):
+    """Base class of the warnings of idl_parser."""
+    pass
+
+class UnknownIDLSyntaxWarning(IDLParserWarning):
+    """A word that starts no known definition was found in a module or the
+    global scope (a misspelled keyword such as ``strcut``), and the definition
+    it starts was skipped (issue #76).
+
+    This will become an :class:`InvalidIDLSyntaxError` in a future release.
+    To get the error now, turn the warning into an exception::
+
+        warnings.simplefilter('error', UnknownIDLSyntaxWarning)
+    """
+    pass
+
+class UnsupportedIDLSyntaxWarning(IDLParserWarning):
+    """A valid IDL definition that idl_parser does not support yet
+    (``exception``, ``valuetype``, ``component``, ...) was skipped (issue #76)."""
+    pass
