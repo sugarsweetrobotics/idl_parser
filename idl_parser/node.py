@@ -262,9 +262,12 @@ class IDLNode(object):
 
     @property
     def pathname(self):
-        """Scope part of a scoped :attr:`name` (``'A::B'`` -> ``'A'``), or ``''``."""
-        if self.name.find(self.sep) > 0:
-            return self.name[:self.name.rfind('::')]
+        """Scope part of a scoped :attr:`name` (``'A::B'`` -> ``'A'``, ``'::A::B'`` -> ``'A'``), or ``''``."""
+        name = self._name
+        if name.startswith(self.sep):
+            name = name[len(self.sep):]
+        if self.sep in name:
+            return name[:name.rfind(self.sep)]
         return ''
 
 
