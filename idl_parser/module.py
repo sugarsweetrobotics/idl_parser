@@ -19,8 +19,9 @@ unsupported_keywords = ('valuetype', 'eventtype', 'component',
                         'typeid', 'typeprefix', 'import')
 
 # Modifiers written before a definition keyword ("local interface",
-# "abstract valuetype"). They are dropped and the definition after them is
-# read as usual.
+# "abstract valuetype"). They apply to the definition after them; an
+# interface records "local" and "abstract" (issue #93), and the others are
+# dropped.
 modifier_keywords = ('abstract', 'local', 'custom')
 
 class IDLModule(node.IDLNode):
@@ -124,13 +125,20 @@ class IDLModule(node.IDLNode):
                 raise InvalidIDLSyntaxError()
 
         annotations = []
+        modifiers = []
         while True:
             ln, fn, token = token_buf.pop()
             if token is not None and token.startswith('@'):
                 # Annotations apply to the next definition (issue #39).
                 annotations.append(self._parse_annotation(token, token_buf))
                 continue
+            if token in modifier_keywords:
+                # "local interface I", "@a abstract interface I": the modifier
+                # and the annotations before it apply to the next definition.
+                modifiers.append(token)
+                continue
             pending_annotations, annotations = annotations, []
+            pending_modifiers, modifiers = modifiers, []
 
             if token == None:
                 if self.name == global_namespace:
@@ -197,6 +205,8 @@ class IDLModule(node.IDLNode):
                 ln, fn, name_ = token_buf.pop()
                 s = interface.IDLInterface(name_, self)
                 s._add_annotations(pending_annotations)
+                s._local = 'local' in pending_modifiers
+                s._abstract = 'abstract' in pending_modifiers
                 s.parse_tokens(token_buf, filepath=filepath)
 
                 if s.is_forward:
@@ -296,7 +306,7 @@ class IDLModule(node.IDLNode):
             elif token == '}':
                 break
 
-            elif token == ';' or token in modifier_keywords:
+            elif token == ';':
                 pass
 
             elif any(a.name == 'annotation' for a in pending_annotations):

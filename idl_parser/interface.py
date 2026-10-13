@@ -273,11 +273,23 @@ class IDLInterface(node.IDLNode):
         self._methods = []
         self._inheritances = []
         self._forward = False
+        self._local = False
+        self._abstract = False
 
     @property
     def is_forward(self):
         """True if this node came from a forward declaration ("interface A;")."""
         return self._forward
+
+    @property
+    def is_local(self):
+        """True for a ``local interface`` (issue #93)."""
+        return self._local
+
+    @property
+    def is_abstract(self):
+        """True for an ``abstract interface`` (issue #93)."""
+        return self._abstract
 
     @property
     def inheritances(self):
@@ -307,12 +319,20 @@ class IDLInterface(node.IDLNode):
         return dic
 
     def to_dic(self):
-        """The interface as a plain dict (for JSON or YAML output)."""
+        """The interface as a plain dict (for JSON or YAML output).
+
+        ``'local'`` and ``'abstract'`` (``True``) are included only for a
+        ``local`` or ``abstract`` interface.
+        """
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
                 'inheritances' : [i.full_path for i in self.inheritances],
                 'methods' : [m.to_dic() for m in self.methods] }
+        if self.is_local:
+            dic['local'] = True
+        if self.is_abstract:
+            dic['abstract'] = True
         return self._with_annotations(dic)
 
     def _all_interfaces(self):
