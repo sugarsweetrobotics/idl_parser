@@ -11,7 +11,7 @@ docstrings, not in file names.
 | `scope/` | Modules, reopened modules, scoped and absolute (`::M::X`) type names, `find_types()` |
 | `primitive_const/` | Primitive types (including IDL 4.2 `int8` … `uint64`) and `const` definitions |
 | `sequence_array/` | `typedef`, `sequence<>` (nested and bounded), arrays, their element types |
-| `struct_enum_union/` | `struct`, `enum`, `union` (case / default labels, char literal labels) |
+| `struct_enum_union/` | `struct`, `exception`, `enum`, `union` (case / default labels, char literal labels) |
 | `bitmask_bitset/` | IDL 4.2 `bitmask` and `bitset` |
 | `interface/` | Interfaces, operations, argument directions (`in` / `out` / `inout`), `raises` / `context`, inheritance |
 | `forward_declaration/` | Forward declarations of interfaces, structs and unions |

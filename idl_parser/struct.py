@@ -1,4 +1,4 @@
-"""IDL structs and their members."""
+"""IDL structs, exceptions and their members."""
 import os, sys, traceback
 
 from . import node
@@ -273,3 +273,54 @@ class IDLStruct(node.IDLNode):
         """Call ``func`` with each member."""
         for m in self._members:
             func(m)
+
+
+class IDLException(IDLStruct):
+    """An ``exception`` and its members (issue #93).
+
+    The body is read like a struct (``exception E { string msg; };``), so the
+    members are available in the same way (:attr:`members`,
+    :meth:`member_by_name`). An exception is not a struct: :attr:`is_struct`
+    is False and :attr:`~idl_parser.node.IDLNode.is_exception` is True. The
+    exceptions an operation raises are given by
+    :attr:`idl_parser.interface.IDLMethod.exceptions`.
+
+    :param name: Exception name.
+    :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
+    """
+    def __init__(self, name, parent):
+        super(IDLException, self).__init__(name, parent)
+        self._classname = 'IDLException'
+
+    def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        """A compact summary: ``{'exception NAME': [member summaries]}``.
+
+        The parameters are those of :meth:`IDLStruct.to_simple_dic`.
+        """
+        name = self.full_path if full_path else self.name
+        if quiet:
+            return 'exception %s' % name
+        members = [v.to_simple_dic(recursive=recursive) for v in self.members]
+        if member_only:
+            return members
+        return {'exception %s' % name : members}
+
+    def to_dic(self):
+        """The exception as a plain dict (for JSON or YAML output)."""
+        dic = { 'name' : self.name,
+                'classname' : self.classname,
+                'members' : [v.to_dic() for v in self.members] }
+        return self._with_annotations(dic)
+
+    def parse_tokens(self, token_buf, filepath=None):
+        """Parse the exception from ``token_buf``, starting after its name.
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
+            not valid IDL (an exception can not be forward-declared).
+        :raises ~idl_parser.exception.InvalidDataTypeException: A member type is
+            not defined.
+        """
+        ln, fn, kakko = token_buf.peek()
+        if kakko != '{':
+            raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of exception "%s"' % self.name)
+        super(IDLException, self).parse_tokens(token_buf, filepath)

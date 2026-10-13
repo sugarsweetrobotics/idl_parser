@@ -210,6 +210,28 @@ class IDLMethod(node.IDLNode):
         return list(self._raises)
 
     @property
+    def exceptions(self):
+        """Exceptions in "raises (...)" (list of
+        :class:`~idl_parser.struct.IDLException`), in order.
+
+        Each name is resolved from the scope of the interface, like a type name
+        (issue #93), so the members of an exception are available through
+        ``method.exceptions[0].members``.
+
+        :raises ~idl_parser.exception.IDLCanNotFindException: A name in
+            "raises (...)" is not a defined exception.
+        """
+        found = []
+        for name in self._raises:
+            xs = self.root_node.find_exceptions(name, scope=self.parent)
+            if len(xs) == 0:
+                raise exception.IDLCanNotFindException(
+                    None, self.filepath,
+                    'Can not find exception "%s" raised by "%s"' % (name, self.name))
+            found.append(xs[0])
+        return found
+
+    @property
     def contexts(self):
         """Context names in "context (...)", without the quotes."""
         return list(self._contexts)
