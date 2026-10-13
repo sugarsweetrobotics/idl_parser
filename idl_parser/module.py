@@ -7,7 +7,7 @@ without a name (internally ``'__global__'``).
 import os, sys, traceback, warnings
 
 from . import node, type
-from . import struct, typedef, interface, enum, const, union, bitmask, bitset
+from . import struct, typedef, interface, enum, const, union, bitmask, bitset, native
 from .exception import InvalidIDLSyntaxError, UnknownIDLSyntaxWarning, UnsupportedIDLSyntaxWarning
 global_namespace = '__global__'
 sep = '::'
@@ -15,7 +15,7 @@ sep = '::'
 # Keywords of valid IDL definitions that are not supported yet. Such a
 # definition is skipped with an UnsupportedIDLSyntaxWarning (issue #76).
 unsupported_keywords = ('valuetype', 'eventtype', 'component',
-                        'home', 'porttype', 'connector', 'native',
+                        'home', 'porttype', 'connector',
                         'typeid', 'typeprefix', 'import')
 
 # Modifiers written before a definition keyword ("local interface",
@@ -53,6 +53,7 @@ class IDLModule(node.IDLNode):
         self._unions = []
         self._forward_unions = []
         self._consts = []
+        self._natives = []
         self._modules = []
 
     @property
@@ -86,6 +87,7 @@ class IDLModule(node.IDLNode):
                [b.to_simple_dic(quiet) for b in self.bitsets] +
                [u.to_simple_dic(quiet) for u in self.unions] +
                [t.to_simple_dic(quiet) for t in self.typedefs] +
+               [n.to_simple_dic(quiet) for n in self.natives] +
                [t.to_simple_dic(quiet) for t in self.consts]}
         return dic
 
@@ -96,6 +98,7 @@ class IDLModule(node.IDLNode):
                 'classname' : self.classname,
                 'interfaces' : [i.to_dic() for i in self.interfaces],
                 'typedefs' : [t.to_dic() for t in self.typedefs],
+                'natives' : [n.to_dic() for n in self.natives],
                 'structs' : [s.to_dic() for s in self.structs],
                 'exceptions' : [x.to_dic() for x in self.exceptions],
                 'enums' : [e.to_dic() for e in self.enums],
@@ -270,6 +273,21 @@ class IDLModule(node.IDLNode):
                 #    raise InvalidIDLSyntaxError
                 else:
                     self._unions.append(s)
+
+            elif token == 'native':
+                # "native N;": a type with a name only (issue #93).
+                ln, fn, name_ = token_buf.pop()
+                if name_ is None or name_ in (';', '{', '}'):
+                    raise InvalidIDLSyntaxError(ln, fn, 'No name after "native"')
+                ln2, fn2, t = token_buf.pop()
+                if t != ';':
+                    raise InvalidIDLSyntaxError(ln, fn, 'No ";" after "native %s"' % name_)
+                n = native.IDLNative(name_, self, filepath=filepath)
+                n._add_annotations(pending_annotations)
+                if self.native_by_name(name_):
+                    if self._verbose: sys.stdout.write('# Error. Same Native Defined (%s)\n' % name_)
+                else:
+                    self._natives.append(n)
 
             elif token == 'const':
                 values = []
@@ -603,6 +621,22 @@ class IDLModule(node.IDLNode):
 
 
     @property
+    def natives(self):
+        """Native types declared directly in this module (list of :class:`~idl_parser.native.IDLNative`)."""
+        return self._natives
+
+    def native_by_name(self, name):
+        """The native type named ``name`` (not scoped) in this module, or None."""
+        for n in self.natives:
+            if n.name == name:
+                return n
+        return None
+
+    def for_each_native(self, func):
+        """Call ``func`` with each native type and return the results as a list."""
+        return [func(n) for n in self.natives]
+
+    @property
     def typedefs(self):
         """Typedefs defined directly in this module (list of :class:`~idl_parser.typedef.IDLTypedef`)."""
         return self._typedefs
@@ -648,7 +682,7 @@ class IDLModule(node.IDLNode):
             m.for_each_module(parse_module)
             for each in (m.for_each_struct, m.for_each_typedef, m.for_each_enum,
                          m.for_each_bitmask, m.for_each_bitset, m.for_each_union,
-                         m.for_each_interface):
+                         m.for_each_interface, m.for_each_native):
                 each(nodes.append)
         parse_module(self)
         return _find_by_name(nodes, name, absolute, parent, scope)
