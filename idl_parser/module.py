@@ -4,13 +4,24 @@
 :meth:`idl_parser.parser.IDLParser.load`: the global scope is a module
 without a name (internally ``'__global__'``).
 """
-import os, sys, traceback
+import os, sys, traceback, warnings
 
 from . import node, type
 from . import struct, typedef, interface, enum, const, union, bitmask, bitset
-from .exception import InvalidIDLSyntaxError
+from .exception import InvalidIDLSyntaxError, UnknownIDLSyntaxWarning, UnsupportedIDLSyntaxWarning
 global_namespace = '__global__'
 sep = '::'
+
+# Keywords of valid IDL definitions that are not supported yet. Such a
+# definition is skipped with an UnsupportedIDLSyntaxWarning (issue #76).
+unsupported_keywords = ('exception', 'valuetype', 'eventtype', 'component',
+                        'home', 'porttype', 'connector', 'native',
+                        'typeid', 'typeprefix', 'import')
+
+# Modifiers written before a definition keyword ("local interface",
+# "abstract valuetype"). They are dropped and the definition after them is
+# read as usual.
+modifier_keywords = ('abstract', 'local', 'custom')
 
 class IDLModule(node.IDLNode):
     """A ``module`` (or the global scope) and the definitions in it.
@@ -269,15 +280,38 @@ class IDLModule(node.IDLNode):
                 else:
                     self._consts.append(s)
 
-            elif token == '{':
-                # A block opened by an unsupported construct
-                # (e.g. "bitmask F { ... }", "bitset B { ... }", "exception E { ... }").
-                # Skip it up to the matching "}" so that its closing brace is not
-                # mistaken for the end of this module (issue #39).
-                self._skip_block(token_buf, ln, fn)
-
             elif token == '}':
                 break
+
+            elif token == ';' or token in modifier_keywords:
+                pass
+
+            elif any(a.name == 'annotation' for a in pending_annotations):
+                # An annotation definition ("@annotation A { ... };"). It
+                # declares no type, so it is skipped without a warning.
+                self._skip_definition(token, token_buf, ln, fn)
+
+            elif token in unsupported_keywords:
+                # A valid definition that is not supported yet
+                # (e.g. "exception E { ... };"). Skip it, including its
+                # "{ ... }" body, so that the closing brace of the body is not
+                # mistaken for the end of this module (issue #39).
+                words = self._skip_definition(token, token_buf, ln, fn)
+                _warn('%s: unsupported definition "%s" is skipped.'
+                      % (_where(ln, fn), ' '.join(words)),
+                      UnsupportedIDLSyntaxWarning)
+
+            else:
+                # An unknown word, e.g. a misspelled keyword ("strcut S { ... };").
+                # The definition it starts is skipped as before, but no longer
+                # silently (issue #76). It will be an error in a future release.
+                words = self._skip_definition(token, token_buf, ln, fn)
+                _warn('%s: unknown word "%s" in %s; "%s" is skipped. '
+                      'This will be an InvalidIDLSyntaxError in a future release.'
+                      % (_where(ln, fn), token,
+                         'the global scope' if self.is_global else 'module ' + self.full_path,
+                         ' '.join(words)),
+                      UnknownIDLSyntaxWarning)
 
         return True
 
@@ -313,8 +347,30 @@ class IDLModule(node.IDLNode):
                 depth += 1
             elif t == '}':
                 depth -= 1
-        if self._verbose:
-            sys.stdout.write('# Warning. Skipped unsupported block at line %s.\n' % start_line)
+
+    def _skip_definition(self, token, token_buf, start_line=None, start_file=None):
+        """Skip a definition whose first token ``token`` is already consumed.
+
+        Tokens are skipped up to ";", or up to the end of a "{ ... }" block
+        (and the ";" after it). A "}" that closes this module is not consumed.
+        Returns the skipped words, with a block shown as "{ ... }".
+        """
+        words = [token]
+        t = token
+        while t not in (';', '{'):
+            t = token_buf.peek()[2]
+            if t is None or t == '}':
+                return words
+            token_buf.pop()
+            words.append(t)
+        if t == '{':
+            words[-1] = '{ ... }'
+            self._skip_block(token_buf, start_line, start_file)
+            if token_buf.peek()[2] == ';':
+                token_buf.pop()
+        elif words[-1] == ';':
+            words.pop()
+        return words
 
 
 
@@ -575,6 +631,26 @@ class IDLModule(node.IDLNode):
             return [s for s in nodes
                     if s.full_path.lstrip(':') in ((prefix + sep + name if prefix else name), name)]
         return [s for s in nodes if s.name == name or s.full_path.lstrip(':') == name]
+
+
+def _warn(message, category):
+    """warnings.warn() reported at the caller of idl_parser (e.g. the line
+    calling IDLParser.load()), not at a line inside this package."""
+    package_dir = os.path.dirname(os.path.abspath(__file__))
+    level = 2  # 1 is this function, 2 its caller
+    frame = sys._getframe(1)
+    while frame is not None and os.path.dirname(os.path.abspath(frame.f_code.co_filename)) == package_dir:
+        frame = frame.f_back
+        level += 1
+    warnings.warn(message, category, stacklevel=level)
+
+
+def _where(line_number, file_name):
+    """'File "a.idl", line 3' for warnings (like IDLParserException.message)."""
+    text = 'File "%s"' % (file_name if file_name else '<string>')
+    if line_number is not None and line_number >= 0:
+        text += ', line %s' % line_number
+    return text
 
 
 _scope_classnames = ('IDLModule', 'IDLStruct', 'IDLUnion', 'IDLInterface')
