@@ -54,7 +54,8 @@ class InvalidDataTypeException(IDLParserException):
     pass
 
 class IDLCanNotFindException(IDLParserException):
-    """An ``#include`` file or a base interface / bitset can not be found."""
+    """An ``#include`` file, a base interface / bitset or an exception in
+    ``raises (...)`` can not be found."""
     pass
 
 
@@ -76,5 +77,5 @@ class UnknownIDLSyntaxWarning(IDLParserWarning):
 
 class UnsupportedIDLSyntaxWarning(IDLParserWarning):
     """A valid IDL definition that idl_parser does not support yet
-    (``exception``, ``valuetype``, ``component``, ...) was skipped (issue #76)."""
+    (``valuetype``, ``component``, ...) was skipped (issue #76)."""
     pass

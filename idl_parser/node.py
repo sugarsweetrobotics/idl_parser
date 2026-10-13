@@ -199,6 +199,11 @@ class IDLNode(object):
         return self._classname == 'IDLStruct'
 
     @property
+    def is_exception(self):
+        """True for an exception (:class:`~idl_parser.struct.IDLException`)."""
+        return self._classname == 'IDLException'
+
+    @property
     def is_typedef(self):
         """True for a typedef (:class:`~idl_parser.typedef.IDLTypedef`)."""
         return self._classname == 'IDLTypedef'

@@ -4,8 +4,8 @@ An unknown word in a module or the global scope (e.g. a misspelled keyword,
 "strcut S { ... };") was dropped silently, together with the "{ ... }" block
 after it. It is still skipped, for compatibility, but now with an
 UnknownIDLSyntaxWarning; it will be an InvalidIDLSyntaxError in a future
-release. Valid definitions that are not supported yet (exception,
-valuetype, ...) are skipped with an UnsupportedIDLSyntaxWarning.
+release. Valid definitions that are not supported yet (valuetype,
+component, ...) are skipped with an UnsupportedIDLSyntaxWarning.
 """
 import os
 import unittest
@@ -37,7 +37,6 @@ TYPOS = {
 }
 
 UNSUPPORTED = {
-    'exception': 'exception E { string msg; };',
     'valuetype': 'valuetype V { public long x; };',
     'abstract_valuetype': 'abstract valuetype V { };',
     'boxed_valuetype': 'valuetype V long;',

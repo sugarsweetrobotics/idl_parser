@@ -14,7 +14,7 @@ sep = '::'
 
 # Keywords of valid IDL definitions that are not supported yet. Such a
 # definition is skipped with an UnsupportedIDLSyntaxWarning (issue #76).
-unsupported_keywords = ('exception', 'valuetype', 'eventtype', 'component',
+unsupported_keywords = ('valuetype', 'eventtype', 'component',
                         'home', 'porttype', 'connector', 'native',
                         'typeid', 'typeprefix', 'import')
 
@@ -45,6 +45,7 @@ class IDLModule(node.IDLNode):
         self._typedefs = []
         self._structs = []
         self._forward_structs = []
+        self._exceptions = []
         self._enums = []
         self._bitmasks = []
         self._bitsets = []
@@ -76,6 +77,7 @@ class IDLModule(node.IDLNode):
         :param quiet: Passed to the definitions (only their kind and name).
         """
         dic = {'module %s' % self.name : [s.to_simple_dic(quiet) for s in self.structs] +
+               [x.to_simple_dic(quiet) for x in self.exceptions] +
                [i.to_simple_dic(quiet) for i in self.interfaces] +
                [m.to_simple_dic(quiet) for m in self.modules] +
                [e.to_simple_dic(quiet) for e in self.enums] +
@@ -94,6 +96,7 @@ class IDLModule(node.IDLNode):
                 'interfaces' : [i.to_dic() for i in self.interfaces],
                 'typedefs' : [t.to_dic() for t in self.typedefs],
                 'structs' : [s.to_dic() for s in self.structs],
+                'exceptions' : [x.to_dic() for x in self.exceptions],
                 'enums' : [e.to_dic() for e in self.enums],
                 'bitmasks' : [b.to_dic() for b in self.bitmasks],
                 'bitsets' : [b.to_dic() for b in self.bitsets],
@@ -179,6 +182,16 @@ class IDLModule(node.IDLNode):
                 #    raise InvalidIDLSyntaxError
                 else:
                     self._structs.append(s)
+
+            elif token == 'exception':
+                ln, fn, name_ = token_buf.pop()
+                s = struct.IDLException(name_, self)
+                s._add_annotations(pending_annotations)
+                s.parse_tokens(token_buf, filepath=filepath)
+                if self.exception_by_name(name_):
+                    if self._verbose: sys.stdout.write('# Error. Same Exception Defined (%s)\n' % name_)
+                else:
+                    self._exceptions.append(s)
 
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
@@ -463,6 +476,22 @@ class IDLModule(node.IDLNode):
         return retval
 
     @property
+    def exceptions(self):
+        """Exceptions defined directly in this module (list of :class:`~idl_parser.struct.IDLException`)."""
+        return self._exceptions
+
+    def exception_by_name(self, name):
+        """The exception named ``name`` (not scoped) in this module, or None."""
+        for x in self.exceptions:
+            if x.name == name:
+                return x
+        return None
+
+    def for_each_exception(self, func):
+        """Call ``func`` with each exception and return the results as a list."""
+        return [func(x) for x in self.exceptions]
+
+    @property
     def enums(self):
         """Enums defined directly in this module (list of :class:`~idl_parser.enum.IDLEnum`)."""
         return self._enums
@@ -612,25 +641,47 @@ class IDLModule(node.IDLNode):
                          m.for_each_interface):
                 each(nodes.append)
         parse_module(self)
+        return _find_by_name(nodes, name, absolute, parent, scope)
 
-        def with_full_path(full):
-            return [s for s in nodes if s.full_path.lstrip(':') == full]
+    def find_exceptions(self, name, scope=None):
+        """Return the exceptions named ``name`` (a list), as in "raises (E)".
 
+        The name is resolved like :meth:`find_types`. Exceptions are kept
+        apart from the types because they can not be used as the type of a
+        member or an argument.
+        """
+        name = str(name).strip()
+        absolute = name.startswith('::')
         if absolute:
-            # '::X' always names X from the global scope
-            return with_full_path(name)
+            name = name.lstrip(':').strip()
+        nodes = []
+        def parse_module(m):
+            m.for_each_module(parse_module)
+            m.for_each_exception(nodes.append)
+        parse_module(self)
+        return _find_by_name(nodes, name, absolute, None, scope)
 
-        if scope is not None:
-            for prefix in _enclosing_scopes(scope):
-                found = with_full_path(prefix + sep + name if prefix else name)
-                if len(found) > 0:
-                    return found
 
-        if parent:
-            prefix = parent.full_path.lstrip(':')
-            return [s for s in nodes
-                    if s.full_path.lstrip(':') in ((prefix + sep + name if prefix else name), name)]
-        return [s for s in nodes if s.name == name or s.full_path.lstrip(':') == name]
+def _find_by_name(nodes, name, absolute, parent, scope):
+    """The ``nodes`` that ``name`` names (see :meth:`IDLModule.find_types`)."""
+    def with_full_path(full):
+        return [s for s in nodes if s.full_path.lstrip(':') == full]
+
+    if absolute:
+        # '::X' always names X from the global scope
+        return with_full_path(name)
+
+    if scope is not None:
+        for prefix in _enclosing_scopes(scope):
+            found = with_full_path(prefix + sep + name if prefix else name)
+            if len(found) > 0:
+                return found
+
+    if parent:
+        prefix = parent.full_path.lstrip(':')
+        return [s for s in nodes
+                if s.full_path.lstrip(':') in ((prefix + sep + name if prefix else name), name)]
+    return [s for s in nodes if s.name == name or s.full_path.lstrip(':') == name]
 
 
 def _warn(message, category):
