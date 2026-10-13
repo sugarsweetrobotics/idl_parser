@@ -257,14 +257,8 @@ class IDLNode(object):
 
     @property
     def basename(self):
+        """Last part of a scoped :attr:`name` (``'A::B'`` -> ``'B'``, ``'::A'`` -> ``'A'``)."""
         return self._name.split(self.sep)[-1]
-
-    @property
-    def basename(self):
-        """Last part of a scoped :attr:`name` (``'A::B'`` -> ``'B'``)."""
-        if self.name.find(self.sep) > 0:
-            return self.name[self.name.rfind('::')+2:]
-        return self.name
 
     @property
     def pathname(self):
