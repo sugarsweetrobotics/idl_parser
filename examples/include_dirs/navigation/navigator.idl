@@ -1,0 +1,14 @@
+// navigation/navigator.idl: includes only path.idl. geometry.idl and
+// time.idl are read through it (navigator -> path -> geometry -> time).
+#include "path.idl"
+
+module navigation {
+  exception Unreachable {
+    geometry::Pose goal;
+  };
+
+  interface Navigator {
+    geometry::Path plan(in geometry::Pose goal) raises (Unreachable);
+    common::Time now();
+  };
+};

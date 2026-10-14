@@ -1,0 +1,16 @@
+// geometry/geometry.idl: time.idl is in another directory (common/),
+// so it is found through an include directory.
+#include "time.idl"
+
+module geometry {
+  struct Point {
+    double x;
+    double y;
+  };
+
+  struct Pose {
+    common::Time stamp;
+    Point position;
+    double yaw;
+  };
+};

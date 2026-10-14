@@ -1,0 +1,12 @@
+// common/time.idl: included by files in other directories.
+#ifndef COMMON_TIME_IDL
+#define COMMON_TIME_IDL
+
+module common {
+  struct Time {
+    long sec;
+    unsigned long nsec;
+  };
+};
+
+#endif
