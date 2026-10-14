@@ -15,14 +15,13 @@ Shows how to
   files (navigator -> path -> geometry -> time), with each file read once,
 - use types defined in included files,
 - do the same with ``load()`` and ``include_dirs``,
-- parse every IDL file in the directories,
+- parse every IDL file in the directories (``parse_dirs``),
 - catch an ``#include`` that can not be found.
 
 Run::
 
     python examples/include_dirs_example.py
 """
-import glob
 import os
 
 import _path  # noqa: F401  (use the idl_parser of this checkout)
@@ -102,13 +101,12 @@ def main():
           sorted(m.name for m in g2.modules) == sorted(m.name for m in g.modules))
     print()
 
-    # Every IDL file in the directories. parse(idl_dirs=...) alone parses
-    # nothing (idl_dirs only adds include directories), so list the files.
+    # Every IDL file in the directories. parse_dirs() lists the *.idl files
+    # (parse(idl_dirs=...) only adds include directories and parses nothing).
     # A file already read through an #include is not read again.
-    all_idls = sorted(f for d in INCLUDE_DIRS for f in glob.glob(os.path.join(d, '*.idl')))
-    p_all = parser.IDLParser(idl_dirs=INCLUDE_DIRS)
-    p_all.parse(idls=all_idls)
-    print('parse(idls=<all %d files>) defines:' % len(all_idls))
+    p_all = parser.IDLParser()
+    all_idls = p_all.parse_dirs(INCLUDE_DIRS)
+    print('parse_dirs() parsed %d files:' % len(all_idls), [rel(f) for f in all_idls])
     print_definitions(p_all.global_module)
     print()
 

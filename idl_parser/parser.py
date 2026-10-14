@@ -180,8 +180,11 @@ class IDLParser():
 
     def parse(self, idls=[], idl_dirs=[], except_files=[]):
         """ Parse IDL files. Result of parsing can be accessed via global_module property.
+
         :param idls: List of IDL files. Must be fullpath.
-        :param idl_dirs: List of directory which contains target IDL files. Must be fullpath.
+        :param idl_dirs: Directories added to :attr:`dirs` (they stay added) to
+            look for ``#include`` files. The IDL files in them are not parsed;
+            use :meth:`parse_dirs` to parse every IDL file in directories.
         :param except_files: List of IDL files that should be ignored. Do not have to use fullpath.
         :returns: None
         """
@@ -191,6 +194,38 @@ class IDLParser():
             logger.indent()
         self.for_each_idl(self.parse_idl, except_files=except_files, idls=idls, idl_dirs=idl_dirs)
         if self._verbose: logger.deindent()
+
+    def parse_dirs(self, idl_dirs, except_files=[]):
+        """Parse every IDL file in directories (issue #108).
+
+        The ``*.idl`` files directly in each directory are parsed in the
+        order of ``idl_dirs``, and by file name in each directory.
+        Sub directories are not searched. The directories are also added to
+        :attr:`dirs` (they stay added) to look for ``#include`` files.
+        A file already parsed, also through an ``#include``, is not parsed
+        again.
+
+        :param idl_dirs: Directories that contain the IDL files.
+        :param except_files: File names (not paths) of IDL files that should
+            be ignored.
+        :returns: List of the absolute paths of the found IDL files.
+        """
+        if self._verbose:
+            logger.write('parse_dirs(\n')
+            logger.write('  idl_dirs=%s\n' % idl_dirs)
+            logger.indent()
+        self._dirs = self._dirs + [d for d in idl_dirs if d not in self._dirs]
+        idls = []
+        for d in idl_dirs:
+            for f in sorted(os.listdir(d)):
+                path = os.path.abspath(os.path.join(d, f))
+                if f.endswith('.idl') and f not in except_files and os.path.isfile(path) \
+                        and path not in idls:
+                    idls.append(path)
+        for path in idls:
+            self.parse_idl(path)
+        if self._verbose: logger.deindent()
+        return idls
 
     def parse_idl(self, idl_path):
         """Parse one IDL file into :attr:`global_module`.

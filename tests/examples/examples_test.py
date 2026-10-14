@@ -486,7 +486,8 @@ class IncludeDirsExampleTest(unittest.TestCase):
         self.assertIn("Navigator.plan(geometry::Pose) returns geometry::Path "
                       "raises ['navigation::Unreachable']", self.text)
         self.assertIn('load() defines the same modules: True', self.text)
-        self.assertIn('parse(idls=<all 4 files>) defines:', self.text)
+        self.assertIn("parse_dirs() parsed 4 files: ['common/time.idl', 'geometry/geometry.idl', "
+                      "'geometry/path.idl', 'navigation/navigator.idl']", self.text)
         self.assertIn('without common/: IDLCanNotFindException', self.text)
 
 
