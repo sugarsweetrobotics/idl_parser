@@ -204,6 +204,11 @@ class IDLNode(object):
         return self._classname == 'IDLException'
 
     @property
+    def is_native(self):
+        """True for a native type (:class:`~idl_parser.native.IDLNative`)."""
+        return self._classname == 'IDLNative'
+
+    @property
     def is_typedef(self):
         """True for a typedef (:class:`~idl_parser.typedef.IDLTypedef`)."""
         return self._classname == 'IDLTypedef'

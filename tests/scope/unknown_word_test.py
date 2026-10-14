@@ -43,7 +43,6 @@ UNSUPPORTED = {
     'eventtype': 'eventtype E { public long x; };',
     'component': 'component C { provides I p; };',
     'home': 'home H manages C { };',
-    'native': 'native N;',
     'typeprefix': 'typeprefix M "example.com";',
 }
 
