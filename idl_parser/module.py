@@ -135,6 +135,9 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 continue
             pending_annotations, annotations = annotations, []
             pending_modifiers, modifiers = modifiers, []
+            # Record the file each definition is written in, which differs
+            # from ``filepath`` for the lines pasted by #include (issue #109).
+            fp = fn if fn else filepath
 
             if token == None:
                 if self.name == global_namespace:
@@ -148,14 +151,14 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                     m = IDLModule(name_, self)
                     self._modules.append(m)
                 m._add_annotations(pending_annotations)
-                m.parse_tokens(token_buf, filepath=filepath)
+                m.parse_tokens(token_buf, filepath=fp)
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
                 s = interface.IDLInterface(name_, self)
                 s._add_annotations(pending_annotations)
                 s._local = 'local' in pending_modifiers
                 s._abstract = 'abstract' in pending_modifiers
-                s.parse_tokens(token_buf, filepath=filepath)
+                s.parse_tokens(token_buf, filepath=fp)
 
                 if s.is_forward:
                     # Forward declaration ("interface A;"): remember the name only.
@@ -172,10 +175,10 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                     self._interfaces.append(s)
 
             elif token in ('valuetype', 'eventtype'):
-                self._parse_valuetype(token, token_buf, pending_annotations, pending_modifiers, filepath)
+                self._parse_valuetype(token, token_buf, pending_annotations, pending_modifiers, fp)
 
             elif token in definitions.definition_keywords:
-                self.parse_definition(token, token_buf, filepath, pending_annotations)
+                self.parse_definition(token, token_buf, fp, pending_annotations)
 
             elif token == '}':
                 break

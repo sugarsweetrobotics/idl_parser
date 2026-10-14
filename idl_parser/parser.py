@@ -255,7 +255,7 @@ class IDLParser():
             for line_number, line in enumerate(f, 1):
                 lines.append((line_number, idl_path, line))
 
-        self.parse_lines(lines)
+        self.parse_lines(lines, filepath=idl_path)
 
         if self._verbose: 
             logger.deindent()
