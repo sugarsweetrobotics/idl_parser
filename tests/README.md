@@ -13,7 +13,7 @@ docstrings, not in file names.
 | `sequence_array/` | `typedef`, `sequence<>` (nested and bounded), arrays, their element types |
 | `struct_enum_union/` | `struct`, `exception`, `enum`, `union` (case / default labels, char literal labels) |
 | `bitmask_bitset/` | IDL 4.2 `bitmask` and `bitset` |
-| `interface/` | Interfaces, operations, argument directions (`in` / `out` / `inout`), `raises` / `context`, inheritance |
+| `interface/` | Interfaces, operations, argument directions (`in` / `out` / `inout`), `raises` / `context`, inheritance, attributes and definitions inside an interface |
 | `forward_declaration/` | Forward declarations of interfaces, structs and unions |
 | `annotation/` | IDL 4 annotations |
 | `pragma_key/` | `#pragma`, `#pragma keylist`, `@key` |

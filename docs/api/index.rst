@@ -16,6 +16,7 @@ API Reference
    idl_parser.typedef
    idl_parser.const
    idl_parser.native
+   idl_parser.definitions
    idl_parser.pragma
    idl_parser.type
    idl_parser.node

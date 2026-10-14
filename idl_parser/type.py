@@ -294,7 +294,7 @@ class IDLArray(IDLTypeBase):
         size = name[name.find('[')+1 : name.find(']')]
         inner_type_name = primitive_type_name + name[name.find(']')+1:]
 
-        size_literal = self.parse_size(size)
+        size_literal = self.parse_size(size, parent)
 
         self._size = size_literal
         self._type = IDLType(inner_type_name.strip(), parent)
@@ -347,16 +347,27 @@ class IDLArray(IDLTypeBase):
             # print typs[0]
             return typs[0]
 
-    def parse_size(self, size):
+    def parse_size(self, size, scope=None):
         """The int value of an array size: an integer literal or the name of a
         constant.
 
+        :param scope: Node where the array is written; constants in the scopes
+            enclosing it are found first.
         :raises ~idl_parser.exception.InvalidDataTypeException: The size is not
             an integer.
         """
         is_const_type = None
+        # A constant in a scope enclosing ``scope``, the node where the array
+        # is written (a module or an interface, issue #101)
+        n = scope
+        while n is not None and is_const_type is None:
+            if hasattr(n, 'const_by_name'):
+                is_const_type = n.const_by_name(size)
+            n = n.parent
 
-        if self.root_node.modules:
+        if is_const_type:
+            pass
+        elif self.root_node.modules:
             is_const_type = self.root_node.modules[-1].const_by_name(size)
         else:
             is_const_type = self.root_node.const_by_name(size)

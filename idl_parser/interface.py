@@ -2,6 +2,7 @@
 import sys
 from . import node
 from . import exception
+from . import definitions
 
 from . import type as idl_type
 
@@ -261,8 +262,149 @@ class IDLMethod(node.IDLNode):
         """Hook called after the interface has been parsed. Does nothing."""
         pass
 
-class IDLInterface(node.IDLNode):
-    """An ``interface`` and its operations.
+class IDLAttribute(node.IDLNode):
+    """An attribute of an interface, such as ``readonly attribute long x;`` (issue #101).
+
+    ``attribute long a, b;`` declares two attributes, each an
+    :class:`IDLAttribute`.
+
+    :param name: Attribute name.
+    :param parent: The :class:`IDLInterface` the attribute belongs to.
+    """
+    def __init__(self, name, parent):
+        super(IDLAttribute, self).__init__('IDLAttribute', name, parent)
+        self._type = None
+        self._readonly = False
+        self._getraises = []
+        self._setraises = []
+
+    @property
+    def full_path(self):
+        """Scoped name (``'M::I::x'``)."""
+        return self.parent.full_path + sep + self.name
+
+    @property
+    def type(self):
+        """Type of the attribute (an :class:`~idl_parser.type.IDLTypeBase`)."""
+        return self._type
+
+    @property
+    def readonly(self):
+        """True for a ``readonly attribute``."""
+        return self._readonly
+
+    @property
+    def getraises(self):
+        """Exception names raised when the attribute is read, as written:
+        ``raises (...)`` of a readonly attribute, or ``getraises (...)``.
+        """
+        return list(self._getraises)
+
+    @property
+    def setraises(self):
+        """Exception names in ``setraises (...)``, as written."""
+        return list(self._setraises)
+
+    def to_simple_dic(self, quiet=False):
+        """A compact summary: ``{'attribute NAME': 'TYPE'}``
+        (``'readonly attribute NAME'`` for a readonly one).
+        """
+        key = '%sattribute %s' % ('readonly ' if self.readonly else '', self.name)
+        if quiet:
+            return key
+        return {key : str(self.type)}
+
+    def to_dic(self):
+        """The attribute as a plain dict (for JSON or YAML output).
+
+        ``'getraises'`` and ``'setraises'`` are included only when they are written.
+        """
+        dic = { 'name' : self.name,
+                'classname' : self.classname,
+                'type' : str(self.type),
+                'readonly' : self.readonly,
+                'filepath' : self.filepath }
+        if self._getraises:
+            dic['getraises'] = list(self._getraises)
+        if self._setraises:
+            dic['setraises'] = list(self._setraises)
+        return self._with_annotations(dic)
+
+
+def parse_attributes(blocks, parent, filepath=None):
+    """Read ``[readonly] attribute TYPE NAME[, NAME...] [raises clauses]``
+    (the tokens up to, not including, the ``;``) and return a list of
+    :class:`IDLAttribute`.
+
+    :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
+        not valid IDL.
+    """
+    annotations, blocks = node.parse_annotations(blocks)
+    readonly = blocks[0] == 'readonly'
+    if readonly:
+        blocks = blocks[1:]
+    if not blocks or blocks[0] != 'attribute':
+        raise exception.InvalidIDLSyntaxError(message='No "attribute" after "readonly"')
+    blocks = blocks[1:]
+    clause_keywords = ('raises',) if readonly else ('getraises', 'setraises')
+    clauses = [i for i, t in enumerate(blocks) if t in ('raises', 'getraises', 'setraises')]
+    end = clauses[0] if clauses else len(blocks)
+
+    # "long a, b": split at "," (not one inside "< >", e.g. sequence<long, 10>)
+    groups = [[]]
+    for t in blocks[:end]:
+        in_template = sum(x.count('<') - x.count('>') for x in groups[-1]) > 0
+        if t == ',' and not in_template:
+            groups.append([])
+        else:
+            groups[-1].append(t)
+    if len(groups[0]) < 2 or any(len(g) != 1 for g in groups[1:]):
+        raise exception.InvalidIDLSyntaxError(
+            message='Invalid attribute declaration "%s"' % ' '.join(blocks))
+    typename = ' '.join(groups[0][:-1])
+    names = [groups[0][-1]] + [g[0] for g in groups[1:]]
+
+    getraises, setraises = [], []
+    index = end
+    while index < len(blocks):
+        keyword = blocks[index]
+        if keyword not in clause_keywords:
+            raise exception.InvalidIDLSyntaxError(
+                message='Unexpected "%s" in the declaration of attribute "%s"' % (keyword, names[0]))
+        if index + 1 >= len(blocks) or blocks[index + 1] != '(':
+            raise exception.InvalidIDLSyntaxError(
+                message='No "(" after "%s" of attribute "%s"' % (keyword, names[0]))
+        close = node.matching_paren(blocks, index + 1)
+        if close is None:
+            raise exception.InvalidIDLSyntaxError(
+                message='No ")" after "%s" of attribute "%s"' % (keyword, names[0]))
+        exceptions = [t for t in blocks[index + 2:close] if t != ',']
+        (setraises if keyword == 'setraises' else getraises).extend(exceptions)
+        index = close + 1
+    if (getraises or setraises) and len(names) > 1:
+        # IDL allows raises clauses only on a single attribute declarator
+        raise exception.InvalidIDLSyntaxError(
+            message='Raises clauses are allowed only on a single attribute ("%s")' % ', '.join(names))
+
+    attributes = []
+    for name in names:
+        a = IDLAttribute(name, parent)
+        a._filepath = filepath
+        a._readonly = readonly
+        a._type = idl_type.IDLType(typename, a)
+        a._getraises = list(getraises)
+        a._setraises = list(setraises)
+        a._add_annotations(annotations)
+        attributes.append(a)
+    return attributes
+
+
+class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
+    """An ``interface``: its operations, attributes and the types and
+    constants defined in it (issue #101).
+
+    A type defined in an interface is scoped by it (``M::I::S``), and is
+    available like one in a module (:attr:`structs`, :meth:`struct_by_name`, ...).
 
     :param name: Interface name.
     :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
@@ -271,7 +413,9 @@ class IDLInterface(node.IDLNode):
         super(IDLInterface, self).__init__('IDLInterface', name, parent)
         self._verbose = True
         self._methods = []
+        self._attributes = []
         self._inheritances = []
+        self._init_definitions()
         self._forward = False
         self._local = False
         self._abstract = False
@@ -305,7 +449,8 @@ class IDLInterface(node.IDLNode):
         """A compact summary: ``{'interface NAME': [{'inherits': [...]}, ...]}``.
 
         The first entry lists the full paths of the base interfaces; the rest
-        are the ``to_simple_dic()`` of the operations.
+        are the ``to_simple_dic()`` of the operations, then of the attributes
+        and of the types and constants defined in the interface.
 
         :param quiet: Return only ``'interface NAME'``.
         """
@@ -315,6 +460,8 @@ class IDLInterface(node.IDLNode):
         # for an interface without base interfaces.
         entries = [{'inherits' : [i.full_path for i in self.inheritances]}]
         entries += [m.to_simple_dic() for m in self.methods]
+        entries += [a.to_simple_dic() for a in self.attributes]
+        entries += self._definitions_simple_dic()
         dic = { 'interface ' + self.name : entries }
         return dic
 
@@ -322,13 +469,19 @@ class IDLInterface(node.IDLNode):
         """The interface as a plain dict (for JSON or YAML output).
 
         ``'local'`` and ``'abstract'`` (``True``) are included only for a
-        ``local`` or ``abstract`` interface.
+        ``local`` or ``abstract`` interface. ``'attributes'`` is included only
+        when the interface has attributes, and the definitions (``'structs'``,
+        ``'typedefs'``, ...) only when it defines a type or a constant.
         """
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
                 'inheritances' : [i.full_path for i in self.inheritances],
                 'methods' : [m.to_dic() for m in self.methods] }
+        if self.attributes:
+            dic['attributes'] = [a.to_dic() for a in self.attributes]
+        if self.has_definitions:
+            dic.update(self._definitions_dic())
         if self.is_local:
             dic['local'] = True
         if self.is_abstract:
@@ -445,8 +598,17 @@ class IDLInterface(node.IDLNode):
                     raise exception.InvalidIDLSyntaxError(ln, fn, 'No ";" after "}" in the declaration of interface "%s"' % self.name)
                 break
 
+            if token in definitions.definition_keywords:
+                annotations, rest = node.parse_annotations(block_tokens)
+                if not rest:
+                    # A type or constant defined in the interface (issue #101)
+                    self.parse_definition(token, token_buf, filepath, annotations)
+                    block_tokens = []
+                    continue
+
             if token == ';':
-                self._parse_block(block_tokens)
+                if block_tokens:
+                    self._parse_block(block_tokens)
                 block_tokens = []
                 continue
             block_tokens.append(token)
@@ -456,6 +618,10 @@ class IDLInterface(node.IDLNode):
         self.forEachMethod(lambda m : m.post_process())
 
     def _parse_block(self, blocks):
+        annotations, rest = node.parse_annotations(blocks)
+        if rest and rest[0] in ('attribute', 'readonly'):
+            self._attributes.extend(parse_attributes(blocks, self, self.filepath))
+            return
         v = IDLMethod(self)
         v.parse_blocks(blocks, self.filepath)
         self._methods.append(v)
@@ -464,6 +630,21 @@ class IDLInterface(node.IDLNode):
     def methods(self):
         """Operations (list of :class:`IDLMethod`), in order."""
         return self._methods
+
+    @property
+    def attributes(self):
+        """Attributes (list of :class:`IDLAttribute`), in order (issue #101)."""
+        return self._attributes
+
+    def attribute_by_name(self, name):
+        """The attribute named ``name``, or None.
+
+        Attributes of base interfaces are not searched.
+        """
+        for a in self.attributes:
+            if name == a.name:
+                return a
+        return None
 
     def method_by_name(self, name):
         """The operation named ``name``, or None.

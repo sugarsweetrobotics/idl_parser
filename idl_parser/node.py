@@ -334,18 +334,15 @@ class IDLNode(object):
             name = name[len(self.sep):]
         if len(self.root_node.find_types(name)) > 0:
             return False
-        found = []
-        def walk(m):
+        from .module import definition_scopes
+        for m in definition_scopes(self.root_node, self):
             prefix = m.full_path.lstrip(':')
             for kind in kinds:
                 for n in getattr(m, kind, []):
                     full = prefix + self.sep + n if prefix else n
                     if name == n or name == full:
-                        found.append(full)
-            for sub in getattr(m, 'modules', []):
-                walk(sub)
-        walk(self.root_node)
-        return len(found) > 0
+                        return True
+        return False
 
     def check_element_types(self, typ):
         """Raise InvalidDataTypeException if an element type of the sequence
