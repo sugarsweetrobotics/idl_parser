@@ -55,14 +55,15 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The seven example scripts exist in examples/.
+        """The eight example scripts exist in examples/.
 
-        examples/ に7つのサンプルスクリプトが存在する。
+        examples/ に8つのサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
                      'enum_example.py', 'union_example.py',
-                     'annotation_example.py', 'scoped_name_example.py'):
+                     'annotation_example.py', 'scoped_name_example.py',
+                     'valuetype_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -396,6 +397,61 @@ class ScopedNameExampleTest(unittest.TestCase):
         self.assertIn("scope=robot):      ['robot::Point']", self.text)
         self.assertIn("(no scope):        ['::Point', 'geometry::Point', 'geometry::d3::Point', "
                       "'robot::Point', 'robot::arm::Point']", self.text)
+
+
+class ValueTypeExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/valuetype_example.py (issue #99).
+    examples/valuetype_example.py の出力(#99)。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('valuetype_example')
+
+    def test_lists_valuetypes_and_eventtypes(self):
+        """valuetype_example: the value types and event types in the module are listed.
+
+        valuetype_example: モジュール内の valuetype / eventtype 一覧が出力される。
+        """
+        self.assertIn("valuetypes in module sensors: ['Describable', 'Reading', 'RangedReading', "
+                      "'Calibration', 'ReadingNode', 'OptionalName', 'OptionalValues']", self.text)
+        self.assertIn("eventtypes in module sensors: ['Alarm', 'CriticalAlarm']", self.text)
+
+    def test_body(self):
+        """valuetype_example: state members, factories, operations and attributes.
+
+        valuetype_example: 状態メンバー・factory・operation・attribute。
+        """
+        self.assertIn('  private long long raw', self.text)
+        self.assertIn("  factory create(in double value, in string unit) raises ['InvalidRange']", self.text)
+        self.assertIn('  operation double scaled(in double factor)', self.text)
+        self.assertIn('  readonly attribute boolean valid', self.text)
+
+    def test_header(self):
+        """valuetype_example: modifiers, inheritance, supports and boxed value types.
+
+        valuetype_example: 修飾子・継承・supports・boxed value。
+        """
+        self.assertIn('abstract valuetype sensors::Describable', self.text)
+        self.assertIn('custom valuetype sensors::Calibration', self.text)
+        self.assertIn('  inherits: truncatable sensors::Reading', self.text)
+        self.assertIn('  supports: sensors::Resettable', self.text)
+        self.assertIn('  boxed type: string', self.text)
+        self.assertIn('eventtype sensors::CriticalAlarm\n  inherits: sensors::Alarm', self.text)
+
+    def test_used_as_types(self):
+        """valuetype_example: value types and event types used as member, return and argument types.
+
+        valuetype_example: メンバー・戻り値・引数の型としての valuetype / eventtype。
+        """
+        self.assertIn("Reading.create raises: ['sensors::InvalidRange']", self.text)
+        self.assertIn('ReadingNode.next type is ReadingNode: True', self.text)
+        self.assertIn('Snapshot.label: IDLValueType sensors::OptionalName', self.text)
+        self.assertIn('Monitor.read returns: sensors::Reading', self.text)
+        self.assertIn('Monitor.notify(alarm) is an eventtype: True', self.text)
+        self.assertIn('"truncatable": true', self.text)
 
 
 if __name__ == '__main__':
