@@ -97,8 +97,9 @@ class ForwardStructTestFunctions(unittest.TestCase):
         m = load('module M { struct F; }; module N { struct S { sequence<M::F> fs; }; };'
                  ' module M { struct F { long x; }; };')
         fs = m.module_by_name('N').struct_by_name('S').members[0].type
-        self.assertEqual(fs.inner_type.name, 'M::F')
-        self.assertIs(fs.inner_type.obj, m.module_by_name('M').struct_by_name('F'))
+        # Resolved to the definition once it is parsed (issue #111)
+        self.assertIs(fs.inner_type, m.module_by_name('M').struct_by_name('F'))
+        self.assertEqual(fs.inner_type.full_path, 'M::F')
 
     def test_global_scope(self):
         """Forward declaration of a struct at global scope.
