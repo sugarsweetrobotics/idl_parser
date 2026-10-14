@@ -1,0 +1,13 @@
+// geometry/path.idl: geometry.idl is in the same directory.
+// time.idl is also included by geometry.idl; it is read only once.
+#include <geometry.idl>
+#include "time.idl"
+
+module geometry {
+  typedef sequence<Pose> PoseList;
+
+  struct Path {
+    common::Time stamp;
+    PoseList poses;
+  };
+};

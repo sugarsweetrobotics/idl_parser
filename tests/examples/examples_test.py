@@ -55,15 +55,15 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The eight example scripts exist in examples/.
+        """The nine example scripts exist in examples/.
 
-        examples/ に8つのサンプルスクリプトが存在する。
+        examples/ に9つのサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
                      'enum_example.py', 'union_example.py',
                      'annotation_example.py', 'scoped_name_example.py',
-                     'valuetype_example.py'):
+                     'valuetype_example.py', 'include_dirs_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -452,6 +452,42 @@ class ValueTypeExampleTest(unittest.TestCase):
         self.assertIn('Monitor.read returns: sensors::Reading', self.text)
         self.assertIn('Monitor.notify(alarm) is an eventtype: True', self.text)
         self.assertIn('"truncatable": true', self.text)
+
+
+class IncludeDirsExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/include_dirs_example.py.
+    examples/include_dirs_example.py の出力。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('include_dirs_example')
+
+    def test_includes(self):
+        """include_dirs_example: includes() and the include tree across directories.
+
+        include_dirs_example: ディレクトリをまたぐ includes() と include ツリー。
+        """
+        self.assertIn("geometry/path.idl -> ['geometry/geometry.idl', 'common/time.idl']", self.text)
+        self.assertIn('    geometry/path.idl\n      geometry/geometry.idl\n        common/time.idl\n'
+                      '      common/time.idl (already shown)', self.text)
+
+    def test_transitive_parse(self):
+        """include_dirs_example: parsing one file reads the files it includes, through other files too.
+
+        include_dirs_example: 1ファイルの parse で、間接的に include されたファイルも読まれる。
+        """
+        self.assertRegex(self.text, r'module common +Time\n')
+        self.assertRegex(self.text, r'module geometry +Point, Pose, Path, PoseList\n')
+        self.assertRegex(self.text, r'module navigation +Navigator\n')
+        self.assertIn('Pose.stamp type: common::Time', self.text)
+        self.assertIn("Navigator.plan(geometry::Pose) returns geometry::Path "
+                      "raises ['navigation::Unreachable']", self.text)
+        self.assertIn('load() defines the same modules: True', self.text)
+        self.assertIn('parse(idls=<all 4 files>) defines:', self.text)
+        self.assertIn('without common/: IDLCanNotFindException', self.text)
 
 
 if __name__ == '__main__':
