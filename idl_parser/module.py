@@ -7,21 +7,21 @@ without a name (internally ``'__global__'``).
 import os, sys, traceback, warnings
 
 from . import node, type
-from . import interface, definitions
+from . import interface, definitions, valuetype
 from .exception import InvalidIDLSyntaxError, UnsupportedIDLSyntaxWarning
 global_namespace = '__global__'
 sep = '::'
 
 # Keywords of valid IDL definitions that are not supported yet. Such a
 # definition is skipped with an UnsupportedIDLSyntaxWarning (issue #76).
-unsupported_keywords = ('valuetype', 'eventtype', 'component',
+unsupported_keywords = ('component',
                         'home', 'porttype', 'connector',
                         'typeid', 'typeprefix', 'import')
 
 # Modifiers written before a definition keyword ("local interface",
 # "abstract valuetype"). They apply to the definition after them; an
-# interface records "local" and "abstract" (issue #93), and the others are
-# dropped.
+# interface records "local" and "abstract" (issue #93), a valuetype or an
+# eventtype "abstract" and "custom" (issue #99), and the others are dropped.
 modifier_keywords = ('abstract', 'local', 'custom')
 
 class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
@@ -43,6 +43,10 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
 
         self._interfaces = []
         self._forward_interfaces = []
+        self._valuetypes = []
+        self._forward_valuetypes = []
+        self._eventtypes = []
+        self._forward_eventtypes = []
         self._init_definitions()
         self._modules = []
 
@@ -71,6 +75,8 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         dic = {'module %s' % self.name : [s.to_simple_dic(quiet) for s in self.structs] +
                [x.to_simple_dic(quiet) for x in self.exceptions] +
                [i.to_simple_dic(quiet) for i in self.interfaces] +
+               [v.to_simple_dic(quiet) for v in self.valuetypes] +
+               [v.to_simple_dic(quiet) for v in self.eventtypes] +
                [m.to_simple_dic(quiet) for m in self.modules] +
                [e.to_simple_dic(quiet) for e in self.enums] +
                [b.to_simple_dic(quiet) for b in self.bitmasks] +
@@ -86,7 +92,9 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
-                'interfaces' : [i.to_dic() for i in self.interfaces] }
+                'interfaces' : [i.to_dic() for i in self.interfaces],
+                'valuetypes' : [v.to_dic() for v in self.valuetypes],
+                'eventtypes' : [v.to_dic() for v in self.eventtypes] }
         defs = self._definitions_dic()
         consts = defs.pop('consts')
         dic.update(defs)
@@ -163,6 +171,9 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 else:
                     self._interfaces.append(s)
 
+            elif token in ('valuetype', 'eventtype'):
+                self._parse_valuetype(token, token_buf, pending_annotations, pending_modifiers, filepath)
+
             elif token in definitions.definition_keywords:
                 self.parse_definition(token, token_buf, filepath, pending_annotations)
 
@@ -199,6 +210,30 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                        ' '.join(words)))
 
         return True
+
+    def _parse_valuetype(self, keyword, token_buf, annotations, modifiers, filepath):
+        """Parse a valuetype or an eventtype after its keyword (issue #99)."""
+        ln, fn, name_ = token_buf.pop()
+        if name_ is None or name_ in (';', '{', '}', ':'):
+            raise InvalidIDLSyntaxError(ln, fn, 'No name after "%s"' % keyword)
+        cls = valuetype.IDLValueType if keyword == 'valuetype' else valuetype.IDLEventType
+        v = cls(name_, self)
+        v._add_annotations(annotations)
+        v._abstract = 'abstract' in modifiers
+        v._custom = 'custom' in modifiers
+        if v.is_abstract and v.is_custom:
+            raise InvalidIDLSyntaxError(ln, fn, '%s "%s" can not be both abstract and custom' % (keyword, name_))
+        v.parse_tokens(token_buf, filepath=filepath)
+
+        defined = self._valuetypes if keyword == 'valuetype' else self._eventtypes
+        if v.is_forward:
+            forward = self._forward_valuetypes if keyword == 'valuetype' else self._forward_eventtypes
+            if name_ not in forward:
+                forward.append(name_)
+        elif any(d.name == name_ for d in defined):
+            if self._verbose: sys.stdout.write('# Error. Same %s Defined (%s)\n' % (keyword, name_))
+        else:
+            defined.append(v)
 
     def _parse_annotation(self, token, token_buf):
         """Consume an annotation and return it as an :class:`~idl_parser.node.IDLAnnotation`.
@@ -308,6 +343,62 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
             retval.append(func(m))
         return retval
 
+    @property
+    def valuetypes(self):
+        """Value types defined directly in this module (list of
+        :class:`~idl_parser.valuetype.IDLValueType`), boxed ones included (issue #99)."""
+        return self._valuetypes
+
+    def valuetype_by_name(self, name):
+        """The value type named ``name`` (not scoped) in this module, or None."""
+        for v in self._valuetypes:
+            if v.name == name:
+                return v
+        return None
+
+    @property
+    def forward_valuetypes(self):
+        """Names of value types forward-declared ("valuetype V;") in this module,
+        in declaration order, whether or not they are defined later."""
+        return list(self._forward_valuetypes)
+
+    @property
+    def undefined_forward_valuetypes(self):
+        """Forward-declared value type names that have no definition in this module."""
+        return [n for n in self._forward_valuetypes if self.valuetype_by_name(n) is None]
+
+    def for_each_valuetype(self, func):
+        """Call ``func`` with each value type and return the results as a list."""
+        return [func(v) for v in self._valuetypes]
+
+    @property
+    def eventtypes(self):
+        """Event types defined directly in this module (list of
+        :class:`~idl_parser.valuetype.IDLEventType`, issue #99)."""
+        return self._eventtypes
+
+    def eventtype_by_name(self, name):
+        """The event type named ``name`` (not scoped) in this module, or None."""
+        for v in self._eventtypes:
+            if v.name == name:
+                return v
+        return None
+
+    @property
+    def forward_eventtypes(self):
+        """Names of event types forward-declared ("eventtype E;") in this module,
+        in declaration order, whether or not they are defined later."""
+        return list(self._forward_eventtypes)
+
+    @property
+    def undefined_forward_eventtypes(self):
+        """Forward-declared event type names that have no definition in this module."""
+        return [n for n in self._forward_eventtypes if self.eventtype_by_name(n) is None]
+
+    def for_each_eventtype(self, func):
+        """Call ``func`` with each event type and return the results as a list."""
+        return [func(v) for v in self._eventtypes]
+
     def find_types(self, full_typename, parent=None, scope=None):
         """Return the type definitions named ``full_typename`` (a list).
 
@@ -334,8 +425,10 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                          m.for_each_bitmask, m.for_each_bitset, m.for_each_union,
                          m.for_each_native):
                 each(nodes.append)
-            if not m.is_interface:
+            if m.classname == 'IDLModule':
                 m.for_each_interface(nodes.append)
+                m.for_each_valuetype(nodes.append)
+                m.for_each_eventtype(nodes.append)
         return _find_by_name(nodes, name, absolute, parent, scope)
 
     def find_exceptions(self, name, scope=None):
@@ -357,12 +450,12 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
 
 def definition_scopes(module, scope=None):
     """The scopes that hold definitions in ``module``: its sub-modules
-    (innermost first), the module itself, and the interfaces in each of them
-    (issue #101).
+    (innermost first), the module itself, and the interfaces (issue #101),
+    value types and event types (issue #99) in each of them.
 
-    ``scope`` is the node where a name is written. An interface enclosing it
-    that is still being parsed (so it is not in its module yet) is included
-    too, so a definition in an interface can use the ones before it.
+    ``scope`` is the node where a name is written. An interface or a value
+    type enclosing it that is still being parsed (so it is not in its module
+    yet) is included too, so a definition in it can use the ones before it.
     """
     scopes = []
     def walk(m):
@@ -370,10 +463,12 @@ def definition_scopes(module, scope=None):
             walk(sub)
         scopes.append(m)
         scopes.extend(m.interfaces)
+        scopes.extend(m.valuetypes)
+        scopes.extend(m.eventtypes)
     walk(module)
     n = scope
     while n is not None:
-        if n.classname == 'IDLInterface' and all(n is not x for x in scopes):
+        if n.classname in _definition_scope_classnames and all(n is not x for x in scopes):
             scopes.append(n)
         n = n.parent
     return scopes
@@ -421,7 +516,8 @@ def _where(line_number, file_name):
     return text
 
 
-_scope_classnames = ('IDLModule', 'IDLStruct', 'IDLUnion', 'IDLInterface')
+_definition_scope_classnames = ('IDLInterface', 'IDLValueType', 'IDLEventType')
+_scope_classnames = ('IDLModule', 'IDLStruct', 'IDLUnion') + _definition_scope_classnames
 
 def _enclosing_scopes(node):
     """Full paths (without a leading '::') of the scopes enclosing ``node``,

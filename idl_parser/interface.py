@@ -420,6 +420,9 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         self._local = False
         self._abstract = False
 
+    # The keyword of the definition, used in error messages.
+    _kind = 'interface'
+
     @property
     def is_forward(self):
         """True if this node came from a forward declaration ("interface A;")."""
@@ -488,33 +491,43 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
             dic['abstract'] = True
         return self._with_annotations(dic)
 
-    def _all_interfaces(self):
-        """Interfaces seen so far, keyed by full path without a leading '::'.
+    def _all_interfaces(self, kinds=('interfaces',)):
+        """Definitions seen so far, keyed by full path without a leading '::'.
 
-        Returns (defined, forward): defined maps paths to IDLInterface objects,
+        :param kinds: Names of the module lists to look in (``'interfaces'``,
+            ``'valuetypes'``, ``'eventtypes'``); ``'forward_' + kind`` lists
+            their forward declarations.
+
+        Returns (defined, forward): defined maps paths to the definitions,
         forward is the set of paths that have only been forward-declared.
         """
         defined = {}
         forward = set()
         def walk(m):
             prefix = m.full_path.lstrip(':')
-            for i in m.interfaces:
-                defined[i.full_path.lstrip(':')] = i
-            for n in m.forward_interfaces:
-                forward.add(prefix + sep + n if prefix else n)
+            for kind in kinds:
+                for i in getattr(m, kind):
+                    defined[i.full_path.lstrip(':')] = i
+                for n in getattr(m, 'forward_' + kind):
+                    forward.add(prefix + sep + n if prefix else n)
             for sub in m.modules:
                 walk(sub)
         walk(self.root_node)
         return defined, forward - set(defined)
 
-    def _resolve_inheritance(self, name, ln, fn):
+    def _resolve_inheritance(self, name, ln, fn, kinds=('interfaces',),
+                             what='interface which is generalization of'):
         """Resolve a base interface name following the OMG IDL scoping rules.
 
         '::A::B' is looked up from the global scope.  Any other (possibly
         scoped) name is looked up in the enclosing scope first and then in
         each outer scope in turn, so the innermost declaration wins.
+
+        ``kinds`` selects what is looked up (see :meth:`_all_interfaces`) and
+        ``what`` describes it in the error message; a valuetype resolves its
+        base valuetypes and its supported interfaces with them (issue #99).
         """
-        interfaces, forward = self._all_interfaces()
+        interfaces, forward = self._all_interfaces(kinds)
         if name.startswith(sep):
             candidates = [name[len(sep):]]
         else:
@@ -533,7 +546,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
                 msg = '"%s" is only forward-declared; its definition must appear before "%s" inherits from it' % (name, self.name)
                 if self._verbose: sys.stdout.write('# Error. %s\n' % msg)
                 raise exception.IDLCanNotFindException(ln, fn, msg)
-        msg ='Can not find "%s" interface which is generalization of "%s"' % (name, self.name)
+        msg ='Can not find "%s" %s "%s"' % (name, what, self.name)
         if self._verbose: sys.stdout.write('# Error. %s\n' % msg)
         raise exception.IDLCanNotFindException(ln, fn, msg)
 
@@ -582,20 +595,23 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
             raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of interface "%s"' % self.name)
+        self._parse_body(token_buf, filepath)
 
+    def _parse_body(self, token_buf, filepath=None):
+        """Parse the body after its ``{``, up to and including ``};``."""
         block_tokens = []
         while True:
 
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
-                raise exception.InvalidIDLSyntaxError(ln, fn, "No \"}\" in the declaration of interface \"%s\"" % self.name)
+                raise exception.InvalidIDLSyntaxError(ln, fn, 'No "}" in the declaration of %s "%s"' % (self._kind, self.name))
 
             elif token == '}':
                 ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
-                    raise exception.InvalidIDLSyntaxError(ln, fn, 'No ";" after "}" in the declaration of interface "%s"' % self.name)
+                    raise exception.InvalidIDLSyntaxError(ln, fn, 'No ";" after "}" in the declaration of %s "%s"' % (self._kind, self.name))
                 break
 
             if token in definitions.definition_keywords:

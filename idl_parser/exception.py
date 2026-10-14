@@ -76,5 +76,6 @@ class UnknownIDLSyntaxWarning(IDLParserWarning):
 
 class UnsupportedIDLSyntaxWarning(IDLParserWarning):
     """A valid IDL definition that idl_parser does not support yet
-    (``valuetype``, ``component``, ...) was skipped (issue #76)."""
+    (``component``, ``home``, ...) was skipped (issue #76). ``valuetype``
+    and ``eventtype`` are parsed since issue #99."""
     pass

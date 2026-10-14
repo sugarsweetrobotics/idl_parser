@@ -229,6 +229,17 @@ class IDLNode(object):
         return self._classname == 'IDLInterface'
 
     @property
+    def is_valuetype(self):
+        """True for a value type or an event type
+        (:class:`~idl_parser.valuetype.IDLValueType`, issue #99)."""
+        return self._classname in ('IDLValueType', 'IDLEventType')
+
+    @property
+    def is_eventtype(self):
+        """True for an event type (:class:`~idl_parser.valuetype.IDLEventType`)."""
+        return self._classname == 'IDLEventType'
+
+    @property
     def is_enum(self):
         """True for an enum (:class:`~idl_parser.enum.IDLEnum`)."""
         return self._classname == 'IDLEnum'
@@ -321,12 +332,14 @@ class IDLNode(object):
         return self._is_pending_forward(typename, ('forward_interfaces',))
 
     def is_pending_forward_declaration(self, typename):
-        """True if typename names an interface, struct or union that has been
-        forward-declared ("interface A;", "struct A;", "union A;") but whose
-        definition has not been parsed yet.
+        """True if typename names an interface, struct, union, valuetype or
+        eventtype that has been forward-declared ("interface A;", "struct A;",
+        "union A;", "valuetype A;", "eventtype A;") but whose definition has
+        not been parsed yet.
         """
         return self._is_pending_forward(
-            typename, ('forward_interfaces', 'forward_structs', 'forward_unions'))
+            typename, ('forward_interfaces', 'forward_structs', 'forward_unions',
+                       'forward_valuetypes', 'forward_eventtypes'))
 
     def _is_pending_forward(self, typename, kinds):
         name = str(typename).strip()
@@ -370,11 +383,11 @@ class IDLNode(object):
                 message='Can not find Data Type (%s)' % typ.name)
 
     def _is_enclosing_definition(self, name):
-        """True if name is a struct or union that encloses this node and is
+        """True if name is a struct, union or value type that encloses this node and is
         still being parsed (so it is not registered in its module yet)."""
         n = self.parent
         while n is not None and not n.is_root:
-            if n.classname in ('IDLStruct', 'IDLUnion'):
+            if n.classname in ('IDLStruct', 'IDLUnion', 'IDLValueType', 'IDLEventType'):
                 if name == n.name or name == n.full_path.lstrip(':'):
                     return True
             n = n.parent

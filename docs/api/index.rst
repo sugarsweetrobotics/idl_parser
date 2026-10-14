@@ -8,6 +8,7 @@ API Reference
    idl_parser.parser
    idl_parser.module
    idl_parser.interface
+   idl_parser.valuetype
    idl_parser.struct
    idl_parser.enum
    idl_parser.bitmask
