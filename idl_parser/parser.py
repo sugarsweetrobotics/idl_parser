@@ -209,12 +209,13 @@ class IDLParser():
         :param except_files: File names (not paths) of IDL files that should
             be ignored.
         :returns: List of the absolute paths of the found IDL files.
+        :raises FileNotFoundError: A directory does not exist. Nothing is
+            parsed and :attr:`dirs` is not changed then.
         """
         if self._verbose:
             logger.write('parse_dirs(\n')
             logger.write('  idl_dirs=%s\n' % idl_dirs)
             logger.indent()
-        self._dirs = self._dirs + [d for d in idl_dirs if d not in self._dirs]
         idls = []
         for d in idl_dirs:
             for f in sorted(os.listdir(d)):
@@ -222,6 +223,7 @@ class IDLParser():
                 if f.endswith('.idl') and f not in except_files and os.path.isfile(path) \
                         and path not in idls:
                     idls.append(path)
+        self._dirs = self._dirs + [d for d in idl_dirs if d not in self._dirs]
         for path in idls:
             self.parse_idl(path)
         if self._verbose: logger.deindent()
@@ -234,7 +236,10 @@ class IDLParser():
 
         :param idl_path: Path of the IDL file.
         """
-        if idl_path in self._parsed_files:
+        # Compare absolute paths so that one file given by a relative and an
+        # absolute path is parsed once.
+        abs_path = os.path.abspath(idl_path)
+        if abs_path in self._parsed_files:
             if self._verbose:
                 logger.write('Parsing IDL(%s) but ALREADY PARSED.\n' % idl_path)
             return
@@ -244,7 +249,7 @@ class IDLParser():
             logger.indent()
         # Mark as parsed BEFORE parsing so that mutually including files
         # do not re-enter parse_idl() endlessly (issue #6).
-        self._parsed_files.append(idl_path)
+        self._parsed_files.append(abs_path)
         lines = []
         with open(idl_path, 'r') as f:
             for line_number, line in enumerate(f, 1):
