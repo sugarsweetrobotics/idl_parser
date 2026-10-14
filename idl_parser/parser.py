@@ -511,7 +511,8 @@ class IDLParser():
 
         Intended for generating Python (omniORBpy style) code: ``0`` for
         primitive types, bitmasks and bitsets, ``[]`` for sequences, a list for
-        arrays, the first enumerator for enums, ``None`` for native types, and
+        arrays, the first enumerator for enums, ``None`` for native types and
+        value types, and
         a constructor call with the member defaults for structs. Scoped names use ``.``
         (a struct ``M::T { long x; }`` gives ``'M.T(0)'``).
 
@@ -544,6 +545,9 @@ class IDLParser():
             code = code + '0'
         elif typ.is_native:
             # A native type has no IDL-defined value (issue #93)
+            code = code + 'None'
+        elif typ.is_valuetype:
+            # A value may be null (issue #99)
             code = code + 'None'
         elif typ.is_struct:
             code = code + typ.full_path.lstrip(':') + '('  # '::T' at global scope -> 'T'

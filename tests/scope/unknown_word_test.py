@@ -4,8 +4,8 @@ An unknown word in a module or the global scope (e.g. a misspelled keyword,
 "strcut S { ... };") was dropped silently, together with the "{ ... }" block
 after it. From 0.3.2 it was skipped with an UnknownIDLSyntaxWarning (#76);
 from 0.4.0 it is an InvalidIDLSyntaxError (#94). Valid definitions that are
-not supported yet (valuetype, component, ...) are still skipped with an
-UnsupportedIDLSyntaxWarning.
+not supported yet (component, home, ...) are still skipped with an
+UnsupportedIDLSyntaxWarning; valuetype and eventtype are parsed (#99).
 """
 import os
 import unittest
@@ -34,10 +34,6 @@ TYPOS = {
 }
 
 UNSUPPORTED = {
-    'valuetype': 'valuetype V { public long x; };',
-    'abstract_valuetype': 'abstract valuetype V { };',
-    'boxed_valuetype': 'valuetype V long;',
-    'eventtype': 'eventtype E { public long x; };',
     'component': 'component C { provides I p; };',
     'home': 'home H manages C { };',
     'typeprefix': 'typeprefix M "example.com";',
@@ -122,9 +118,10 @@ class UnknownWordTest(unittest.TestCase):
         "local interface" は解析し、@annotation 定義は警告なしで読み飛ばす。
         """
         g, ws = load('@annotation A { long value default 0; };\n'
-                     'module M { local interface I { void f(); }; };')
+                     'module M { local interface I { void f(); }; abstract valuetype V { }; };')
         self.assertEqual(ws, [])
         self.assertEqual([i.name for i in g.module_by_name('M').interfaces], ['I'])
+        self.assertEqual([v.name for v in g.module_by_name('M').valuetypes], ['V'])
 
     def test_valid_idl_does_not_warn(self):
         """IDL files used by the tests give no warning.

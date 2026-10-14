@@ -14,6 +14,7 @@ docstrings, not in file names.
 | `struct_enum_union/` | `struct`, `exception`, `enum`, `union` (case / default labels, char literal labels) |
 | `bitmask_bitset/` | IDL 4.2 `bitmask` and `bitset` |
 | `interface/` | Interfaces, operations, argument directions (`in` / `out` / `inout`), `raises` / `context`, inheritance, attributes and definitions inside an interface |
+| `valuetype/` | `valuetype` and `eventtype`: state members, `factory`, base value types, `supports`, `abstract` / `custom` / `truncatable`, boxed value types |
 | `forward_declaration/` | Forward declarations of interfaces, structs and unions |
 | `annotation/` | IDL 4 annotations |
 | `pragma_key/` | `#pragma`, `#pragma keylist`, `@key` |
