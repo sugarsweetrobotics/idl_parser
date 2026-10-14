@@ -536,7 +536,7 @@ class IDLParser():
             # IDL enumerators belong to the scope enclosing the enum
             # (module M { enum E { A, B }; } -> M::A), as in omniORBpy
             if typ.values:
-                scope = typ.parent.full_path
+                scope = typ.parent.full_path.lstrip(':')  # '::I' for an interface at global scope
                 code = code + (scope + '::' if scope else '') + typ.values[0].name
             else:
                 code = code + '0'

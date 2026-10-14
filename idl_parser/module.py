@@ -7,7 +7,7 @@ without a name (internally ``'__global__'``).
 import os, sys, traceback, warnings
 
 from . import node, type
-from . import struct, typedef, interface, enum, const, union, bitmask, bitset, native
+from . import interface, definitions
 from .exception import InvalidIDLSyntaxError, UnknownIDLSyntaxWarning, UnsupportedIDLSyntaxWarning
 global_namespace = '__global__'
 sep = '::'
@@ -24,7 +24,7 @@ unsupported_keywords = ('valuetype', 'eventtype', 'component',
 # dropped.
 modifier_keywords = ('abstract', 'local', 'custom')
 
-class IDLModule(node.IDLNode):
+class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
     """A ``module`` (or the global scope) and the definitions in it.
 
     Definitions are available by kind (:attr:`structs`, :attr:`interfaces`,
@@ -43,17 +43,7 @@ class IDLModule(node.IDLNode):
 
         self._interfaces = []
         self._forward_interfaces = []
-        self._typedefs = []
-        self._structs = []
-        self._forward_structs = []
-        self._exceptions = []
-        self._enums = []
-        self._bitmasks = []
-        self._bitsets = []
-        self._unions = []
-        self._forward_unions = []
-        self._consts = []
-        self._natives = []
+        self._init_definitions()
         self._modules = []
 
     @property
@@ -96,17 +86,12 @@ class IDLModule(node.IDLNode):
         dic = { 'name' : self.name,
                 'filepath' : self.filepath,
                 'classname' : self.classname,
-                'interfaces' : [i.to_dic() for i in self.interfaces],
-                'typedefs' : [t.to_dic() for t in self.typedefs],
-                'natives' : [n.to_dic() for n in self.natives],
-                'structs' : [s.to_dic() for s in self.structs],
-                'exceptions' : [x.to_dic() for x in self.exceptions],
-                'enums' : [e.to_dic() for e in self.enums],
-                'bitmasks' : [b.to_dic() for b in self.bitmasks],
-                'bitsets' : [b.to_dic() for b in self.bitsets],
-                'unions' : [u.to_dic() for u in self.unions],
-                'modules' : [m.to_dic() for m in self.modules],
-                'consts' : [c.to_dic() for c in self.consts] }
+                'interfaces' : [i.to_dic() for i in self.interfaces] }
+        defs = self._definitions_dic()
+        consts = defs.pop('consts')
+        dic.update(defs)
+        dic['modules'] = [m.to_dic() for m in self.modules]
+        dic['consts'] = consts  # same key order as before (issue #101)
         return self._with_annotations(dic)
 
 
@@ -156,54 +141,6 @@ class IDLModule(node.IDLNode):
                     self._modules.append(m)
                 m._add_annotations(pending_annotations)
                 m.parse_tokens(token_buf, filepath=filepath)
-            elif token == 'typedef':
-                blocks = []
-                while True:
-                    ln, fn, t = token_buf.pop()
-                    if t == None:
-                        raise InvalidIDLSyntaxError()
-                    elif t == ';':
-                        break
-                    else:
-                        blocks.append(t)
-                t = typedef.IDLTypedef(self)
-                anns, blocks = node.parse_annotations(blocks)
-                t._add_annotations(pending_annotations + anns)
-                t.parse_blocks(blocks, filepath=filepath)
-                t_ = self.typedef_by_name(t.name)
-                if t_:
-                    if self._verbose: sys.stdout.write('# Error. Same Typedef Defined (%s)\n' % t.name)
-                else:
-                    self._typedefs.append(t)
-
-            elif token == 'struct':
-                ln, fn, name_ = token_buf.pop()
-                s_ = self.struct_by_name(name_)
-                s = struct.IDLStruct(name_, self)
-                s._add_annotations(pending_annotations)
-                s.parse_tokens(token_buf, filepath=filepath)
-                if s.is_forward:
-                    # Forward declaration ("struct A;"): remember the name only.
-                    # The definition, if any, is added to structs when it appears.
-                    if name_ not in self._forward_structs:
-                        self._forward_structs.append(name_)
-                    continue
-                if s_:
-                    if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
-                else:
-                    self._structs.append(s)
-
-            elif token == 'exception':
-                ln, fn, name_ = token_buf.pop()
-                s = struct.IDLException(name_, self)
-                s._add_annotations(pending_annotations)
-                s.parse_tokens(token_buf, filepath=filepath)
-                if self.exception_by_name(name_):
-                    if self._verbose: sys.stdout.write('# Error. Same Exception Defined (%s)\n' % name_)
-                else:
-                    self._exceptions.append(s)
-
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
                 s = interface.IDLInterface(name_, self)
@@ -226,100 +163,8 @@ class IDLModule(node.IDLNode):
                 else:
                     self._interfaces.append(s)
 
-            elif token == 'enum':
-                ln, fn, name_ = token_buf.pop()
-                s = enum.IDLEnum(name_, self)
-                s._add_annotations(pending_annotations)
-                s.parse_tokens(token_buf, filepath)
-                s_ = self.enum_by_name(name_)
-                if s_:
-                    if self._verbose: sys.stdout.write('# Error. Same Enum Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
-                else:
-                    self._enums.append(s)
-
-            elif token == 'bitmask':
-                ln, fn, name_ = token_buf.pop()
-                s = bitmask.IDLBitmask(name_, self, pending_annotations)
-                s.parse_tokens(token_buf, filepath)
-                if self.bitmask_by_name(name_):
-                    if self._verbose: sys.stdout.write('# Error. Same Bitmask Defined (%s)\n' % name_)
-                else:
-                    self._bitmasks.append(s)
-
-            elif token == 'bitset':
-                ln, fn, name_ = token_buf.pop()
-                s = bitset.IDLBitset(name_, self)
-                s._add_annotations(pending_annotations)
-                s.parse_tokens(token_buf, filepath)
-                if self.bitset_by_name(name_):
-                    if self._verbose: sys.stdout.write('# Error. Same Bitset Defined (%s)\n' % name_)
-                else:
-                    self._bitsets.append(s)
-
-            elif token == 'union':
-                ln, fn, name_ = token_buf.pop()
-                s = union.IDLUnion(name_, self)
-                s._add_annotations(pending_annotations)
-                s.parse_tokens(token_buf, filepath)
-                if s.is_forward:
-                    # Forward declaration ("union A;"): remember the name only.
-                    if name_ not in self._forward_unions:
-                        self._forward_unions.append(name_)
-                    continue
-                s_ = self.union_by_name(name_)
-                if s_:
-                    if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
-                else:
-                    self._unions.append(s)
-
-            elif token == 'native':
-                # "native N;": a type with a name only (issue #93).
-                ln, fn, name_ = token_buf.pop()
-                if name_ is None or name_ in (';', '{', '}'):
-                    raise InvalidIDLSyntaxError(ln, fn, 'No name after "native"')
-                ln2, fn2, t = token_buf.pop()
-                if t != ';':
-                    raise InvalidIDLSyntaxError(ln, fn, 'No ";" after "native %s"' % name_)
-                n = native.IDLNative(name_, self, filepath=filepath)
-                n._add_annotations(pending_annotations)
-                if self.native_by_name(name_):
-                    if self._verbose: sys.stdout.write('# Error. Same Native Defined (%s)\n' % name_)
-                else:
-                    self._natives.append(n)
-
-            elif token == 'const':
-                values = []
-                while True:
-                    ln, fn, t = token_buf.pop()
-                    if t is None:
-                        if self._verbose: sys.stdout.write('# Error. No ";" after const.\n')
-                        raise InvalidIDLSyntaxError(message='No ";" after const definition')
-                    if t == ';':
-                        break
-                    values.append(t)
-
-                # Split at '=': "<type> <name> = <value>" (issue #52).
-                # The value is every token after '=', so that an
-                # expression such as "1 + 2" is kept whole.
-                if '=' not in values:
-                    raise InvalidIDLSyntaxError(ln, fn, 'No "=" in const definition "%s"' % ' '.join(values))
-                eq = values.index('=')
-                if eq < 2:
-                    raise InvalidIDLSyntaxError(ln, fn, 'No type or name in const definition "%s"' % ' '.join(values))
-                if eq == len(values) - 1:
-                    raise InvalidIDLSyntaxError(ln, fn, 'No value in const definition "%s"' % ' '.join(values))
-                value_ = ' '.join(values[eq+1:])
-                name_ = values[eq-1]
-                typename = ' '.join(values[:eq-1])
-                s = const.IDLConst(name_, typename, value_, self, filepath=filepath)
-                s._add_annotations(pending_annotations)
-                s_ = self.const_by_name(name_)
-                if s_:
-                    if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
-                else:
-                    self._consts.append(s)
+            elif token in definitions.definition_keywords:
+                self.parse_definition(token, token_buf, filepath, pending_annotations)
 
             elif token == '}':
                 break
@@ -464,199 +309,6 @@ class IDLModule(node.IDLNode):
             retval.append(func(m))
         return retval
 
-    @property
-    def structs(self):
-        """Structs defined directly in this module (list of :class:`~idl_parser.struct.IDLStruct`)."""
-        return self._structs
-
-    def struct_by_name(self, name):
-        """The struct named ``name`` (not scoped) in this module, or None."""
-        for s in self.structs:
-            if s.name == name:
-                return s
-        return None
-
-    @property
-    def forward_structs(self):
-        """Names of structs forward-declared ("struct A;") in this module,
-        in declaration order, whether or not they are defined later."""
-        return list(self._forward_structs)
-
-    @property
-    def undefined_forward_structs(self):
-        """Forward-declared struct names that have no definition in this module."""
-        return [n for n in self._forward_structs if self.struct_by_name(n) is None]
-
-    def for_each_struct(self, func, filter=None):
-        """Call ``func`` with each struct and return the results as a list.
-
-        :param filter: If given, only the structs for which ``filter(struct)`` is
-            true are passed to ``func``.
-        """
-        retval = []
-        for m in self.structs:
-            if filter:
-                if filter(m):
-                    retval.append(func(m))
-                pass
-            else:
-                retval.append(func(m))
-        return retval
-
-    @property
-    def exceptions(self):
-        """Exceptions defined directly in this module (list of :class:`~idl_parser.struct.IDLException`)."""
-        return self._exceptions
-
-    def exception_by_name(self, name):
-        """The exception named ``name`` (not scoped) in this module, or None."""
-        for x in self.exceptions:
-            if x.name == name:
-                return x
-        return None
-
-    def for_each_exception(self, func):
-        """Call ``func`` with each exception and return the results as a list."""
-        return [func(x) for x in self.exceptions]
-
-    @property
-    def enums(self):
-        """Enums defined directly in this module (list of :class:`~idl_parser.enum.IDLEnum`)."""
-        return self._enums
-
-    def enum_by_name(self, name):
-        """The enum named ``name`` (not scoped) in this module, or None."""
-        for e in self.enums:
-            if e.name == name:
-                return e
-        return None
-
-    def for_each_enum(self, func):
-        """Call ``func`` with each enum and return the results as a list."""
-        retval = []
-        for m in self.enums:
-            retval.append(func(m))
-        return retval
-
-    @property
-    def bitmasks(self):
-        """Bitmasks defined directly in this module (list of :class:`~idl_parser.bitmask.IDLBitmask`)."""
-        return self._bitmasks
-
-    def bitmask_by_name(self, name):
-        """The bitmask named ``name`` (not scoped) in this module, or None."""
-        for b in self.bitmasks:
-            if b.name == name:
-                return b
-        return None
-
-    def for_each_bitmask(self, func):
-        """Call ``func`` with each bitmask and return the results as a list."""
-        return [func(b) for b in self.bitmasks]
-
-    @property
-    def bitsets(self):
-        """Bitsets defined directly in this module (list of :class:`~idl_parser.bitset.IDLBitset`)."""
-        return self._bitsets
-
-    def bitset_by_name(self, name):
-        """The bitset named ``name`` (not scoped) in this module, or None."""
-        for b in self.bitsets:
-            if b.name == name:
-                return b
-        return None
-
-    def for_each_bitset(self, func):
-        """Call ``func`` with each bitset and return the results as a list."""
-        return [func(b) for b in self.bitsets]
-
-    @property
-    def unions(self):
-        """Unions defined directly in this module (list of :class:`~idl_parser.union.IDLUnion`)."""
-        return self._unions
-
-    def union_by_name(self, name):
-        """The union named ``name`` (not scoped) in this module, or None."""
-        for u in self.unions:
-            if u.name == name:
-                return u
-        return None
-
-    @property
-    def forward_unions(self):
-        """Names of unions forward-declared ("union A;") in this module,
-        in declaration order, whether or not they are defined later."""
-        return list(self._forward_unions)
-
-    @property
-    def undefined_forward_unions(self):
-        """Forward-declared union names that have no definition in this module."""
-        return [n for n in self._forward_unions if self.union_by_name(n) is None]
-
-    def for_each_union(self, func):
-        """Call ``func`` with each union and return the results as a list."""
-        retval = []
-        for m in self.unions:
-            retval.append(func(m))
-        return retval
-
-    @property
-    def consts(self):
-        """Constants defined directly in this module (list of :class:`~idl_parser.const.IDLConst`)."""
-        return self._consts
-
-    def const_by_name(self, name):
-        """The constant named ``name`` (not scoped) in this module, or None."""
-        for c in self.consts:
-            if c.name == name:
-                return c
-        return None
-
-    def for_each_const(self, func):
-        """Call ``func`` with each constant and return the results as a list."""
-        retval = []
-        for m in self.consts:
-            retval.append(func(m))
-        return retval
-
-
-    @property
-    def natives(self):
-        """Native types declared directly in this module (list of :class:`~idl_parser.native.IDLNative`)."""
-        return self._natives
-
-    def native_by_name(self, name):
-        """The native type named ``name`` (not scoped) in this module, or None."""
-        for n in self.natives:
-            if n.name == name:
-                return n
-        return None
-
-    def for_each_native(self, func):
-        """Call ``func`` with each native type and return the results as a list."""
-        return [func(n) for n in self.natives]
-
-    @property
-    def typedefs(self):
-        """Typedefs defined directly in this module (list of :class:`~idl_parser.typedef.IDLTypedef`)."""
-        return self._typedefs
-
-    def typedef_by_name(self, name):
-        """The typedef named ``name`` (not scoped) in this module, or None."""
-        for t in self.typedefs:
-            if t.name == name:
-                return t
-        return None
-
-    def for_each_typedef(self, func):
-        """Call ``func`` with each typedef.
-
-        Unlike the other ``for_each_*`` methods, it returns None.
-        """
-        retval = []
-        for m in self.typedefs:
-            retval.append(func(m))
-
     def find_types(self, full_typename, parent=None, scope=None):
         """Return the type definitions named ``full_typename`` (a list).
 
@@ -678,13 +330,13 @@ class IDLModule(node.IDLNode):
             name = name.lstrip(':').strip()
 
         nodes = []
-        def parse_module(m):
-            m.for_each_module(parse_module)
+        for m in definition_scopes(self, scope):
             for each in (m.for_each_struct, m.for_each_typedef, m.for_each_enum,
                          m.for_each_bitmask, m.for_each_bitset, m.for_each_union,
-                         m.for_each_interface, m.for_each_native):
+                         m.for_each_native):
                 each(nodes.append)
-        parse_module(self)
+            if not m.is_interface:
+                m.for_each_interface(nodes.append)
         return _find_by_name(nodes, name, absolute, parent, scope)
 
     def find_exceptions(self, name, scope=None):
@@ -699,11 +351,33 @@ class IDLModule(node.IDLNode):
         if absolute:
             name = name.lstrip(':').strip()
         nodes = []
-        def parse_module(m):
-            m.for_each_module(parse_module)
+        for m in definition_scopes(self, scope):
             m.for_each_exception(nodes.append)
-        parse_module(self)
         return _find_by_name(nodes, name, absolute, None, scope)
+
+
+def definition_scopes(module, scope=None):
+    """The scopes that hold definitions in ``module``: its sub-modules
+    (innermost first), the module itself, and the interfaces in each of them
+    (issue #101).
+
+    ``scope`` is the node where a name is written. An interface enclosing it
+    that is still being parsed (so it is not in its module yet) is included
+    too, so a definition in an interface can use the ones before it.
+    """
+    scopes = []
+    def walk(m):
+        for sub in m.modules:
+            walk(sub)
+        scopes.append(m)
+        scopes.extend(m.interfaces)
+    walk(module)
+    n = scope
+    while n is not None:
+        if n.classname == 'IDLInterface' and all(n is not x for x in scopes):
+            scopes.append(n)
+        n = n.parent
+    return scopes
 
 
 def _find_by_name(nodes, name, absolute, parent, scope):

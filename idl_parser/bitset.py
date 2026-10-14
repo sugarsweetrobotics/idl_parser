@@ -245,13 +245,11 @@ class IDLBitset(node.IDLNode):
         return candidates
 
     def _find_base(self, name, ln, fn):
+        from .module import definition_scopes
         bitsets = {}
-        def collect(m):
+        for m in definition_scopes(self.root_node, self):
             for b in m.bitsets:
                 bitsets[b.full_path.lstrip(':')] = b
-            for sub in m.modules:
-                collect(sub)
-        collect(self.root_node)
         for c in self._scopes(name):
             if c in bitsets:
                 return bitsets[c]
@@ -259,13 +257,11 @@ class IDLBitset(node.IDLNode):
             ln, fn, 'Can not find "%s" bitset which is the base of "%s"' % (name, self.name))
 
     def _find_const(self, name):
+        from .module import definition_scopes
         consts = {}
-        def collect(m):
+        for m in definition_scopes(self.root_node, self):
             for c in m.consts:
                 consts[(m.full_path.lstrip(':') + sep + c.name).lstrip(':')] = c
-            for sub in m.modules:
-                collect(sub)
-        collect(self.root_node)
         for c in self._scopes(name):
             if c in consts:
                 return consts[c]
