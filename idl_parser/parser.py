@@ -180,6 +180,7 @@ class IDLParser():
 
     def parse(self, idls=[], idl_dirs=[], except_files=[]):
         """ Parse IDL files. Result of parsing can be accessed via global_module property.
+
         :param idls: List of IDL files. Must be fullpath.
         :param idl_dirs: Directories added to :attr:`dirs` (they stay added) to
             look for ``#include`` files. The IDL files in them are not parsed;
