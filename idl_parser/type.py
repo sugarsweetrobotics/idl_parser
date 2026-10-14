@@ -119,6 +119,19 @@ def is_primitive(name):
             return True
     return False
 
+def _resolve_element(typ):
+    """The definition an element type names (issue #111).
+
+    An :class:`IDLBasicType` is looked up from the scope where it is written,
+    like the type of a member; any other type node, and a name that can not
+    be resolved (yet), is returned as is.
+    """
+    if typ.classname == 'IDLBasicType':
+        typs = typ.resolve()
+        if len(typs) > 0:
+            return typs[0]
+    return typ
+
 def IDLType(name, parent):
     """Make a type node from a type name as written.
 
@@ -194,8 +207,11 @@ class IDLSequence(IDLTypeBase):
 
     @property
     def inner_type(self):
-        """Element type (a type node made by :func:`IDLType`)."""
-        return self._type
+        """Element type: a type node made by :func:`IDLType`, or, for a named
+        type, its definition (``IDLStruct``, ``IDLEnum``, ``IDLTypedef``, ...),
+        as for :attr:`idl_parser.struct.IDLMember.type` (issue #111). A name
+        that is not defined (yet) is an :class:`IDLBasicType`."""
+        return _resolve_element(self._type)
 
     @property
     def bound(self):
@@ -233,7 +249,7 @@ class IDLSequence(IDLTypeBase):
     @property
     def type(self):
         """Element type; same as :attr:`inner_type`."""
-        return self._type
+        return self.inner_type
 
     @property
     def full_path(self):
@@ -305,8 +321,10 @@ class IDLArray(IDLTypeBase):
 
     @property
     def inner_type(self):
-        """Element type (for ``long[2][3]``, the array type ``long[3]``)."""
-        return self._type
+        """Element type (for ``long[2][3]``, the array type ``long[3]``).
+        A named type is resolved to its definition, as for
+        :attr:`IDLSequence.inner_type` (issue #111)."""
+        return _resolve_element(self._type)
 
     @property
     def primitive_type(self):
@@ -395,7 +413,7 @@ class IDLArray(IDLTypeBase):
     @property
     def type(self):
         """Element type; same as :attr:`inner_type`."""
-        return self._type
+        return self.inner_type
 
     @property
     def full_path(self):
