@@ -309,7 +309,7 @@ class IDLParser():
         """
         included_filepaths = []
         with open(idl_path, 'r') as f:
-            for line in f:
+            for line_number, line in enumerate(f, 1):
                 if line.find('#include') >= 0:
                     if line.find('"') >= 0:
                         file = line[line.find('"')+1:line.rfind('"')].strip()
@@ -319,7 +319,7 @@ class IDLParser():
                         continue
                     p = self._resolve_include(file, current_file=idl_path)
                     if p is None:
-                        raise exception.IDLCanNotFindException()
+                        raise self._include_not_found(file, line_number, idl_path)
                     if p not in included_filepaths:
                         included_filepaths.append(p)
 
@@ -404,6 +404,23 @@ class IDLParser():
 
         return self._find_idl(os.path.basename(filename), lambda p: p)
 
+    def _include_not_found(self, filename, line_number, current_file):
+        """The exception for an ``#include`` whose file can not be found
+        (issue #110). The message names the file and the directories that
+        were searched; the exception carries the line and the file of the
+        ``#include``."""
+        dirs = []
+        if not os.path.isabs(filename):
+            if current_file is not None:
+                dirs.append(os.path.dirname(os.path.abspath(current_file)))
+            for d in self._dirs:
+                if d not in dirs:
+                    dirs.append(d)
+        msg = 'Included file "%s" can not be found.' % filename
+        if dirs:
+            msg += ' Searched: %s' % ', '.join(dirs)
+        return exception.IDLCanNotFindException(line_number, current_file, msg)
+
     def _paste_include(self, lines, pasted=None):
         """ Expand #include directives in-place.
 
@@ -433,7 +450,7 @@ class IDLParser():
                     p = self._resolve_include(filename.strip(), current_file=file_name)
                     if p is None:
                         if self._verbose: logger.write(' # IDL (%s) can not be found.\n' % filename)
-                        raise exception.IDLCanNotFindException
+                        raise self._include_not_found(filename.strip(), line_number, file_name)
 
                     abs_p = os.path.abspath(p)
                     if abs_p in pasted:
