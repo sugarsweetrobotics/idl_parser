@@ -8,7 +8,7 @@ import os, sys, traceback, warnings
 
 from . import node, type
 from . import interface, definitions
-from .exception import InvalidIDLSyntaxError, UnknownIDLSyntaxWarning, UnsupportedIDLSyntaxWarning
+from .exception import InvalidIDLSyntaxError, UnsupportedIDLSyntaxWarning
 global_namespace = '__global__'
 sep = '::'
 
@@ -189,15 +189,14 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
 
             else:
                 # An unknown word, e.g. a misspelled keyword ("strcut S { ... };").
-                # The definition it starts is skipped as before, but no longer
-                # silently (issue #76). It will be an error in a future release.
+                # It was dropped silently, then skipped with an
+                # UnknownIDLSyntaxWarning (issue #76); it is an error now (issue #94).
                 words = self._skip_definition(token, token_buf, ln, fn)
-                _warn('%s: unknown word "%s" in %s; "%s" is skipped. '
-                      'This will be an InvalidIDLSyntaxError in a future release.'
-                      % (_where(ln, fn), token,
-                         'the global scope' if self.is_global else 'module ' + self.full_path,
-                         ' '.join(words)),
-                      UnknownIDLSyntaxWarning)
+                raise InvalidIDLSyntaxError(
+                    ln, fn, 'Unknown word "%s" in %s ("%s")'
+                    % (token,
+                       'the global scope' if self.is_global else 'module ' + self.full_path,
+                       ' '.join(words)))
 
         return True
 

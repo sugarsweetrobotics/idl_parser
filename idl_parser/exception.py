@@ -64,14 +64,13 @@ class IDLParserWarning(UserWarning):
     pass
 
 class UnknownIDLSyntaxWarning(IDLParserWarning):
-    """A word that starts no known definition was found in a module or the
-    global scope (a misspelled keyword such as ``strcut``), and the definition
-    it starts was skipped (issue #76).
+    """No longer issued: an unknown word in a module or the global scope (a
+    misspelled keyword such as ``strcut``) is an :class:`InvalidIDLSyntaxError`
+    since 0.4.0 (issue #94).
 
-    This will become an :class:`InvalidIDLSyntaxError` in a future release.
-    To get the error now, turn the warning into an exception::
-
-        warnings.simplefilter('error', UnknownIDLSyntaxWarning)
+    It was issued from 0.3.2 (issue #76), and is kept so that code referring
+    to it (``warnings.simplefilter('error', UnknownIDLSyntaxWarning)``) still
+    works.
     """
     pass
 
