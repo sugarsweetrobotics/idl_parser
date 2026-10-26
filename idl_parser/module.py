@@ -146,6 +146,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 raise InvalidIDLSyntaxError()
             elif token == 'module':
                 ln, fn, name_ = token_buf.pop()
+                node.check_identifier(name_, 'module', ln, fn)
                 m = self.module_by_name(name_)
                 if m == None:
                     m = IDLModule(name_, self)
@@ -154,6 +155,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 m.parse_tokens(token_buf, filepath=fp)
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
+                node.check_identifier(name_, 'interface', ln, fn)
                 s = interface.IDLInterface(name_, self)
                 s._add_annotations(pending_annotations)
                 s._local = 'local' in pending_modifiers
@@ -219,6 +221,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         ln, fn, name_ = token_buf.pop()
         if name_ is None or name_ in (';', '{', '}', ':'):
             raise InvalidIDLSyntaxError(ln, fn, 'No name after "%s"' % keyword)
+        node.check_identifier(name_, keyword, ln, fn)
         cls = valuetype.IDLValueType if keyword == 'valuetype' else valuetype.IDLEventType
         v = cls(name_, self)
         v._add_annotations(annotations)

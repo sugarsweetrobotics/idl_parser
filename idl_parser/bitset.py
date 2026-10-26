@@ -222,6 +222,7 @@ class IDLBitset(node.IDLNode):
         for n in names:
             if n == '':
                 raise exception.InvalidIDLSyntaxError(ln, fn, 'Invalid bitfield "%s" in bitset "%s"' % (decl, self.name))
+            node.check_identifier(n, 'bitfield of bitset "%s"' % self.name, ln, fn)
             b = IDLBitfield(n, bits, typename, self._own_bits, self)
             b._filepath = self.filepath
             b._add_annotations(annotations)

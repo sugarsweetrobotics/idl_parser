@@ -142,6 +142,7 @@ def split_declarators(tokens, what='declaration'):
         name = declarator.split('[', 1)[0]
         if not _identifier.match(name):
             raise invalid()
+        check_identifier(name, '%s "%s"' % (what, ' '.join(tokens)))
         return group[:end - 1], declarator
 
     type_tokens, first = peel(groups[0])
@@ -157,6 +158,42 @@ def split_declarators(tokens, what='declaration'):
 
 
 _identifier = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+# IDL 4.2 keywords that can not be used as identifiers (issue #119). The
+# keywords of the CCM building blocks (component, home, port, ...) and
+# import / typeid / typeprefix are left out: those definitions are skipped
+# with a warning (issue #100), so the words may still be used as names.
+reserved_words = frozenset((
+    # core data types
+    'any', 'boolean', 'case', 'char', 'const', 'default', 'double', 'enum',
+    'FALSE', 'fixed', 'float', 'long', 'module', 'native', 'Object', 'octet',
+    'sequence', 'short', 'string', 'struct', 'switch', 'TRUE', 'typedef',
+    'unsigned', 'union', 'void', 'wchar', 'wstring',
+    # interfaces
+    'attribute', 'context', 'exception', 'getraises', 'in', 'inout',
+    'interface', 'local', 'oneway', 'out', 'raises', 'readonly', 'setraises',
+    # value types
+    'abstract', 'custom', 'eventtype', 'factory', 'private', 'public',
+    'supports', 'truncatable', 'valuetype', 'ValueBase',
+    # extended data types
+    'bitfield', 'bitmask', 'bitset', 'map', 'int8', 'int16', 'int32', 'int64',
+    'uint8', 'uint16', 'uint32', 'uint64'))
+
+
+def check_identifier(name, what='name', line_number=None, file_name=None):
+    """Raise InvalidIDLSyntaxError if ``name`` is an IDL keyword (issue #119).
+
+    A keyword such as ``long``, ``any`` or ``Object`` can not name a
+    definition, a member or an argument: ``struct S { long any; };`` is an
+    error instead of being read silently.
+
+    :param what: What the name is for, used in the error message
+        (``'struct'``, ``'enumerator'``, ...).
+    """
+    if name is not None and name.split('[', 1)[0].strip() in reserved_words:
+        raise InvalidIDLSyntaxError(
+            line_number, file_name,
+            'The keyword "%s" can not be used as a name (%s)' % (name.split('[', 1)[0].strip(), what))
 
 
 def _make_annotation(name, arg_tokens):

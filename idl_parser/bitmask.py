@@ -193,6 +193,7 @@ class IDLBitmask(node.IDLNode):
                     ln, fn, 'Position %d of "%s" is already used by "%s" in bitmask "%s"'
                     % (position, rest[0], v.name, self.name))
 
+        node.check_identifier(rest[0], 'value of bitmask "%s"' % self.name, ln, fn)
         v = IDLBitValue(rest[0], position, self)
         v._filepath = self.filepath
         v._add_annotations(annotations)

@@ -21,6 +21,7 @@ class IDLEnumValue(node.IDLNode):
         annotations, blocks = node.parse_annotations(blocks)
         self._add_annotations(annotations)
         if len(blocks) == 1:
+            node.check_identifier(blocks[0], 'enumerator of enum "%s"' % self.parent.name)
             self._name = blocks[0]
         else:
             sys.stdout.write('Unkown Enum format %s\n' % blocks)
