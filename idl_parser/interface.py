@@ -34,6 +34,7 @@ class IDLArgument(node.IDLNode):
             blocks.pop(0)
             pass
         argument_name, argument_type = self._name_and_type(blocks)
+        node.check_identifier(argument_name, 'argument of operation "%s"' % self.parent.name)
         self._name = argument_name
         self._type = idl_type.IDLType(argument_type, self)
 
@@ -103,6 +104,7 @@ class IDLMethod(node.IDLNode):
 
         self._returns = idl_type.IDLType(blocks[0], self)
         self._name = blocks[1]
+        node.check_identifier(self._name, 'operation in "%s"' % self.parent.name)
         self._arguments = []
 
         if not blocks[2] == '(':

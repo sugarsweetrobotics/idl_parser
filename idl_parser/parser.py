@@ -567,7 +567,8 @@ class IDLParser():
         """Python expression that builds the default value of ``typ``.
 
         Intended for generating Python (omniORBpy style) code: ``0`` for
-        primitive types, bitmasks and bitsets, ``[]`` for sequences, ``{}`` for
+        primitive types, fixed-point types, bitmasks and bitsets, ``None`` for
+        ``any``, ``Object`` and ``ValueBase``, ``[]`` for sequences, ``{}`` for
         maps, a list for
         arrays, the first enumerator for enums, ``None`` for native types and
         value types, and
@@ -591,6 +592,9 @@ class IDLParser():
                     code = code + ', '
             code = code + ']'
         elif typ.is_primitive:
+            # any, Object and ValueBase may be nil (issue #119)
+            code = code + ('None' if typ.name in idl_type.reference_primitive else '0')
+        elif typ.is_fixed:
             code = code + '0'
         elif typ.is_typedef:
             code = code + self.generate_constructor_python(typ.type)

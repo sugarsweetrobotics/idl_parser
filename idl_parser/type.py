@@ -1,4 +1,5 @@
-"""Type references: primitive types, sequences, arrays and named types.
+"""Type references: primitive types, sequences, maps, arrays, fixed-point
+types and named types.
 
 :func:`IDLType` turns a type name as written in the IDL into one of the
 classes here. A name that is not primitive is an :class:`IDLBasicType`,
@@ -22,7 +23,13 @@ primitive = [
     'wstring',
     # IDL 4.2 explicitly-sized integer types (issue #18)
     'int8', 'int16', 'int32', 'int64',
-    'uint8', 'uint16', 'uint32', 'uint64']
+    'uint8', 'uint16', 'uint32', 'uint64',
+    # Base types that are not numbers or strings (issue #119)
+    'any', 'Object', 'ValueBase']
+
+# any, Object and ValueBase hold a reference or a value of any type, so they
+# have no default value such as 0 (issue #119)
+reference_primitive = ['any', 'Object', 'ValueBase']
 
 # Bounded strings such as 'string<8>' or 'wstring< MAX_LEN >' (issue #9).
 _bounded_string = re.compile(r'^(w?string)\s*<\s*([A-Za-z0-9_:]+)\s*>$')
@@ -101,6 +108,33 @@ def parse_sequence(name):
     bound = _parse_bound(args[1]) if len(args) == 2 else None
     return (elem, bound)
 
+_fixed = re.compile(r'^fixed\s*<\s*([A-Za-z0-9_:]+)\s*,\s*([A-Za-z0-9_:]+)\s*>$')
+
+def parse_fixed(name):
+    """Return (digits, scale) for a fixed-point type name, otherwise None (issue #119).
+
+    ``'fixed<10, 2>'`` gives ``(10, 2)``. Each is an int for a numeric
+    literal, or the name as written (e.g. a const).
+
+    :raises ~idl_parser.exception.InvalidIDLSyntaxError: The digits are not
+        1 to 31, or the scale is not 0 to the digits.
+    """
+    m = _fixed.match(name.strip())
+    if not m:
+        return None
+    digits, scale = _parse_bound(m.group(1)), _parse_bound(m.group(2))
+    if isinstance(digits, int) and not 1 <= digits <= 31:
+        raise exception.InvalidIDLSyntaxError(
+            message='Invalid fixed type "%s": the digits must be 1 to 31' % name)
+    if isinstance(scale, int) and (scale < 0 or (isinstance(digits, int) and scale > digits)):
+        raise exception.InvalidIDLSyntaxError(
+            message='Invalid fixed type "%s": the scale must be 0 to the digits' % name)
+    return (digits, scale)
+
+def fixed_name(digits, scale):
+    """The name of a fixed-point type: ``'fixed<10, 2>'``."""
+    return 'fixed<%s, %s>' % (digits, scale)
+
 _map_head = re.compile(r'^map\s*<')
 
 def parse_map(name):
@@ -172,11 +206,13 @@ def IDLType(name, parent):
     """Make a type node from a type name as written.
 
     ``'void'`` gives an :class:`IDLVoid`, ``'sequence<...>'`` an
-    :class:`IDLSequence`, ``'map<...>'`` an :class:`IDLMap`, a name with ``[n]`` an :class:`IDLArray`, a primitive
-    name an :class:`IDLPrimitive`, and any other name an :class:`IDLBasicType`.
+    :class:`IDLSequence`, ``'map<...>'`` an :class:`IDLMap`, a name with ``[n]`` an :class:`IDLArray`,
+    ``'fixed<d, s>'`` an :class:`IDLFixed`, a primitive name (``any``,
+    ``Object`` and ``ValueBase`` included) an :class:`IDLPrimitive`, and any
+    other name an :class:`IDLBasicType`.
 
     :param name: Type name (``'long'``, ``'sequence<T, 10>'``, ``'map<K, V>'``,
-        ``'long[3]'``, ``'M::T'``).
+        ``'long[3]'``, ``'fixed<10, 2>'``, ``'M::T'``).
     :param parent: The node where the name is written; named types are
         resolved from its scope.
     """
@@ -189,6 +225,8 @@ def IDLType(name, parent):
         return IDLMap(name, parent)
     elif name.find('[') >= 0:
         return IDLArray(name, parent)
+    elif _fixed.match(name.strip()):
+        return IDLFixed(name, parent)
 
     if is_primitive(name):
         return IDLPrimitive(name, parent)
@@ -395,6 +433,58 @@ class IDLMap(IDLTypeBase):
                  'classname' : self.classname,
                  'key_type' : str(self.key_type),
                  'value_type' : str(self.value_type) }
+
+class IDLFixed(IDLTypeBase):
+    """A fixed-point decimal type (``fixed<10, 2>``, issue #119).
+
+    ``str()`` and ``name`` give ``'fixed<10, 2>'``; the total number of
+    digits and the number of digits after the decimal point are available as
+    :attr:`digits` and :attr:`scale`.
+
+    :raises ~idl_parser.exception.InvalidIDLSyntaxError: The name is not a
+        valid fixed-point type.
+    """
+    def __init__(self, name, parent):
+        parsed = parse_fixed(name)
+        if parsed is None:
+            raise exception.InvalidIDLSyntaxError(message='Invalid fixed type "%s"' % name)
+        self._digits, self._scale = parsed
+        super(IDLFixed, self).__init__('IDLFixed', fixed_name(*parsed), parent.root_node)
+        self._verbose = True
+
+    @property
+    def digits(self):
+        """Total number of digits ('fixed<10, 2>' -> 10). A constant name is
+        returned as written."""
+        return self._digits
+
+    @property
+    def scale(self):
+        """Number of digits after the decimal point ('fixed<10, 2>' -> 2).
+        A constant name is returned as written."""
+        return self._scale
+
+    @property
+    def obj(self):
+        """The fixed-point type itself."""
+        return self
+
+    @property
+    def full_path(self):
+        return self.parent.full_path + sep + self.name
+
+    def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        """A compact summary, ``str(self)`` (``'fixed<10, 2>'``) when ``quiet`` or
+        ``recursive`` is given, otherwise None."""
+        if quiet or recursive:
+            return str(self)
+
+    def to_dic(self):
+        """The fixed-point type as a plain dict (for JSON or YAML output)."""
+        return { 'name' : self.name,
+                 'classname' : self.classname,
+                 'digits' : self.digits,
+                 'scale' : self.scale }
 
 class IDLArray(IDLTypeBase):
     """An array type (``long[3]``; ``long[2][3]`` is an array of arrays).

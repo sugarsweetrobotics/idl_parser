@@ -55,16 +55,16 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The ten example scripts exist in examples/.
+        """The eleven example scripts exist in examples/.
 
-        examples/ に10個のサンプルスクリプトが存在する。
+        examples/ に11個のサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
                      'enum_example.py', 'union_example.py',
                      'annotation_example.py', 'scoped_name_example.py',
                      'valuetype_example.py', 'include_dirs_example.py',
-                     'struct_inheritance_map_example.py'):
+                     'struct_inheritance_map_example.py', 'any_fixed_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -194,6 +194,48 @@ class StructInheritanceMapExampleTest(unittest.TestCase):
         """
         self.assertIn("'base': 'robot::JointState'", self.text)
         self.assertIn("'type': 'map<string, double>'", self.text)
+
+
+class AnyFixedExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/any_fixed_example.py (issue #119).
+    examples/any_fixed_example.py の出力(#119)。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('any_fixed_example')
+
+    def test_members(self):
+        """any_fixed_example: any, Object, ValueBase and fixed<d, s> members.
+
+        any_fixed_example: any・Object・ValueBase・fixed<d, s> のメンバー。
+        """
+        self.assertRegex(self.text, r'price +typedef Price of fixed-point, 9 digits, 2 after the point')
+        self.assertRegex(self.text, r'tax_rate +fixed-point, 5 digits, 4 after the point')
+        self.assertRegex(self.text, r'extra +primitive any')
+        self.assertRegex(self.text, r'properties +map from primitive string to primitive any')
+        self.assertRegex(self.text, r'customer +primitive Object')
+        self.assertRegex(self.text, r'note +primitive ValueBase')
+
+    def test_operations(self):
+        """any_fixed_example: arguments and return values of operations.
+
+        any_fixed_example: オペレーションの引数と戻り値。
+        """
+        self.assertIn('total(order: struct shop::Order) -> typedef Price of fixed-point, 9 digits, 2 after the point', self.text)
+        self.assertIn('query(key: primitive string) -> primitive any', self.text)
+
+    def test_names_and_defaults(self):
+        """any_fixed_example: the fixed type name, to_dic() and default values.
+
+        any_fixed_example: fixed 型の名前、to_dic() とデフォルト値。
+        """
+        self.assertIn('tax_rate type name: fixed<5, 4>', self.text)
+        self.assertIn("'digits': 5, 'scale': 4", self.text)
+        self.assertIn('default Item: shop.Item(0, 0, 0, None)', self.text)
+        self.assertIn('default Order: shop.Order([], {}, None, None)', self.text)
 
 
 class EnumExampleTest(unittest.TestCase):

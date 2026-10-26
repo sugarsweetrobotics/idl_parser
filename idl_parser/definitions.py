@@ -73,6 +73,7 @@ class IDLDefinitionScope(object):
 
         elif token == 'struct':
             ln, fn, name_ = token_buf.pop()
+            node.check_identifier(name_, 'struct', ln, fn)
             s_ = self.struct_by_name(name_)
             s = struct.IDLStruct(name_, self)
             s._add_annotations(pending_annotations)
@@ -90,6 +91,7 @@ class IDLDefinitionScope(object):
 
         elif token == 'exception':
             ln, fn, name_ = token_buf.pop()
+            node.check_identifier(name_, 'exception', ln, fn)
             s = struct.IDLException(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath=filepath)
@@ -100,6 +102,7 @@ class IDLDefinitionScope(object):
 
         elif token == 'enum':
             ln, fn, name_ = token_buf.pop()
+            node.check_identifier(name_, 'enum', ln, fn)
             s = enum.IDLEnum(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath)
@@ -112,6 +115,7 @@ class IDLDefinitionScope(object):
 
         elif token == 'bitmask':
             ln, fn, name_ = token_buf.pop()
+            node.check_identifier(name_, 'bitmask', ln, fn)
             s = bitmask.IDLBitmask(name_, self, pending_annotations)
             s.parse_tokens(token_buf, filepath)
             if self.bitmask_by_name(name_):
@@ -121,6 +125,7 @@ class IDLDefinitionScope(object):
 
         elif token == 'bitset':
             ln, fn, name_ = token_buf.pop()
+            node.check_identifier(name_, 'bitset', ln, fn)
             s = bitset.IDLBitset(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath)
@@ -131,6 +136,7 @@ class IDLDefinitionScope(object):
 
         elif token == 'union':
             ln, fn, name_ = token_buf.pop()
+            node.check_identifier(name_, 'union', ln, fn)
             s = union.IDLUnion(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath)
@@ -147,6 +153,7 @@ class IDLDefinitionScope(object):
         elif token == 'native':
             # "native N;": a type with a name only (issue #93).
             ln, fn, name_ = token_buf.pop()
+            node.check_identifier(name_, 'native', ln, fn)
             if name_ is None or name_ in (';', '{', '}'):
                 raise InvalidIDLSyntaxError(ln, fn, 'No name after "native"')
             ln2, fn2, t = token_buf.pop()
@@ -182,6 +189,7 @@ class IDLDefinitionScope(object):
                 raise InvalidIDLSyntaxError(ln, fn, 'No value in const definition "%s"' % ' '.join(values))
             value_ = ' '.join(values[eq+1:])
             name_ = values[eq-1]
+            node.check_identifier(name_, 'const', ln, fn)
             typename = ' '.join(values[:eq-1])
             s = const.IDLConst(name_, typename, value_, self, filepath=filepath)
             s._add_annotations(pending_annotations)
