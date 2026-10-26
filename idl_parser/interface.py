@@ -350,19 +350,12 @@ def parse_attributes(blocks, parent, filepath=None):
     clauses = [i for i, t in enumerate(blocks) if t in ('raises', 'getraises', 'setraises')]
     end = clauses[0] if clauses else len(blocks)
 
-    # "long a, b": split at "," (not one inside "< >", e.g. sequence<long, 10>)
-    groups = [[]]
-    for t in blocks[:end]:
-        in_template = sum(x.count('<') - x.count('>') for x in groups[-1]) > 0
-        if t == ',' and not in_template:
-            groups.append([])
-        else:
-            groups[-1].append(t)
-    if len(groups[0]) < 2 or any(len(g) != 1 for g in groups[1:]):
+    # "long a, b": one attribute per name; an attribute is not an array
+    typename, names = node.split_declarators(blocks[:end], 'attribute declaration')
+    if any('[' in n for n in names):
         raise exception.InvalidIDLSyntaxError(
             message='Invalid attribute declaration "%s"' % ' '.join(blocks))
-    typename = ' '.join(groups[0][:-1])
-    names = [groups[0][-1]] + [g[0] for g in groups[1:]]
+    typename = ' '.join(typename)
 
     getraises, setraises = [], []
     index = end

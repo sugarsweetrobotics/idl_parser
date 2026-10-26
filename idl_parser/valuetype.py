@@ -375,19 +375,9 @@ class IDLValueType(interface.IDLInterface):
     def _parse_state_members(self, annotations, blocks):
         """``public T a, b[3]`` -> one IDLStateMember per name."""
         public = blocks[0] == 'public'
-        groups = [[]]
-        for t in blocks[1:]:
-            in_template = sum(x.count('<') - x.count('>') for x in groups[-1]) > 0
-            if t == ',' and not in_template:
-                groups.append([])
-            else:
-                groups[-1].append(t)
-        if len(groups[0]) < 2 or any(len(g) != 1 for g in groups[1:]):
-            raise exception.InvalidIDLSyntaxError(
-                message='Invalid state member declaration "%s"' % ' '.join(blocks))
-        typename = groups[0][:-1]
+        typename, declarators = node.split_declarators(blocks[1:], 'state member declaration')
         members = []
-        for name in [groups[0][-1]] + [g[0] for g in groups[1:]]:
+        for name in declarators:
             m = IDLStateMember(self)
             m.parse_blocks(typename + [name], self.filepath)
             m._add_annotations(annotations)

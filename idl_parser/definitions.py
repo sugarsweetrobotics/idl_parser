@@ -58,15 +58,18 @@ class IDLDefinitionScope(object):
                     break
                 else:
                     blocks.append(t)
-            t = typedef.IDLTypedef(self)
             anns, blocks = node.parse_annotations(blocks)
-            t._add_annotations(pending_annotations + anns)
-            t.parse_blocks(blocks, filepath=filepath)
-            t_ = self.typedef_by_name(t.name)
-            if t_:
-                if self._verbose: sys.stdout.write('# Error. Same Typedef Defined (%s)\n' % t.name)
-            else:
-                self._typedefs.append(t)
+            # "typedef long A, B[3];" defines one typedef per name (issue #117)
+            typename, declarators = node.split_declarators(blocks, 'typedef')
+            for d in declarators:
+                t = typedef.IDLTypedef(self)
+                t._add_annotations(pending_annotations + anns)
+                t.parse_blocks(typename + [d], filepath=filepath)
+                t_ = self.typedef_by_name(t.name)
+                if t_:
+                    if self._verbose: sys.stdout.write('# Error. Same Typedef Defined (%s)\n' % t.name)
+                else:
+                    self._typedefs.append(t)
 
         elif token == 'struct':
             ln, fn, name_ = token_buf.pop()

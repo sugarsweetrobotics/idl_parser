@@ -52,7 +52,12 @@ class IDLUnionMember(node.IDLNode):
 
         annotations, blocks = node.parse_annotations(blocks)
         self._add_annotations(annotations)
-        name, typ = self._name_and_type(blocks)
+        typename, declarators = node.split_declarators(blocks, 'union member declaration')
+        if len(declarators) > 1:
+            # IDL allows only one declarator in a union element (issue #117)
+            raise exception.InvalidIDLSyntaxError(
+                message='A union member can have only one name ("%s")' % ', '.join(declarators))
+        name, typ = declarators[0], ' '.join(typename)
         if name.find('[') >= 0:
             name_ = name[:name.find('[')]
             typ = typ.strip() + ' ' + name[name.find('['):]
