@@ -272,6 +272,11 @@ class IDLNode(object):
         return self._classname == 'IDLSequence'
 
     @property
+    def is_map(self):
+        """True for a map type (:class:`~idl_parser.type.IDLMap`, issue #118)."""
+        return self._classname == 'IDLMap'
+
+    @property
     def is_primitive(self):
         """True for a primitive type (:class:`~idl_parser.type.IDLPrimitive`)."""
         return self._classname == 'IDLPrimitive'
@@ -411,29 +416,43 @@ class IDLNode(object):
         return False
 
     def check_element_types(self, typ):
-        """Raise InvalidDataTypeException if an element type of the sequence
-        or array ``typ`` (nested ones included) is not declared (issue #67).
+        """Raise InvalidDataTypeException if an element type of the sequence,
+        array or map ``typ`` (nested ones included) is not declared (issue #67).
+        For a map, both the key and the value type are checked (issue #118).
 
         A type that has been forward-declared ("interface A;", "struct A;",
         "union A;") may be used before its definition, as with a direct member.
         """
-        from . import exception
+        if getattr(typ, 'is_map', False):
+            for t in (typ.key_type, typ.value_type):
+                self._check_element_type(t)
+                self.check_element_types(t)
+            return
         while getattr(typ, 'is_sequence', False) or getattr(typ, 'is_array', False):
             typ = typ.inner_type
-            if typ.classname != 'IDLBasicType':
-                continue
-            name = typ.name.strip()
-            if name.startswith(self.sep):
-                name = name[len(self.sep):]
-            if len(typ.resolve()) > 0:
-                continue
-            if self.is_pending_forward_declaration(name):
-                continue
-            if self._is_enclosing_definition(name):
-                continue # recursive type: "struct Node { sequence<Node> children; };"
-            print('Can not find Data Type (%s)\n' % typ.name)
-            raise exception.InvalidDataTypeException(
-                message='Can not find Data Type (%s)' % typ.name)
+            self._check_element_type(typ)
+            if getattr(typ, 'is_map', False):
+                self.check_element_types(typ)
+                return
+
+    def _check_element_type(self, typ):
+        """Raise InvalidDataTypeException if the element type ``typ`` is a
+        name that is not declared."""
+        from . import exception
+        if typ.classname != 'IDLBasicType':
+            return
+        name = typ.name.strip()
+        if name.startswith(self.sep):
+            name = name[len(self.sep):]
+        if len(typ.resolve()) > 0:
+            return
+        if self.is_pending_forward_declaration(name):
+            return
+        if self._is_enclosing_definition(name):
+            return # recursive type: "struct Node { sequence<Node> children; };"
+        print('Can not find Data Type (%s)\n' % typ.name)
+        raise exception.InvalidDataTypeException(
+            message='Can not find Data Type (%s)' % typ.name)
 
     def _is_enclosing_definition(self, name):
         """True if name is a struct, union or value type that encloses this node and is
@@ -449,8 +468,8 @@ class IDLNode(object):
     def refine_typename(self, typ):
         """Name of the definition that the type ``typ`` refers to.
 
-        Sequences keep their form with refined element types
-        (``'sequence < T >'``), bounded strings give their base type, and a name
+        Sequences and maps keep their form with refined element types
+        (``'sequence < T >'``, ``'map < K , V >'``), bounded strings give their base type, and a name
         that can not be resolved yet is returned as written.
         """
         return self._refine_typename(typ.name)
@@ -468,6 +487,10 @@ class IDLNode(object):
             # Nested types are refined recursively (issue #31). The bound of
             # a bounded sequence is not part of the type name (see .bound).
             return 'sequence < ' + self._refine_typename(seq[0]) + ' >'
+        map_ = idl_type.parse_map(name) if name.endswith('>') else None
+        if map_ is not None:
+            # As with sequences, the bound is not part of the name (issue #118)
+            return 'map < ' + self._refine_typename(map_[0]) + ' , ' + self._refine_typename(map_[1]) + ' >'
         bounded = idl_type.parse_bounded_string(name)
         if bounded is not None:
             return bounded[0]

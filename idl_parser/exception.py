@@ -54,7 +54,7 @@ class InvalidDataTypeException(IDLParserException):
     pass
 
 class IDLCanNotFindException(IDLParserException):
-    """An ``#include`` file, a base interface / bitset or an exception in
+    """An ``#include`` file, a base interface / struct / bitset or an exception in
     ``raises (...)`` can not be found."""
     pass
 
