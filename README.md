@@ -79,6 +79,7 @@ More examples are in the [examples](examples/) folder:
 | [`argument_direction_example.py`](examples/argument_direction_example.py) | directions of method arguments: `in`, `out` and `inout` |
 | [`struct_example.py`](examples/struct_example.py) | structs and their member types |
 | [`struct_inheritance_map_example.py`](examples/struct_inheritance_map_example.py) | struct inheritance (`struct B : A`) and `map<K, V>` types |
+| [`any_fixed_example.py`](examples/any_fixed_example.py) | `any`, `Object`, `ValueBase` and fixed-point (`fixed<d, s>`) types |
 | [`enum_example.py`](examples/enum_example.py) | enums and their values |
 | [`union_example.py`](examples/union_example.py) | unions: discriminator kinds, case and `default` labels, member types |
 | [`annotation_example.py`](examples/annotation_example.py) | IDL 4 annotations (`@key`, `@range`, ...) and struct keys |

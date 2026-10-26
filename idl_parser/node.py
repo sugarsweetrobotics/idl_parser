@@ -277,6 +277,11 @@ class IDLNode(object):
         return self._classname == 'IDLMap'
 
     @property
+    def is_fixed(self):
+        """True for a fixed-point type (:class:`~idl_parser.type.IDLFixed`, issue #119)."""
+        return self._classname == 'IDLFixed'
+
+    @property
     def is_primitive(self):
         """True for a primitive type (:class:`~idl_parser.type.IDLPrimitive`)."""
         return self._classname == 'IDLPrimitive'
@@ -494,6 +499,10 @@ class IDLNode(object):
         bounded = idl_type.parse_bounded_string(name)
         if bounded is not None:
             return bounded[0]
+        fixed = idl_type.parse_fixed(name)
+        if fixed is not None:
+            # The digits and scale are part of the type ('fixed<10, 2>', issue #119)
+            return idl_type.fixed_name(*fixed)
         typs = self.root_node.find_types(name, scope=self._lookup_scope())
         if len(typs) == 0:
             # Not resolvable yet (e.g. a forward-declared interface): keep the name
