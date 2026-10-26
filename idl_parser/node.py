@@ -1,4 +1,6 @@
 """Base class of all nodes, and IDL annotations (``@name(...)``)."""
+import re
+
 from .exception import InvalidIDLSyntaxError
 
 
@@ -104,6 +106,57 @@ def split_top_level(tokens, sep):
             part.append(t)
     parts.append(part)
     return parts
+
+
+def split_declarators(tokens, what='declaration'):
+    """Split ``TYPE NAME[, NAME...]`` into the type tokens and the declarators
+    (issue #117).
+
+    A declarator is a name with its array sizes, if any, as one string:
+    ``['long', 'a', ',', 'c', '[2]', '[3]']`` -> ``(['long'], ['a', 'c[2][3]'])``.
+    A ``,`` inside ``< >`` (``sequence<long, 10>``) does not split.
+
+    :param what: Kind of declaration, used in the error message.
+    :raises ~idl_parser.exception.InvalidIDLSyntaxError: There is no type or
+        no name, or a declarator is not a name with array sizes.
+    """
+    groups = [[]]
+    for t in tokens:
+        in_template = sum(x.count('<') - x.count('>') for x in groups[-1]) > 0
+        if t == ',' and not in_template:
+            groups.append([])
+        else:
+            groups[-1].append(t)
+
+    def invalid():
+        return InvalidIDLSyntaxError(message='Invalid %s "%s"' % (what, ' '.join(tokens)))
+
+    def peel(group):
+        # Split trailing "[n]" tokens and the name before them off group.
+        end = len(group)
+        while end > 0 and group[end - 1].startswith('['):
+            end -= 1
+        if end == 0:
+            raise invalid()
+        declarator = ''.join(group[end - 1:])
+        name = declarator.split('[', 1)[0]
+        if not _identifier.match(name):
+            raise invalid()
+        return group[:end - 1], declarator
+
+    type_tokens, first = peel(groups[0])
+    if not type_tokens:
+        raise invalid()
+    declarators = [first]
+    for g in groups[1:]:
+        rest, declarator = peel(g)
+        if rest:
+            raise invalid()
+        declarators.append(declarator)
+    return type_tokens, declarators
+
+
+_identifier = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 
 def _make_annotation(name, arg_tokens):

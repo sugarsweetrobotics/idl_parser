@@ -250,9 +250,14 @@ class IDLStruct(node.IDLNode):
         self._post_process()
 
     def _parse_block(self, blocks):
-        v = IDLMember(self)
-        v.parse_blocks(blocks, self.filepath)
-        self._members.append(v)
+        # "long a, b[2];" declares one member per name (issue #117)
+        annotations, blocks = node.parse_annotations(blocks)
+        typename, declarators = node.split_declarators(blocks, 'member declaration')
+        for d in declarators:
+            v = IDLMember(self)
+            v.parse_blocks(typename + [d], self.filepath)
+            v._add_annotations(annotations)
+            self._members.append(v)
 
     def _post_process(self):
         self.forEachMember(lambda m : m.post_process())
