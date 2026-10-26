@@ -55,16 +55,17 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The eleven example scripts exist in examples/.
+        """The twelve example scripts exist in examples/.
 
-        examples/ に11個のサンプルスクリプトが存在する。
+        examples/ に12個のサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
                      'enum_example.py', 'union_example.py',
                      'annotation_example.py', 'scoped_name_example.py',
                      'valuetype_example.py', 'include_dirs_example.py',
-                     'struct_inheritance_map_example.py', 'any_fixed_example.py'):
+                     'struct_inheritance_map_example.py', 'any_fixed_example.py',
+                     'preprocessor_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -236,6 +237,48 @@ class AnyFixedExampleTest(unittest.TestCase):
         self.assertIn("'digits': 5, 'scale': 4", self.text)
         self.assertIn('default Item: shop.Item(0, 0, 0, None)', self.text)
         self.assertIn('default Order: shop.Order([], {}, None, None)', self.text)
+
+
+class PreprocessorExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/preprocessor_example.py (issue #120).
+    examples/preprocessor_example.py の出力(#120)。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('preprocessor_example')
+
+    def test_default(self):
+        """preprocessor_example: without defines, #if VERSION >= 2 and MAX_POINTS 16 are used.
+
+        preprocessor_example: defines なしでは #if VERSION >= 2 と MAX_POINTS 16 が使われる。
+        """
+        first = self.text.split('\n\n')[0]
+        self.assertIn('struct Point { double x, double y, double z }', first)
+        self.assertIn('Point [16] points', first)
+        self.assertIn('intensities bound: 16', first)
+        self.assertNotIn('StampedScan', first)
+
+    def test_legacy(self):
+        """preprocessor_example: LEGACY selects the #else branch.
+
+        preprocessor_example: LEGACY で #else の分岐が選ばれる。
+        """
+        second = self.text.split('\n\n')[1]
+        self.assertIn("defines={'LEGACY': ''}", second)
+        self.assertIn('struct Point { double x, double y }', second)
+
+    def test_timestamp(self):
+        """preprocessor_example: USE_TIMESTAMP adds StampedScan and MAX_POINTS 4 overrides the default.
+
+        preprocessor_example: USE_TIMESTAMP で StampedScan が増え、MAX_POINTS 4 が既定値に優先する。
+        """
+        third = self.text.split('\n\n')[2]
+        self.assertIn('struct StampedScan { unsigned long long stamp, Scan scan }', third)
+        self.assertIn('Point [4] points', third)
+        self.assertIn('intensities bound: 4', third)
 
 
 class EnumExampleTest(unittest.TestCase):

@@ -81,6 +81,7 @@ More examples are in the ``examples`` folder of the repository:
 - ``struct_example.py``: structs and their member types
 - ``struct_inheritance_map_example.py``: struct inheritance (``struct B : A``) and ``map<K, V>`` types
 - ``any_fixed_example.py``: ``any``, ``Object``, ``ValueBase`` and fixed-point (``fixed<d, s>``) types
+- ``preprocessor_example.py``: ``#define`` macros, ``#if`` / ``#elif`` / ``#else``, and macros given from outside with ``IDLParser(defines=...)``
 - ``enum_example.py``: enums and their values
 - ``union_example.py``: unions (discriminator kinds, case and ``default`` labels, member types)
 - ``annotation_example.py``: IDL 4 annotations (``@key``, ``@range``, ...) and struct keys

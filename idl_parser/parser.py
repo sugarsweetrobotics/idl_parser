@@ -2,8 +2,9 @@
 
 Before the definitions are parsed, the input is preprocessed: comments are
 removed, ``#include`` directives are expanded, ``#define`` / ``#ifdef`` /
-``#ifndef`` / ``#endif`` are applied and ``#pragma`` lines are taken out
-(see :mod:`idl_parser.pragma`). Every definition ends up in the
+``#ifndef`` / ``#if`` / ``#elif`` / ``#else`` / ``#endif`` are applied,
+object-like macros are expanded (see :mod:`idl_parser.preprocessor`) and
+``#pragma`` lines are taken out (see :mod:`idl_parser.pragma`). Every definition ends up in the
 :attr:`IDLParser.global_module` tree.
 """
 import os, sys
@@ -26,7 +27,7 @@ except ImportError:  # Python < 3.13 (PEP 702)
             return wrapper
         return decorator
 
-from . import  module, token_buffer, pragma as idl_pragma
+from . import  module, token_buffer, pragma as idl_pragma, preprocessor as idl_preprocessor
 from .token_buffer import _literal_end
 from . import type as idl_type
 from . import exception 
@@ -86,8 +87,17 @@ class IDLParser():
     :param idl_dirs: Include directories, searched for ``#include`` files and
         by :meth:`for_each_idl`.
     :param verbose: Print progress messages to stdout.
+    :param defines: Macros defined before each IDL is read, like the ``-D``
+        option of a C preprocessor (issue #120): a dict of name to value
+        (``{'N': '5', 'DEBUG': ''}``) or a list of names (each defined as
+        ``1``).
     """
-    def __init__(self, idl_dirs=[], verbose=False):
+    def __init__(self, idl_dirs=[], verbose=False, defines=None):
+        if defines is None:
+            defines = {}
+        elif not isinstance(defines, dict):
+            defines = dict((name, '1') for name in defines)
+        self._defines = dict(defines)
         self._global_module = module.IDLModule()
         self._dirs = idl_dirs
         self._verbose = verbose
@@ -487,6 +497,10 @@ class IDLParser():
         are: ``//`` or ``/*`` inside them is not a comment (issue #50), and
         no spaces are put into them. A ``:`` right after a literal, as in
         ``case 'a':``, is separated like any other ``:`` (issue #49).
+
+        No spaces are put into ``#define`` / ``#if`` / ... lines (see
+        :data:`idl_parser.preprocessor.DIRECTIVES`), so that ``F(x)`` and
+        ``a <= b`` stay as written (issue #120).
         """
         output_lines = []
         in_comment = False
@@ -494,6 +508,9 @@ class IDLParser():
         for line_number, file_name, line in lines:
             parts = []  # code (formatted) and literals (as they are), in order
             code = ''
+            fmt = _format_code
+            if not in_comment and idl_preprocessor.is_directive_line(line):
+                fmt = lambda c: re.sub(r'\s+', ' ', c)
             i = 0
             n = len(line)
             while i < n:
@@ -512,14 +529,14 @@ class IDLParser():
                     code = code + ' '
                 elif line[i] in '"\'':
                     end = _literal_end(line, i)
-                    parts.append(_format_code(code))
+                    parts.append(fmt(code))
                     parts.append(line[i:end].rstrip('\r\n'))
                     code = ''
                     i = end
                 else:
                     code = code + line[i]
                     i = i + 1
-            parts.append(_format_code(code))
+            parts.append(fmt(code))
 
             output_line = ''.join(parts).strip()
             if len(output_line) > 0:
@@ -528,39 +545,11 @@ class IDLParser():
         return output_lines
 
     def _clear_ifdef(self, lines):
-        output_lines = []
-        def_tokens = []
-        global offset
-        offset = 0
-        def _parse(flag):
-            global offset
-            while offset < len(lines):
-                line_number, file_name, line = lines[offset]
-                if line.startswith('#define'):
-                    def_token = line.split()[1]
-                    def_tokens.append(def_token)
-                    offset = offset + 1
-                elif line.startswith('#ifdef'):
-                    def_token = line.split()[1]
-                    offset = offset + 1
-                    _parse(def_token in def_tokens)
-
-                elif line.startswith('#ifndef'):
-                    def_token = line.split()[1]
-                    offset = offset + 1
-                    _parse(not def_token in def_tokens)
-
-                elif line.startswith('#endif'):
-                    offset = offset + 1
-                    return
-
-                else:
-                    offset = offset + 1
-                    if flag:
-                        output_lines.append((line_number, file_name, line))
-
-        _parse(True)
-        return output_lines
+        """Apply ``#define`` / ``#if`` / ... and expand macros (issue #120)."""
+        pp = idl_preprocessor.Preprocessor(format_code=_format_code)
+        for name, value in self._defines.items():
+            pp.define(name, value)
+        return pp.preprocess(lines)
 
 
     def generate_constructor_python(self, typ):
