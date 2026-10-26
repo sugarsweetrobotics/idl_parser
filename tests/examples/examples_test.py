@@ -55,15 +55,16 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The nine example scripts exist in examples/.
+        """The ten example scripts exist in examples/.
 
-        examples/ に9つのサンプルスクリプトが存在する。
+        examples/ に10個のサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
                      'enum_example.py', 'union_example.py',
                      'annotation_example.py', 'scoped_name_example.py',
-                     'valuetype_example.py', 'include_dirs_example.py'):
+                     'valuetype_example.py', 'include_dirs_example.py',
+                     'struct_inheritance_map_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -154,6 +155,45 @@ class StructExampleTest(unittest.TestCase):
         self.assertRegex(text, r'position +array double')
         self.assertRegex(text, r'covariance +sequence of double')
         self.assertIn("Odometry.stamp members: [('sec', 'long'), ('nsec', 'long')]", text)
+
+
+class StructInheritanceMapExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/struct_inheritance_map_example.py (issue #118).
+    examples/struct_inheritance_map_example.py の出力(#118)。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('struct_inheritance_map_example')
+
+    def test_inheritance(self):
+        """struct_inheritance_map_example: base structs, own and inherited members.
+
+        struct_inheritance_map_example: 基底 struct、自身のメンバーと継承したメンバー。
+        """
+        self.assertIn('struct robot::JointState (base: robot::Header)', self.text)
+        self.assertIn("  all members: ['frame_id', 'stamp', 'joints', 'max_effort']", self.text)
+        self.assertIn('LimitedJointState inherits: Header -> JointState -> LimitedJointState', self.text)
+        self.assertIn("keys of LimitedJointState: ['frame_id']", self.text)
+
+    def test_maps(self):
+        """struct_inheritance_map_example: key and value types and bounds of maps.
+
+        struct_inheritance_map_example: map のキー・値の型と上限。
+        """
+        self.assertRegex(self.text, r'joints +map from string to struct robot::Joint')
+        self.assertRegex(self.text, r'max_effort +map from string to double \(at most 16 entries\)')
+        self.assertIn('typedef IdNames: map from long to string', self.text)
+
+    def test_to_dic(self):
+        """struct_inheritance_map_example: to_dic() has the base and the map type.
+
+        struct_inheritance_map_example: to_dic() に基底と map 型が出る。
+        """
+        self.assertIn("'base': 'robot::JointState'", self.text)
+        self.assertIn("'type': 'map<string, double>'", self.text)
 
 
 class EnumExampleTest(unittest.TestCase):

@@ -567,10 +567,12 @@ class IDLParser():
         """Python expression that builds the default value of ``typ``.
 
         Intended for generating Python (omniORBpy style) code: ``0`` for
-        primitive types, bitmasks and bitsets, ``[]`` for sequences, a list for
+        primitive types, bitmasks and bitsets, ``[]`` for sequences, ``{}`` for
+        maps, a list for
         arrays, the first enumerator for enums, ``None`` for native types and
         value types, and
-        a constructor call with the member defaults for structs. Scoped names use ``.``
+        a constructor call with the member defaults for structs (those of
+        the base struct first). Scoped names use ``.``
         (a struct ``M::T { long x; }`` gives ``'M.T(0)'``).
 
         :param typ: A type or definition node, such as ``member.type``.
@@ -579,6 +581,8 @@ class IDLParser():
         code = ''
         if typ.is_sequence:
             code = code + '[]'
+        if typ.is_map:
+            code = code + '{}'
         if typ.is_array:
             code = code + '['
             for i in range(typ.size):
@@ -608,9 +612,9 @@ class IDLParser():
             code = code + 'None'
         elif typ.is_struct:
             code = code + typ.full_path.lstrip(':') + '('  # '::T' at global scope -> 'T'
-            for m in typ.members:
+            for m in typ.all_members:
                 code = code + self.generate_constructor_python(m.type.obj) + ', '
-            if typ.members:
+            if typ.all_members:
                 code = code[:-2]
             code = code + ')'
         return code.replace('::', '.')

@@ -130,7 +130,18 @@ class IDLStruct(node.IDLNode):
         self._members = []
         self._keys = None
         self._forward = False
+        self._base = None
         self.sep = '::'
+
+    @property
+    def base(self):
+        """Base struct (:class:`IDLStruct`) of ``struct B : A``, or None (issue #118)."""
+        return self._base
+
+    @property
+    def all_members(self):
+        """Members of the base struct(s) followed by :attr:`members` (issue #118)."""
+        return (self._base.all_members if self._base else []) + self._members
 
     @property
     def is_forward(self):
@@ -165,8 +176,9 @@ class IDLStruct(node.IDLNode):
 
     @property
     def annotated_keys(self):
-        """Names of the members annotated with ``@key`` or ``@key(TRUE)``, in member order."""
-        return [m.name for m in self._members if m.is_key]
+        """Names of the members annotated with ``@key`` or ``@key(TRUE)``, in member order.
+        Keys of the base struct come first (see :attr:`all_members`)."""
+        return [m.name for m in self.all_members if m.is_key]
 
     def _set_keys(self, keys):
         self._keys = list(keys)
@@ -179,6 +191,8 @@ class IDLStruct(node.IDLNode):
     def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
         """A compact summary: ``{'struct NAME': [member summaries]}``.
 
+        The members of the base struct are listed first (:attr:`all_members`).
+
         :param quiet: Return only ``'struct NAME'``.
         :param full_path: Use :attr:`full_path` as the name.
         :param recursive: Expand member types (see :meth:`IDLMember.to_simple_dic`).
@@ -188,7 +202,7 @@ class IDLStruct(node.IDLNode):
         if quiet:
             return 'struct %s' % name
 
-        dic = { 'struct %s' % name : [v.to_simple_dic(recursive=recursive) for v in self.members] }
+        dic = { 'struct %s' % name : [v.to_simple_dic(recursive=recursive) for v in self.all_members] }
 
         if member_only:
             return list(dic.values())[0]
@@ -198,11 +212,15 @@ class IDLStruct(node.IDLNode):
     def to_dic(self):
         """The struct as a plain dict (for JSON or YAML output).
 
-        ``'keys'`` is included when the struct has keys (see :attr:`has_keylist`).
+        ``'members'`` are the struct's own members. ``'base'``, the full name
+        of the base struct, is included when the struct has one (issue #118),
+        and ``'keys'`` when the struct has keys (see :attr:`has_keylist`).
         """
         dic = { 'name' : self.name,
                 'classname' : self.classname,
                 'members' : [v.to_dic() for v in self.members] }
+        if self._base is not None:
+            dic['base'] = self._base.full_path
         if self.has_keylist:
             dic['keys'] = self.keys
         return self._with_annotations(dic)
@@ -210,18 +228,25 @@ class IDLStruct(node.IDLNode):
     def parse_tokens(self, token_buf, filepath=None):
         """Parse the struct from ``token_buf``, starting after its name.
 
-        Reads a forward declaration (``;``) or the body up to ``};``.
+        Reads a forward declaration (``;``), or the optional base struct
+        (``: Base``) and the body up to ``};``.
 
         :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
             not valid IDL.
         :raises ~idl_parser.exception.InvalidDataTypeException: A member type is
             not defined.
+        :raises ~idl_parser.exception.IDLCanNotFindException: The base struct
+            is not defined.
         """
         self._filepath = filepath
         ln, fn, kakko = token_buf.pop()
         if kakko == ';': # Forward declaration (struct A;)
             self._forward = True
             return
+        if kakko == ':' and self.classname == 'IDLStruct': # struct B : A (issue #118)
+            ln, fn, base_name = token_buf.pop()
+            self._base = self._find_base(base_name, ln, fn)
+            ln, fn, kakko = token_buf.pop()
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
             raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of struct "%s"' % self.name)
@@ -259,6 +284,15 @@ class IDLStruct(node.IDLNode):
             v._add_annotations(annotations)
             self._members.append(v)
 
+    def _find_base(self, name, ln, fn):
+        if name in (None, '{', ';'):
+            raise exception.InvalidIDLSyntaxError(ln, fn, 'No base struct after ":" in the declaration of struct "%s"' % self.name)
+        for t in self.root_node.find_types(name, scope=self.parent):
+            if t.is_struct:
+                return t
+        raise exception.IDLCanNotFindException(
+            ln, fn, 'Can not find "%s" struct which is the base of "%s"' % (name, self.name))
+
     def _post_process(self):
         self.forEachMember(lambda m : m.post_process())
 
@@ -268,8 +302,8 @@ class IDLStruct(node.IDLNode):
         return self._members
 
     def member_by_name(self, name):
-        """The member named ``name``, or None."""
-        for m in self._members:
+        """The member named ``name`` (the base struct is searched too), or None."""
+        for m in self.all_members:
             if m.name == name:
                 return m
 

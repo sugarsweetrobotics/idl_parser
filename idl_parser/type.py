@@ -101,6 +101,42 @@ def parse_sequence(name):
     bound = _parse_bound(args[1]) if len(args) == 2 else None
     return (elem, bound)
 
+_map_head = re.compile(r'^map\s*<')
+
+def parse_map(name):
+    """Return (key_type_name, value_type_name, bound) for a map type name,
+    otherwise None (issue #118).
+
+    As with :func:`parse_sequence`, nested types are kept whole:
+    ``'map<string<8>, sequence<long>, 10>'`` gives
+    ``('string<8>', 'sequence<long>', 10)``.
+    bound is None for an unbounded map, an int for a numeric literal,
+    or the name as written (e.g. a const).
+    Raises InvalidIDLSyntaxError if the brackets do not match.
+    """
+    name = name.strip()
+    m = _map_head.match(name)
+    if not m:
+        return None
+    open_ = m.end() - 1
+    depth = 0
+    close = None
+    for i in range(open_, len(name)):
+        if name[i] == '<':
+            depth = depth + 1
+        elif name[i] == '>':
+            depth = depth - 1
+            if depth == 0:
+                close = i
+                break
+    if close is None or name[close+1:].strip():
+        raise exception.InvalidIDLSyntaxError(message='Invalid map type "%s"' % name)
+    args = [a.strip() for a in split_top_level(name[open_+1:close])]
+    if len(args) not in (2, 3) or not all(args):
+        raise exception.InvalidIDLSyntaxError(message='Invalid map type "%s"' % name)
+    bound = _parse_bound(args[2]) if len(args) == 3 else None
+    return (args[0], args[1], bound)
+
 def is_string(name):
     """True if ``name`` is ``string`` or ``wstring``, bounded ones included."""
     name = name.strip()
@@ -136,10 +172,11 @@ def IDLType(name, parent):
     """Make a type node from a type name as written.
 
     ``'void'`` gives an :class:`IDLVoid`, ``'sequence<...>'`` an
-    :class:`IDLSequence`, a name with ``[n]`` an :class:`IDLArray`, a primitive
+    :class:`IDLSequence`, ``'map<...>'`` an :class:`IDLMap`, a name with ``[n]`` an :class:`IDLArray`, a primitive
     name an :class:`IDLPrimitive`, and any other name an :class:`IDLBasicType`.
 
-    :param name: Type name (``'long'``, ``'sequence<T, 10>'``, ``'long[3]'``, ``'M::T'``).
+    :param name: Type name (``'long'``, ``'sequence<T, 10>'``, ``'map<K, V>'``,
+        ``'long[3]'``, ``'M::T'``).
     :param parent: The node where the name is written; named types are
         resolved from its scope.
     """
@@ -148,6 +185,8 @@ def IDLType(name, parent):
 
     elif _sequence_head.match(name.strip()) and not name.rstrip().endswith(']'):
         return IDLSequence(name, parent)
+    elif _map_head.match(name.strip()) and not name.rstrip().endswith(']'):
+        return IDLMap(name, parent)
     elif name.find('[') >= 0:
         return IDLArray(name, parent)
 
@@ -292,6 +331,71 @@ class IDLSequence(IDLTypeBase):
                 'type' : str(self.type) }
         return dic
 
+class IDLMap(IDLTypeBase):
+    """A map type (``map<K, V>`` or ``map<K, V, N>``, issue #118).
+
+    ``str()`` gives ``'map<K, V>'``; the bound is available as :attr:`bound`.
+
+    :raises ~idl_parser.exception.InvalidIDLSyntaxError: The name is not a
+        valid map type.
+    """
+    def __init__(self, name, parent):
+        super(IDLMap, self).__init__('IDLMap', name, parent.root_node)
+        self._verbose = True
+        parsed = parse_map(name)
+        if parsed is None:
+            raise exception.InvalidIDLSyntaxError()
+        key_, value_, self._bound = parsed
+        self._key_type = IDLType(key_, parent)
+        self._value_type = IDLType(value_, parent)
+
+    @property
+    def key_type(self):
+        """Key type, resolved like :attr:`IDLSequence.inner_type`."""
+        return _resolve_element(self._key_type)
+
+    @property
+    def value_type(self):
+        """Value type, resolved like :attr:`IDLSequence.inner_type`."""
+        return _resolve_element(self._value_type)
+
+    @property
+    def bound(self):
+        """Maximum number of entries of a bounded map ('map<long, string, 10>' -> 10).
+        A constant name is returned as written. None for an unbounded map.
+        The type name does not include the bound, as with sequences."""
+        return self._bound
+
+    @property
+    def is_bounded_map(self):
+        """True if the map has a bound (``map<long, string, 10>``)."""
+        return self._bound is not None
+
+    def __str__(self):
+        return 'map<%s, %s>' % (str(self.key_type), str(self.value_type))
+
+    @property
+    def obj(self):
+        """The map itself."""
+        return self
+
+    @property
+    def full_path(self):
+        return self.parent.full_path + sep + self.name
+
+    def to_simple_dic(self, quiet=False, full_path=False, recursive=False, member_only=False):
+        """A compact summary, ``str(self)`` (``'map<K, V>'``) when ``quiet`` or
+        ``recursive`` is given, otherwise None."""
+        if quiet or recursive:
+            return str(self)
+
+    def to_dic(self):
+        """The map as a plain dict (for JSON or YAML output)."""
+        return { 'name' : self.name,
+                 'classname' : self.classname,
+                 'key_type' : str(self.key_type),
+                 'value_type' : str(self.value_type) }
+
 class IDLArray(IDLTypeBase):
     """An array type (``long[3]``; ``long[2][3]`` is an array of arrays).
 
@@ -335,7 +439,7 @@ class IDLArray(IDLTypeBase):
             return self.inner_type
 
     def __str__(self):
-        n = ['%s' % self.primitive_type.name]
+        n = ['%s' % str(self.primitive_type)]
         def _apply_size(typ):
             n[0] = n[0] + '[%s]' % typ.size
             if typ.inner_type.is_array:
