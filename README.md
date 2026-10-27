@@ -83,6 +83,7 @@ More examples are in the [examples](examples/) folder:
 | [`preprocessor_example.py`](examples/preprocessor_example.py) | `#define` macros, `#if` / `#elif` / `#else`, and macros given from outside with `IDLParser(defines=...)` |
 | [`enum_example.py`](examples/enum_example.py) | enums and their values |
 | [`enum_value_example.py`](examples/enum_value_example.py) | enumerator values set with `@value(n)` (literals or `const` names) |
+| [`const_expr_example.py`](examples/const_expr_example.py) | constant expressions (`N * 2`, `(1 << 3)`) in `const` values, array sizes and bounds |
 | [`typedef_template_module_example.py`](examples/typedef_template_module_example.py) | types declared inside a typedef (`typedef enum E { ... } EE;`), and template modules, which are skipped with a warning |
 | [`union_example.py`](examples/union_example.py) | unions: discriminator kinds, case and `default` labels, member types |
 | [`annotation_example.py`](examples/annotation_example.py) | IDL 4 annotations (`@key`, `@range`, ...) and struct keys |

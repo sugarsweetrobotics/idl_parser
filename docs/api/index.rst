@@ -16,6 +16,7 @@ API Reference
    idl_parser.union
    idl_parser.typedef
    idl_parser.const
+   idl_parser.const_expr
    idl_parser.native
    idl_parser.definitions
    idl_parser.preprocessor

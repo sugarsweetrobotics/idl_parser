@@ -45,15 +45,15 @@ class MapTest(unittest.TestCase):
         self.assertEqual(str(t), 'map<string, long>')
 
     def test_bounded(self):
-        """The bound is a number or a constant name, not part of the type name.
+        """The bound is a number or a constant name (evaluated, issue #130), not part of the type name.
 
-        上限は数値または定数名で、型名には含まれない。
+        上限は数値または定数名(評価される、#130)で、型名には含まれない。
         """
         t = self.m.find_types('M::LongStringMap')[0].type
         self.assertEqual(t.bound, 10)
         self.assertTrue(t.is_bounded_map)
         self.assertEqual(str(t), 'map<long, string>')
-        self.assertEqual(self.m.find_types('M::PMap')[0].type.bound, 'MAX')
+        self.assertEqual(self.m.find_types('M::PMap')[0].type.bound, 5)
 
     def test_named_types(self):
         """Named key and value types are resolved to their definitions.

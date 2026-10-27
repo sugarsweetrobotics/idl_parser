@@ -67,7 +67,7 @@ class Issue50Test(unittest.TestCase):
   const string URL = "http://example.com";
   const long N = 1;
 };''')
-        self.assertEqual(consts(g), [('URL', '"http://example.com"'), ('N', '1')])
+        self.assertEqual(consts(g), [('URL', '"http://example.com"'), ('N', 1)])
 
     def test_one_line_idl_does_not_hang(self):
         """load() does not hang on a one-line IDL with "//" or "/*" in a string.
@@ -91,7 +91,7 @@ class Issue50Test(unittest.TestCase):
         エスケープした " を含む文字列。
         """
         g = load_with_timeout(r'module M { const string S = "a\"//b"; const long N = 1; };')
-        self.assertEqual(consts(g), [('S', r'"a\"//b"'), ('N', '1')])
+        self.assertEqual(consts(g), [('S', r'"a\"//b"'), ('N', 1)])
 
     def test_punctuation_in_string_is_untouched(self):
         """, ; = ( ) { } : inside a string are left unchanged.
@@ -125,7 +125,7 @@ class Issue50Test(unittest.TestCase):
   /* const long B = 2; "*/ const long C = 3; /* multi
      line "comment" */ const long D = 4;
 };''')
-        self.assertEqual(consts(g), [('S', '"x"'), ('C', '3'), ('D', '4')])
+        self.assertEqual(consts(g), [('S', '"x"'), ('C', 3), ('D', 4)])
 
     def test_string_literal_in_included_file(self):
         """"//" in a string is also kept in an included file.

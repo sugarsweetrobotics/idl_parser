@@ -32,7 +32,7 @@ class ConstStringWithSpacesTest(unittest.TestCase):
                  'const string T = "a  b"; const long N = 1; };')
         self.assertEqual(consts(g), [('string', 'S', '"hello world"'),
                                      ('string', 'T', '"a  b"'),
-                                     ('long', 'N', '1')])
+                                     ('long', 'N', 1)])
 
     def test_tab_and_leading_trailing_spaces(self):
         """A string const with a tab and leading / trailing spaces.
@@ -65,7 +65,7 @@ class ConstStringWithSpacesTest(unittest.TestCase):
         """
         g = load('module M { const string S = "a = b; c"; const long N = 2; };')
         self.assertEqual(consts(g), [('string', 'S', '"a = b; c"'),
-                                     ('long', 'N', '2')])
+                                     ('long', 'N', 2)])
 
     def test_from_file(self):
         """String consts with spaces are also right when parse()d from a file.
@@ -97,15 +97,16 @@ class ConstSplitAtEqualTest(unittest.TestCase):
         unsigned long long のような複数語の型の const。
         """
         g = load('module M { const unsigned long long U = 5; };')
-        self.assertEqual(consts(g), [('unsigned long long', 'U', '5')])
+        self.assertEqual(consts(g), [('unsigned long long', 'U', 5)])
 
     def test_expression_value(self):
-        """An expression value such as 1 + 2 is kept as written.
+        """An expression value such as 1 + 2 is evaluated; value_string keeps it as written (issue #130).
 
-        1 + 2 のような式の値が書いたまま保持される。
+        1 + 2 のような式の値は評価され、value_string には書いたまま保持される(#130)。
         """
         g = load('module M { const long X = 1 + 2; };')
-        self.assertEqual(consts(g), [('long', 'X', '1 + 2')])
+        self.assertEqual(consts(g), [('long', 'X', 3)])
+        self.assertEqual(g.module_by_name('M').const_by_name('X').value_string, '1 + 2')
 
     def test_no_equal(self):
         """A const without "=" is an error.

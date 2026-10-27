@@ -111,7 +111,7 @@ class AnnotationTest(unittest.TestCase):
         self.assertEqual(self.m.union_by_name('U').annotation_by_name('extensibility').value, 'APPENDABLE')
         self.assertEqual(self.m.const_by_name('C').annotation_by_name('verbatim').params,
                          {'language': '"c++"', 'text': '"x"'})
-        self.assertEqual(self.m.const_by_name('C').value, '3')
+        self.assertEqual(self.m.const_by_name('C').value, 3)
         t = self.m.typedef_by_name('Small')
         self.assertEqual(t.annotation_by_name('range').params, {'min': '0', 'max': '9'})
         self.assertEqual(str(t.type), 'long')

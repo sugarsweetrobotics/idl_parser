@@ -63,10 +63,10 @@ class Issue9Test(unittest.TestCase):
                          ['logevent_heartbeat_407c55f4', 'logevent_logLevel_df5f83b3'])
         consts = {c.name: (c.typename, c.value) for c in g.consts}
         self.assertEqual(consts, {
-            'Watcher_shared_AlarmSeverity_None': ('long', '1'),
-            'Watcher_shared_AlarmSeverity_Warning': ('long', '2'),
-            'Watcher_shared_AlarmSeverity_Serious': ('long', '3'),
-            'Watcher_shared_AlarmSeverity_Critical': ('long', '4'),
+            'Watcher_shared_AlarmSeverity_None': ('long', 1),
+            'Watcher_shared_AlarmSeverity_Warning': ('long', 2),
+            'Watcher_shared_AlarmSeverity_Serious': ('long', 3),
+            'Watcher_shared_AlarmSeverity_Critical': ('long', 4),
         })
 
     def test_whitespace_variants(self):
@@ -75,18 +75,18 @@ class Issue9Test(unittest.TestCase):
         空白の入れ方が異なる const/typedef などの表記揺れ。
         """
         g = load(os.path.join(IDL_DIR, 'issue9_whitespace_variants.idl'))
-        self.assertEqual(g.const_by_name('MAXLEN').value, '16')
+        self.assertEqual(g.const_by_name('MAXLEN').value, 16)
 
         e = g.module_by_name('E')
         self.assertEqual([(c.name, c.value) for c in e.consts],
-                         [('A', '1'), ('B', '2'), ('C', '3')])
+                         [('A', 1), ('B', 2), ('C', 3)])
 
         name8 = e.typedef_by_name('Name8').type
         self.assertEqual(name8.name, 'string')
         self.assertEqual(name8.bound, 8)
         # A bound given by a constant name is kept as written
         self.assertEqual(e.typedef_by_name('WName').type.name, 'wstring')
-        self.assertEqual(e.typedef_by_name('WName').type.bound, 'MAXLEN')
+        self.assertEqual(e.typedef_by_name('WName').type.bound, 16)
 
         s = e.struct_by_name('S')
         # Bounded strings keep the base type name; the bound is separate.

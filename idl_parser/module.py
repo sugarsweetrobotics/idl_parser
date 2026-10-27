@@ -426,7 +426,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         full path is ``full_typename`` is returned, as before.
         """
         if type.is_primitive(full_typename):
-            return [type.IDLType(full_typename, self)]
+            return [type.IDLType(full_typename, scope if scope is not None else self)]
         # A fully qualified name may start with '::' ("::M::A", issue #69).
         # full_path has no leading '::' ("M::A"), so drop it before comparing.
         name = str(full_typename).strip()

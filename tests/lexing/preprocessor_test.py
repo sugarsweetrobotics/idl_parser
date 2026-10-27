@@ -246,7 +246,7 @@ class MacroTest(unittest.TestCase):
         m = g.module_by_name('M')
         self.assertEqual(m.const_by_name('S').value, '"N"')
         self.assertEqual(m.const_by_name('C').value, "'N'")
-        self.assertEqual(m.const_by_name('NN').value, '1')
+        self.assertEqual(m.const_by_name('NN').value, 1)
         self.assertEqual(m.struct_by_name('S2').members[0].name, 'N_')
 
     def test_redefine_and_undef(self):

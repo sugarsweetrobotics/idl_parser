@@ -62,7 +62,9 @@ def join_brackets(tokens):
 
     ``tokens`` is a list of ``(line_number, file_name, token)``. A token
     that ends with ``[`` or ``<`` is joined with the next one, and a token
-    that starts with ``]`` or ``>`` is joined with the previous one. String
+    that starts with ``]`` or ``>`` is joined with the previous one, and the
+    tokens between ``[`` and ``]`` are joined (``a[N * 2]`` gives
+    ``a[N*2]``, issue #130). String
     and character literals are never joined, so the spaces in
     ``"[ x ]"`` are kept (issue #53). The joined token keeps the line
     number of its first part.
@@ -78,7 +80,10 @@ def join_brackets(tokens):
         else:
             out.append((line_number, file_name, t))
         last = out[-1][2]
-        join_next = not _is_literal(last) and last[-1] in '[<'
+        # Inside "[ ]" the tokens of a size expression are joined too, so
+        # that "a[N * 2]" gives "a[N*2]" (issue #130)
+        join_next = not _is_literal(last) and \
+            (last[-1] in '[<' or last.count('[') > last.count(']'))
     return out
 
 

@@ -85,6 +85,7 @@ More examples are in the ``examples`` folder of the repository:
 - ``conditional_include_example.py``: ``#include`` in ``#if`` / ``#elif`` / ``#else`` branches: only the files of the kept branch are read
 - ``enum_example.py``: enums and their values
 - ``enum_value_example.py``: enumerator values set with ``@value(n)`` (literals or ``const`` names)
+- ``const_expr_example.py``: constant expressions (``N * 2``, ``(1 << 3)``) in ``const`` values, array sizes and bounds
 - ``typedef_template_module_example.py``: types declared inside a typedef (``typedef enum E { ... } EE;``), and template modules, which are skipped with a warning
 - ``union_example.py``: unions (discriminator kinds, case and ``default`` labels, member types)
 - ``annotation_example.py``: IDL 4 annotations (``@key``, ``@range``, ...) and struct keys

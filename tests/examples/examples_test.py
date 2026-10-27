@@ -66,7 +66,7 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
                      'valuetype_example.py', 'include_dirs_example.py',
                      'struct_inheritance_map_example.py', 'any_fixed_example.py',
                      'preprocessor_example.py', 'typedef_template_module_example.py',
-                     'conditional_include_example.py'):
+                     'conditional_include_example.py', 'const_expr_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -395,6 +395,31 @@ class EnumValueExampleTest(unittest.TestCase):
         self.assertIn("{'IDLE': 10}, {'RUNNING': 11}", text)
         self.assertIn('duplicate value: line 1', text)
         self.assertIn('Value 1 of "B" is already used by "A" in enum "E"', text)
+
+
+class ConstExprExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/const_expr_example.py (issue #130).
+    examples/const_expr_example.py の出力(#130)。
+    """
+
+    def test_output(self):
+        """const_expr_example: evaluated const values, array sizes and bounds.
+
+        const_expr_example: 評価された const の値、配列サイズ、上限。
+        """
+        text = run_main('const_expr_example')
+        self.assertRegex(text, r'const AXES +?= 12 +\(written as: JOINTS \* 2\)')
+        self.assertRegex(text, r'const MASK +?= 15 ')
+        self.assertRegex(text, r'const NAME_LEN = 16 ')
+        self.assertIn('angles   double[6]', text)
+        self.assertIn('limits   double[12][2]', text)
+        self.assertIn('name     bound 32', text)
+        self.assertIn('history  bound 7', text)
+        self.assertIn('params   bound 12', text)
+        self.assertIn('invalid size: (InvalidConstExpressionError)', text)
+        self.assertIn('0 is not a positive integer', text)
 
 
 class UnionExampleTest(unittest.TestCase):
