@@ -73,8 +73,8 @@ class Issue18Test(unittest.TestCase):
         """
         consts = {c.name: (c.typename, c.value) for c in self.m.consts}
         self.assertEqual(consts, {
-            'MAX_COUNT': ('int32', '10'),
-            'FLAG': ('uint8', '1'),
+            'MAX_COUNT': ('int32', 10),
+            'FLAG': ('uint8', 1),
         })
 
     def test_interface(self):

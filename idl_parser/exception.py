@@ -53,6 +53,16 @@ class InvalidDataTypeException(IDLParserException):
     """A type name does not name a defined type, or an array size is not an integer."""
     pass
 
+class InvalidConstExpressionError(InvalidIDLSyntaxError, InvalidDataTypeException):
+    """A constant expression can not be evaluated, or its value is not valid
+    where it is used: an array size or a bound that is not a positive
+    integer, an undefined constant, a division by zero, ... (issue #130).
+
+    It is an :class:`InvalidIDLSyntaxError` and, as invalid array sizes were
+    before, an :class:`InvalidDataTypeException`.
+    """
+    pass
+
 class IDLCanNotFindException(IDLParserException):
     """An ``#include`` file, a base interface / struct / bitset or an exception in
     ``raises (...)`` can not be found."""

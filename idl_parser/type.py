@@ -9,6 +9,7 @@ import os, sys, traceback, re
 
 from . import node
 from . import exception
+from . import const_expr
 
 sep = '::'
 
@@ -32,37 +33,75 @@ primitive = [
 reference_primitive = ['any', 'Object', 'ValueBase']
 
 # Bounded strings such as 'string<8>' or 'wstring< MAX_LEN >' (issue #9).
-_bounded_string = re.compile(r'^(w?string)\s*<\s*([A-Za-z0-9_:]+)\s*>$')
+# The bound may be a constant expression ('string<N * 2>', issue #130).
+_bounded_string_head = re.compile(r'^(w?string)\s*<')
+
+def _angle_close(name, open_):
+    """Index of the ``>`` matching the ``<`` at ``name[open_]``, or None.
+    ``<`` and ``>`` inside ``( )`` are operators (``(1 << 3)``), not brackets."""
+    depth = 0
+    paren = 0
+    for i in range(open_, len(name)):
+        c = name[i]
+        if c == '(':
+            paren = paren + 1
+        elif c == ')':
+            paren = paren - 1
+        elif paren > 0:
+            continue
+        elif c == '<':
+            depth = depth + 1
+        elif c == '>':
+            depth = depth - 1
+            if depth == 0:
+                return i
+    return None
 
 def parse_bounded_string(name):
     """Return (base, bound) for a bounded string type name, otherwise None.
-    bound is an int for a numeric literal, or the name as written (e.g. a const)."""
-    m = _bounded_string.match(name.strip())
+    bound is an int for a numeric literal, or the bound as written (a
+    constant name or a constant expression, evaluated by :class:`IDLPrimitive`)."""
+    name = name.strip()
+    m = _bounded_string_head.match(name)
     if not m:
         return None
-    base, bound = m.group(1), m.group(2)
-    try:
-        bound = int(bound)
-    except ValueError:
-        pass
-    return (base, bound)
+    close = _angle_close(name, m.end() - 1)
+    if close != len(name) - 1:
+        return None
+    bound = name[m.end():close].strip()
+    if not bound:
+        return None
+    return (m.group(1), _parse_bound(bound))
 
 def _parse_bound(bound):
-    """An int for a numeric literal, otherwise the name as written (e.g. a const)."""
+    """An int for a numeric literal, otherwise the bound as written (a
+    constant name or a constant expression)."""
     bound = bound.strip()
-    try:
-        return int(bound)
-    except ValueError:
-        return bound
+    value = const_expr.parse_int_literal(bound)
+    return bound if value is None else value
+
+def _evaluate_bound(bound, parent, what):
+    """The int value of a bound written in ``parent`` (issue #130).
+    None (no bound) stays None."""
+    if bound is None:
+        return None
+    return const_expr.evaluate_positive(bound, parent, what)
 
 def split_top_level(text, sep=','):
-    """Split ``text`` at ``sep`` that is not inside ``< >``.
+    """Split ``text`` at ``sep`` that is not inside ``< >`` or ``( )``.
     ``'string<8>, 10'`` gives ``['string<8>', ' 10']``."""
     parts = []
     depth = 0
+    paren = 0
     start = 0
     for i, c in enumerate(text):
-        if c == '<':
+        if c == '(':
+            paren = paren + 1
+        elif c == ')':
+            paren = paren - 1
+        elif paren > 0:
+            continue
+        elif c == '<':
             depth = depth + 1
         elif c == '>':
             depth = depth - 1
@@ -89,16 +128,7 @@ def parse_sequence(name):
     if not m:
         return None
     open_ = m.end() - 1
-    depth = 0
-    close = None
-    for i in range(open_, len(name)):
-        if name[i] == '<':
-            depth = depth + 1
-        elif name[i] == '>':
-            depth = depth - 1
-            if depth == 0:
-                close = i
-                break
+    close = _angle_close(name, open_)
     if close is None or name[close+1:].strip():
         raise exception.InvalidIDLSyntaxError(message='Invalid sequence type "%s"' % name)
     args = split_top_level(name[open_+1:close])
@@ -153,16 +183,7 @@ def parse_map(name):
     if not m:
         return None
     open_ = m.end() - 1
-    depth = 0
-    close = None
-    for i in range(open_, len(name)):
-        if name[i] == '<':
-            depth = depth + 1
-        elif name[i] == '>':
-            depth = depth - 1
-            if depth == 0:
-                close = i
-                break
+    close = _angle_close(name, open_)
     if close is None or name[close+1:].strip():
         raise exception.InvalidIDLSyntaxError(message='Invalid map type "%s"' % name)
     args = [a.strip() for a in split_top_level(name[open_+1:close])]
@@ -277,7 +298,8 @@ class IDLSequence(IDLTypeBase):
         parsed = parse_sequence(name)
         if parsed is None:
             raise exception.InvalidIDLSyntaxError()
-        typ_, self._bound = parsed
+        typ_, bound = parsed
+        self._bound = _evaluate_bound(bound, parent, 'bound of "%s"' % name.strip())
         self._type = IDLType(typ_, parent)
         self._is_primitive = False #self.inner_type.is_primitive
         self._is_sequence = True
@@ -292,8 +314,9 @@ class IDLSequence(IDLTypeBase):
 
     @property
     def bound(self):
-        """Maximum length of a bounded sequence ('sequence<long, 10>' -> 10).
-        A constant name is returned as written ('sequence<long, MAXLEN>' -> 'MAXLEN').
+        """Maximum length of a bounded sequence ('sequence<long, 10>' -> 10), an int.
+        A constant name or a constant expression is evaluated
+        ('sequence<long, N * 2>' -> 6 when N is 3, issue #130).
         None for an unbounded sequence. The type name does not include the bound
         ('sequence<long, 10>' -> 'sequence<long>'), as with bounded strings."""
         return self._bound
@@ -383,7 +406,8 @@ class IDLMap(IDLTypeBase):
         parsed = parse_map(name)
         if parsed is None:
             raise exception.InvalidIDLSyntaxError()
-        key_, value_, self._bound = parsed
+        key_, value_, bound = parsed
+        self._bound = _evaluate_bound(bound, parent, 'bound of "%s"' % name.strip())
         self._key_type = IDLType(key_, parent)
         self._value_type = IDLType(value_, parent)
 
@@ -399,8 +423,8 @@ class IDLMap(IDLTypeBase):
 
     @property
     def bound(self):
-        """Maximum number of entries of a bounded map ('map<long, string, 10>' -> 10).
-        A constant name is returned as written. None for an unbounded map.
+        """Maximum number of entries of a bounded map ('map<long, string, 10>' -> 10),
+        an int. A constant name or a constant expression is evaluated (issue #130). None for an unbounded map.
         The type name does not include the bound, as with sequences."""
         return self._bound
 
@@ -491,8 +515,9 @@ class IDLArray(IDLTypeBase):
 
     ``str()`` gives the element type with all sizes (``'long[2][3]'``).
 
-    :raises ~idl_parser.exception.InvalidDataTypeException: The size is not
-        an integer or the name of an integer constant.
+    :raises ~idl_parser.exception.InvalidConstExpressionError: A size is not
+        a positive integer constant expression (it is also an
+        :class:`~idl_parser.exception.InvalidDataTypeException`).
     """
     def __init__(self, name, parent):
         super(IDLArray, self).__init__('IDLArray', name.strip(), parent.root_node)
@@ -560,49 +585,16 @@ class IDLArray(IDLTypeBase):
             return typs[0]
 
     def parse_size(self, size, scope=None):
-        """The int value of an array size: an integer literal or the name of a
-        constant.
+        """The int value of an array size: an integer constant expression
+        such as ``3``, ``N`` or ``N * 2`` (issue #130).
 
         :param scope: Node where the array is written; constants in the scopes
             enclosing it are found first.
-        :raises ~idl_parser.exception.InvalidDataTypeException: The size is not
-            an integer.
+        :raises ~idl_parser.exception.InvalidConstExpressionError: The size is
+            not a positive integer.
         """
-        is_const_type = None
-        # A constant in a scope enclosing ``scope``, the node where the array
-        # is written (a module or an interface, issue #101)
-        n = scope
-        while n is not None and is_const_type is None:
-            if hasattr(n, 'const_by_name'):
-                is_const_type = n.const_by_name(size)
-            n = n.parent
-
-        if is_const_type:
-            pass
-        elif self.root_node.modules:
-            is_const_type = self.root_node.modules[-1].const_by_name(size)
-        else:
-            is_const_type = self.root_node.const_by_name(size)
-
-        # maybe there are modules but the constant is defined at a global scope?
-        if not is_const_type:
-            is_const_type = self.root_node.const_by_name(size)
-
-        size_literal = None
-
-        if is_const_type:
-            size_literal = is_const_type.value
-        else:
-            size_literal = size
-
-        try:
-            size_literal = int(size_literal)
-        except:
-            if self._verbose: sys.stdout.write(
-                "# Error. Array index '%s' not an integer.\n" % size_literal)
-            raise exception.InvalidDataTypeException()
-
-        return size_literal
+        return const_expr.evaluate_positive(size, scope if scope is not None else self,
+                                            'array size')
 
     @property
     def type(self):
@@ -663,13 +655,14 @@ class IDLPrimitive(IDLTypeBase):
         super(IDLPrimitive, self).__init__('IDLPrimitive', name, parent.root_node)
         self._verbose = True
         self._is_primitive = True
-        self._bound = bounded[1] if bounded is not None else None
+        self._bound = _evaluate_bound(bounded[1], parent, 'bound of "%s"' % name.strip()) \
+            if bounded is not None else None
 
     @property
     def bound(self):
-        """Maximum length of a bounded string ('string<8>' -> 8).
-        A constant name is returned as written ('string<MAXLEN>' -> 'MAXLEN').
-        None for an unbounded string and for other primitive types."""
+        """Maximum length of a bounded string ('string<8>' -> 8), an int.
+        A constant name or a constant expression is evaluated
+        ('string<N * 2>' -> 6 when N is 3, issue #130). None for an unbounded string and for other primitive types."""
         return self._bound
 
     @property

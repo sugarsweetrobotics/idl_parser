@@ -113,15 +113,15 @@ class NestedBoundedSequenceTest(unittest.TestCase):
         self.assertEqual(t.bound, 2)
         self.assertEqual(t.inner_type.inner_type.obj.full_path, 'M::T')
 
-    def test_const_bound_is_kept_as_written(self):
-        """A bound given by a const name (sequence<long, N>) is kept as written, 'N'.
+    def test_const_bound_is_evaluated(self):
+        """A bound given by a const name (sequence<long, N>) is the value of the const, 5 (issue #130).
 
-        定数名の上限(sequence<long, N>)は書いたまま 'N'。
+        定数名の上限(sequence<long, N>)は定数の値 5 になる(#130)。
         """
         g = parser.IDLParser().load(
             'module M { const long N = 5; struct S { sequence<long, N> a; }; };')
         t = g.module_by_name('M').struct_by_name('S').member_by_name('a').type
-        self.assertEqual(t.bound, 'N')
+        self.assertEqual(t.bound, 5)
 
     def test_array_of_sequence(self):
         """An array of bounded sequences.

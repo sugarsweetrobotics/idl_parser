@@ -202,6 +202,7 @@ class IDLDefinitionScope(object):
             typename = ' '.join(values[:eq-1])
             s = const.IDLConst(name_, typename, value_, self, filepath=filepath)
             s._add_annotations(pending_annotations)
+            s._evaluate(ln, fn)
             s_ = self.const_by_name(name_)
             if s_:
                 if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
