@@ -82,6 +82,7 @@ More examples are in the ``examples`` folder of the repository:
 - ``struct_inheritance_map_example.py``: struct inheritance (``struct B : A``) and ``map<K, V>`` types
 - ``any_fixed_example.py``: ``any``, ``Object``, ``ValueBase`` and fixed-point (``fixed<d, s>``) types
 - ``preprocessor_example.py``: ``#define`` macros, ``#if`` / ``#elif`` / ``#else``, and macros given from outside with ``IDLParser(defines=...)``
+- ``conditional_include_example.py``: ``#include`` in ``#if`` / ``#elif`` / ``#else`` branches: only the files of the kept branch are read
 - ``enum_example.py``: enums and their values
 - ``enum_value_example.py``: enumerator values set with ``@value(n)`` (literals or ``const`` names)
 - ``typedef_template_module_example.py``: types declared inside a typedef (``typedef enum E { ... } EE;``), and template modules, which are skipped with a warning

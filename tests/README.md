@@ -7,7 +7,7 @@ docstrings, not in file names.
 | Directory | What it covers |
 |---|---|
 | `lexing/` | Comments, string / char literals, token splitting, spacing inside `[ ]` and `< >`, preprocessing (`#if`, `#define`, macro expansion), error line numbers, exception messages |
-| `include/` | `#include`: circular and diamond includes, sub paths, include directories, missing include files |
+| `include/` | `#include`: circular and diamond includes, sub paths, include directories, missing include files, `#include` in `#if` branches |
 | `scope/` | Modules, reopened modules, scoped and absolute (`::M::X`) type names, `find_types()` |
 | `primitive_const/` | Primitive types (including IDL 4.2 `int8` … `uint64`), `native` types and `const` definitions |
 | `sequence_array/` | `typedef`, `sequence<>` (nested and bounded), arrays, their element types |

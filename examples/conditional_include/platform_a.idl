@@ -1,0 +1,11 @@
+// Types of platform A. It has a lidar.
+#ifndef PLATFORM_A_IDL
+#define PLATFORM_A_IDL
+
+#define HAS_LIDAR 1
+
+module platform {
+  typedef long Handle;
+};
+
+#endif // PLATFORM_A_IDL

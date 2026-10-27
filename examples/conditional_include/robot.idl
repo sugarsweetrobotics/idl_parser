@@ -1,0 +1,34 @@
+#ifndef ROBOT_IDL
+#define ROBOT_IDL
+
+// Only the file of the selected platform is read.
+#if defined(PLATFORM_A)
+#include "platform_a.idl"
+#elif defined(PLATFORM_B)
+#include "platform_b.idl"
+#else
+#include "platform_default.idl"
+#endif
+
+// vendor/extension.idl is not in this folder: it is read only when
+// USE_VENDOR_EXTENSION is defined.
+#ifdef USE_VENDOR_EXTENSION
+#include "vendor/extension.idl"
+#endif
+
+module robot {
+  struct Command {
+    platform::Handle target;
+    double speed;
+  };
+
+// HAS_LIDAR is defined in platform_a.idl.
+#if HAS_LIDAR
+  struct LidarScan {
+    platform::Handle source;
+    sequence<float> ranges;
+  };
+#endif
+};
+
+#endif // ROBOT_IDL

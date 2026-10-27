@@ -1,9 +1,9 @@
 """The entry point: :class:`IDLParser` reads IDL text or files.
 
 Before the definitions are parsed, the input is preprocessed: comments are
-removed, ``#include`` directives are expanded, ``#define`` / ``#ifdef`` /
-``#ifndef`` / ``#if`` / ``#elif`` / ``#else`` / ``#endif`` are applied,
-object-like macros are expanded (see :mod:`idl_parser.preprocessor`) and
+removed, ``#define`` / ``#ifdef`` / ``#ifndef`` / ``#if`` / ``#elif`` /
+``#else`` / ``#endif`` are applied, ``#include`` directives in the branches
+that are kept are expanded, object-like macros are expanded (see :mod:`idl_parser.preprocessor`) and
 ``#pragma`` lines are taken out (see :mod:`idl_parser.pragma`). Every definition ends up in the
 :attr:`IDLParser.global_module` tree.
 """
@@ -278,7 +278,6 @@ class IDLParser():
         :param filepath: File name recorded in the parsed nodes.
         """
         lines = self._clear_comments(lines)
-        lines = self._paste_include(lines)
         lines = self._clear_ifdef(lines)
         lines = self._extract_pragmas(lines)
 
@@ -289,8 +288,8 @@ class IDLParser():
     def _extract_pragmas(self, lines):
         """Remove ``#pragma`` lines and remember them (issues #10 / #28)."""
         lines, pragmas = idl_pragma.extract_pragmas(lines)
-        # An included file is parsed on its own and also pasted into the
-        # including file, so the same pragma can be seen twice.
+        # A file included by several files is pasted into each of them, so
+        # the same pragma can be seen twice.
         known = set((p.filepath, p.line_number) for p in self._pragmas)
         for p in pragmas:
             key = (p.filepath, p.line_number)
@@ -431,62 +430,53 @@ class IDLParser():
             msg += ' Searched: %s' % ', '.join(dirs)
         return exception.IDLCanNotFindException(line_number, current_file, msg)
 
-    def _paste_include(self, lines, pasted=None):
-        """ Expand #include directives in-place.
+    def _include_function(self, lines):
+        """The function that reads an ``#include`` for
+        :class:`idl_parser.preprocessor.Preprocessor` (issue #127).
 
-        :param pasted: Set of absolute paths already expanded in this
-            translation unit. Each file is pasted at most once (like
-            ``#pragma once``), which also stops infinite recursion when
-            IDL files include each other (issue #6).
+        The preprocessor calls it only for an ``#include`` in a branch that
+        is kept, so a file named in a skipped ``#if`` branch is neither
+        searched nor parsed. Each file is pasted at most once in this
+        translation unit (like ``#pragma once``), which also stops infinite
+        recursion when IDL files include each other (issue #6). A pasted
+        file is recorded in :meth:`parse_idl`'s list of parsed files, so it
+        is not parsed again on its own.
         """
-        if pasted is None:
-            pasted = set()
-            for _, file_name, _ in lines:
-                if file_name is not None:
-                    pasted.add(os.path.abspath(file_name))
-        output_lines = []
-        for line_number, file_name, line in lines:
-            output_line = ''
-            if line.startswith('#include'):
-                if line.find('"') >= 7:
-                    filename = line[line.find('"')+1 : line.rfind('"')]
-                elif line.find('<') >= 7:
-                    filename = line[line.find('<')+1 : line.rfind('>')]
-                else:
-                    filename = None
+        pasted = set()
+        for _, file_name, _ in lines:
+            if file_name is not None:
+                pasted.add(os.path.abspath(file_name))
 
-                if filename is not None:
-                    if self._verbose: logger.write('Find Includes %s\n' % filename)
-                    p = self._resolve_include(filename.strip(), current_file=file_name)
-                    if p is None:
-                        if self._verbose: logger.write(' # IDL (%s) can not be found.\n' % filename)
-                        raise self._include_not_found(filename.strip(), line_number, file_name)
-
-                    abs_p = os.path.abspath(p)
-                    if abs_p in pasted:
-                        if self._verbose: logger.write('IDL (%s) already included. Skipped.\n' % filename)
-                    else:
-                        pasted.add(abs_p)
-                        if self._verbose: logger.write('IDL Found (%s). Parsing\n' % filename)
-                        self.parse_idl(idl_path = p)
-                        if self._verbose: logger.write('Including IDL Parsing End.\n')
-
-                        inc_lines = []
-                        with open(p, 'r') as f:
-                            for ln, l in enumerate(f, 1):
-                                inc_lines.append((ln, p, l))
-                        inc_lines = self._clear_comments(inc_lines)
-                        inc_lines = self._paste_include(inc_lines, pasted)
-                        output_lines = output_lines + inc_lines
-
+        def include(text, line_number, file_name):
+            text = text.strip()
+            if text.startswith('"') and text.find('"', 1) > 0:
+                filename = text[1:text.find('"', 1)]
+            elif text.startswith('<') and text.find('>') > 0:
+                filename = text[1:text.find('>')]
             else:
-                output_line = line
+                return []
+            filename = filename.strip()
+            if self._verbose: logger.write('Find Includes %s\n' % filename)
+            p = self._resolve_include(filename, current_file=file_name)
+            if p is None:
+                if self._verbose: logger.write(' # IDL (%s) can not be found.\n' % filename)
+                raise self._include_not_found(filename, line_number, file_name)
 
-            output_lines.append((line_number, file_name, output_line))
+            abs_p = os.path.abspath(p)
+            if abs_p in pasted:
+                if self._verbose: logger.write('IDL (%s) already included. Skipped.\n' % filename)
+                return []
+            pasted.add(abs_p)
+            if abs_p not in self._parsed_files:
+                self._parsed_files.append(abs_p)
+            if self._verbose: logger.write('IDL Found (%s). Including\n' % filename)
+            inc_lines = []
+            with open(p, 'r') as f:
+                for ln, l in enumerate(f, 1):
+                    inc_lines.append((ln, p, l))
+            return self._clear_comments(inc_lines)
 
-        return output_lines
-
-
+        return include
 
     def _clear_comments(self, lines):
         """Remove comments and put spaces around punctuation so that each
@@ -545,8 +535,10 @@ class IDLParser():
         return output_lines
 
     def _clear_ifdef(self, lines):
-        """Apply ``#define`` / ``#if`` / ... and expand macros (issue #120)."""
-        pp = idl_preprocessor.Preprocessor(format_code=_format_code)
+        """Apply ``#define`` / ``#if`` / ..., paste ``#include`` files in the
+        branches that are kept and expand macros (issues #120 / #127)."""
+        pp = idl_preprocessor.Preprocessor(format_code=_format_code,
+                                           include=self._include_function(lines))
         for name, value in self._defines.items():
             pp.define(name, value)
         return pp.preprocess(lines)

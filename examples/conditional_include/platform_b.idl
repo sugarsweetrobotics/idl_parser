@@ -1,0 +1,9 @@
+// Types of platform B.
+#ifndef PLATFORM_B_IDL
+#define PLATFORM_B_IDL
+
+module platform {
+  typedef string<16> Handle;
+};
+
+#endif // PLATFORM_B_IDL
