@@ -2,12 +2,18 @@
 import os, sys, traceback
 
 from . import node, exception
+from .bitmask import parse_int
 sep = '::'
+
+# Enumerators are 32-bit signed integers (IDL 4.2 7.4.13.4.3.4 / XTypes).
+MIN_VALUE = -2**31
+MAX_VALUE = 2**31 - 1
 
 class IDLEnumValue(node.IDLNode):
     """An enumerator of an enum.
 
-    :param value: Ordinal of the enumerator (0 for the first one).
+    :param value: Value of the enumerator: ``@value(n)`` if written,
+        otherwise the previous enumerator's value plus 1 (0 for the first one).
     :param parent: The :class:`IDLEnum` it belongs to.
     """
     def __init__(self, value, parent):
@@ -52,7 +58,12 @@ class IDLEnumValue(node.IDLNode):
         return self._with_annotations(dic)
     @property
     def value(self):
-        """Ordinal of the enumerator, counted from 0 in declaration order."""
+        """Value of the enumerator.
+
+        ``@value(n)`` sets it; an enumerator without ``@value`` takes the
+        previous enumerator's value plus 1 (0 for the first one), so with no
+        ``@value`` at all it is the ordinal in declaration order.
+        """
         return self._value
 
 
@@ -104,16 +115,17 @@ class IDLEnum(node.IDLNode):
         """Parse the enum from ``token_buf``, starting after its name, up to ``};``.
 
         :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration is
-            not valid IDL.
+            not valid IDL, or a ``@value`` is not an integer (literal or
+            ``const``), is out of the 32-bit signed range or is used twice.
         """
         self._filepath = filepath
-        self._counter = 0
         ln, fn, kakko = token_buf.pop()
         if not kakko == '{':
             if self._verbose: sys.stdout.write('# Error. No kakko "{".\n')
             raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
+        block_ln, block_fn = None, None  # where the enumerator starts
         depth = 0  # inside the parentheses of an annotation, e.g. @foo(a, b)
         while True:
             ln, fn, token = token_buf.pop()
@@ -133,20 +145,70 @@ class IDLEnum(node.IDLNode):
                     raise exception.InvalidIDLSyntaxError()
 
                 if len(block_tokens) > 0:
-                    self._parse_block(block_tokens)
+                    self._parse_block(block_tokens, block_ln, block_fn)
                 break
 
             if token == ',' and depth == 0:
-                self._parse_block(block_tokens)
+                self._parse_block(block_tokens, block_ln, block_fn)
                 block_tokens = []
                 continue
+            if not block_tokens:
+                block_ln, block_fn = ln, fn
             block_tokens.append(token)
 
-    def _parse_block(self, blocks):
-        v = IDLEnumValue(self._counter, self)
-        self._counter = self._counter+ 1
+    def _parse_block(self, blocks, ln=None, fn=None):
+        v = IDLEnumValue(None, self)
         v.parse_blocks(blocks, self.filepath)
+        a = v.annotation_by_name('value')
+        if a is not None:
+            value = self._parse_value(a, v.name, ln, fn)
+        elif self._values:
+            value = self._values[-1].value + 1
+        else:
+            value = 0
+        if not MIN_VALUE <= value <= MAX_VALUE:
+            raise exception.InvalidIDLSyntaxError(
+                ln, fn, 'Value %d of "%s" is out of range of enum "%s" (must be %d..%d)'
+                % (value, v.name, self.name, MIN_VALUE, MAX_VALUE))
+        for other in self._values:
+            if other.value == value:
+                raise exception.InvalidIDLSyntaxError(
+                    ln, fn, 'Value %d of "%s" is already used by "%s" in enum "%s"'
+                    % (value, v.name, other.name, self.name))
+        v._value = value
         self._values.append(v)
+
+    def _parse_value(self, annotation, name, ln, fn):
+        """Integer of ``@value(n)``: an integer literal or the name of a ``const``."""
+        literal = annotation.value
+        value = parse_int(literal)
+        if value is None and literal:
+            const = self._find_const(literal)
+            value = parse_int(str(const.value)) if const else None
+        if value is None:
+            raise exception.InvalidIDLSyntaxError(
+                ln, fn, 'Invalid %s of "%s" in enum "%s"' % (annotation, name, self.name))
+        return value
+
+    def _find_const(self, name):
+        from .module import definition_scopes
+        consts = {}
+        for m in definition_scopes(self.root_node, self):
+            for c in m.consts:
+                consts[(m.full_path.lstrip(':') + sep + c.name).lstrip(':')] = c
+        if name.startswith(sep):
+            candidates = [name[len(sep):]]
+        else:
+            candidates = []
+            scope = self.parent
+            while scope is not None:
+                prefix = scope.full_path.lstrip(':')
+                candidates.append(prefix + sep + name if prefix else name)
+                scope = scope.parent
+        for c in candidates:
+            if c in consts:
+                return consts[c]
+        return None
 
     @property
     def values(self):

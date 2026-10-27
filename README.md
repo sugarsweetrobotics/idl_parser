@@ -82,6 +82,7 @@ More examples are in the [examples](examples/) folder:
 | [`any_fixed_example.py`](examples/any_fixed_example.py) | `any`, `Object`, `ValueBase` and fixed-point (`fixed<d, s>`) types |
 | [`preprocessor_example.py`](examples/preprocessor_example.py) | `#define` macros, `#if` / `#elif` / `#else`, and macros given from outside with `IDLParser(defines=...)` |
 | [`enum_example.py`](examples/enum_example.py) | enums and their values |
+| [`enum_value_example.py`](examples/enum_value_example.py) | enumerator values set with `@value(n)` (literals or `const` names) |
 | [`typedef_template_module_example.py`](examples/typedef_template_module_example.py) | types declared inside a typedef (`typedef enum E { ... } EE;`), and template modules, which are skipped with a warning |
 | [`union_example.py`](examples/union_example.py) | unions: discriminator kinds, case and `default` labels, member types |
 | [`annotation_example.py`](examples/annotation_example.py) | IDL 4 annotations (`@key`, `@range`, ...) and struct keys |
