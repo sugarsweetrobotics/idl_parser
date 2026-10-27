@@ -98,6 +98,14 @@ class TokenBuffer():
                 self._tokens.append((line_number, file_name, t))
         self._tokens = join_brackets(self._tokens)
 
+    @classmethod
+    def from_tokens(cls, tokens):
+        """A buffer holding ``tokens``, a list of ``(line_number, file_name, token)``
+        tuples that are already split (issue #121)."""
+        buf = cls([])
+        buf._tokens = list(tokens)
+        return buf
+
     @property
     def t_debug(self):
         """All the tokens, for debugging."""
@@ -111,8 +119,12 @@ class TokenBuffer():
         self._token_offset = self._token_offset + 1
         return t
 
-    def peek(self):
-        """Return the next token without consuming it (same format as pop)."""
-        if len(self._tokens) == self._token_offset:
+    def peek(self, ahead=0):
+        """Return the next token without consuming it (same format as pop).
+
+        :param ahead: Number of tokens to look past; ``peek(1)`` returns the
+            token after the next one.
+        """
+        if len(self._tokens) <= self._token_offset + ahead:
             return (-1, '', None)
-        return self._tokens[self._token_offset]
+        return self._tokens[self._token_offset + ahead]

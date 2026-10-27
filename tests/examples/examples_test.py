@@ -55,9 +55,9 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The twelve example scripts exist in examples/.
+        """The thirteen example scripts exist in examples/.
 
-        examples/ に12個のサンプルスクリプトが存在する。
+        examples/ に13個のサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
@@ -65,7 +65,7 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
                      'annotation_example.py', 'scoped_name_example.py',
                      'valuetype_example.py', 'include_dirs_example.py',
                      'struct_inheritance_map_example.py', 'any_fixed_example.py',
-                     'preprocessor_example.py'):
+                     'preprocessor_example.py', 'typedef_template_module_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -237,6 +237,38 @@ class AnyFixedExampleTest(unittest.TestCase):
         self.assertIn("'digits': 5, 'scale': 4", self.text)
         self.assertIn('default Item: shop.Item(0, 0, 0, None)', self.text)
         self.assertIn('default Order: shop.Order([], {}, None, None)', self.text)
+
+
+class TypedefTemplateModuleExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/typedef_template_module_example.py (issue #121).
+    examples/typedef_template_module_example.py の出力(#121)。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = run_main('typedef_template_module_example')
+
+    def test_template_module_skipped(self):
+        """typedef_template_module_example: template modules are skipped with a warning.
+
+        typedef_template_module_example: テンプレートモジュールは警告を出して読み飛ばされる。
+        """
+        self.assertIn('unsupported template module "module Buffer <typename T> { ... }" is skipped.', self.text)
+        self.assertIn('unsupported template module "module LongBuffer = Buffer<long>" is skipped.', self.text)
+        self.assertIn("modules: ['robot']", self.text)
+
+    def test_typedef_constr_types(self):
+        """typedef_template_module_example: the types declared in typedefs and the typedefs.
+
+        typedef_template_module_example: typedef の中で宣言した型と typedef。
+        """
+        self.assertIn("structs:  ['Point', 'Status']", self.text)
+        self.assertIn("typedefs: ['typedef Mode ModeT', 'typedef Point PointT', 'typedef Point[4] Polygon', 'typedef Flags FlagsT']", self.text)
+        self.assertRegex(self.text, r'mode +typedef ModeT of enum robot::Mode')
+        self.assertRegex(self.text, r'area +typedef Polygon of array\[4\] of struct robot::Point')
+        self.assertIn('ModeT is Mode: True', self.text)
 
 
 class PreprocessorExampleTest(unittest.TestCase):

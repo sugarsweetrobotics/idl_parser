@@ -144,6 +144,15 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                     break
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise InvalidIDLSyntaxError()
+            elif token == 'module' and _is_template_module(token_buf):
+                # A template module ("module MT <typename T> { ... };") or
+                # its instantiation ("module MI = MT<long>;"). Not supported
+                # yet, so it is skipped like the definitions in
+                # unsupported_keywords (issue #121).
+                words = self._skip_definition(token, token_buf, ln, fn)
+                _warn('%s: unsupported template module "%s" is skipped.'
+                      % (_where(ln, fn), ' '.join(words)),
+                      UnsupportedIDLSyntaxWarning)
             elif token == 'module':
                 ln, fn, name_ = token_buf.pop()
                 node.check_identifier(name_, 'module', ln, fn)
@@ -500,6 +509,18 @@ def _find_by_name(nodes, name, absolute, parent, scope):
         return [s for s in nodes
                 if s.full_path.lstrip(':') in ((prefix + sep + name if prefix else name), name)]
     return [s for s in nodes if s.name == name or s.full_path.lstrip(':') == name]
+
+
+def _is_template_module(token_buf):
+    """True if the tokens after "module" start a template module
+    ("MT <typename T> {", "MT<typename T> {") or an instantiation of one
+    ("MI = MT<long> ;", issue #121). Nothing is consumed."""
+    name_, after = token_buf.peek()[2], token_buf.peek(1)[2]
+    if name_ is None:
+        return False
+    if '<' in name_:
+        return True
+    return after is not None and (after.startswith('<') or after == '=')
 
 
 def _warn(message, category):

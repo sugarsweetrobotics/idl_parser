@@ -11,6 +11,10 @@ from . import node
 from . import struct, typedef, enum, const, union, bitmask, bitset, native
 from .exception import InvalidIDLSyntaxError
 
+# Keywords of the types that can be declared inside a typedef
+# ("typedef struct S { ... } SS;", issue #121).
+constr_type_keywords = ('struct', 'union', 'enum', 'bitmask', 'bitset')
+
 # Keywords that start a definition handled by IDLDefinitionScope.parse_definition().
 definition_keywords = ('typedef', 'struct', 'exception', 'enum', 'bitmask',
                        'bitset', 'union', 'native', 'const')
@@ -49,7 +53,12 @@ class IDLDefinitionScope(object):
         """
         pending_annotations = list(annotations)
         if token == 'typedef':
-            blocks = []
+            if token_buf.peek()[2] in constr_type_keywords:
+                # "typedef enum E { A, B } EE;" (issue #121)
+                type_name = self._parse_typedef_constr_type(token_buf, filepath)
+                blocks = [type_name]
+            else:
+                blocks = []
             while True:
                 ln, fn, t = token_buf.pop()
                 if t == None:
@@ -202,6 +211,47 @@ class IDLDefinitionScope(object):
         else:
             return False
         return True
+
+    def _parse_typedef_constr_type(self, token_buf, filepath):
+        """Parse the struct, union, enum, bitmask or bitset declared in a
+        typedef (``typedef enum E { A, B } EE;``, issue #121).
+
+        The declared type is added to this scope as if it were written
+        before the typedef. The tokens after it, up to the ``;``, are left
+        in ``token_buf`` for the typedef. Returns the name of the type.
+        """
+        ln, fn, keyword = token_buf.pop()
+        ln_, fn_, name_ = token_buf.peek()
+        if name_ is None or name_ in (';', '{', '}', ','):
+            raise InvalidIDLSyntaxError(ln, fn, 'No name after "typedef %s"' % keyword)
+        # The tokens of the definition: its name, a base (": B") or a
+        # discriminator ("switch (long)") if any, the "{ ... }" body, and a
+        # ";" closing it, as the parsers of the definitions expect.
+        tokens = [token_buf.pop()]
+        if token_buf.peek()[2] in (':', 'switch'):
+            while token_buf.peek()[2] not in ('{', ';', None):
+                tokens.append(token_buf.pop())
+            if token_buf.peek()[2] != '{':
+                raise InvalidIDLSyntaxError(ln, fn, 'No "{" after "typedef %s %s"' % (keyword, name_))
+        if token_buf.peek()[2] == '{':
+            depth = 0
+            while True:
+                t = token_buf.pop()
+                if t[2] is None:
+                    raise InvalidIDLSyntaxError(ln, fn, 'No "}" closing "typedef %s %s"' % (keyword, name_))
+                tokens.append(t)
+                if t[2] == '{':
+                    depth += 1
+                elif t[2] == '}':
+                    depth -= 1
+                    if depth == 0:
+                        break
+        elif keyword not in ('struct', 'union'):
+            raise InvalidIDLSyntaxError(ln, fn, 'No "{" after "typedef %s %s"' % (keyword, name_))
+        # else: a forward declaration ("typedef struct S SS;")
+        tokens.append((tokens[-1][0], tokens[-1][1], ';'))
+        self.parse_definition(keyword, token_buf.from_tokens(tokens), filepath)
+        return name_
 
     @property
     def has_definitions(self):
