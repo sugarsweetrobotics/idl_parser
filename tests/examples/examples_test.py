@@ -55,13 +55,13 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The thirteen example scripts exist in examples/.
+        """The fourteen example scripts exist in examples/.
 
-        examples/ に13個のサンプルスクリプトが存在する。
+        examples/ に14個のサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
-                     'enum_example.py', 'union_example.py',
+                     'enum_example.py', 'enum_value_example.py', 'union_example.py',
                      'annotation_example.py', 'scoped_name_example.py',
                      'valuetype_example.py', 'include_dirs_example.py',
                      'struct_inheritance_map_example.py', 'any_fixed_example.py',
@@ -332,6 +332,31 @@ class EnumExampleTest(unittest.TestCase):
         self.assertIn('BLUE is 2', text)
         self.assertIn('Light.color is enum? True (my_module::Color)', text)
         self.assertIn('setColor returns ReturnCode', text)
+
+
+class EnumValueExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/enum_value_example.py (issue #122).
+    examples/enum_value_example.py の出力(#122)。
+    """
+
+    def test_output(self):
+        """enum_value_example: values set with @value(n) and the values after them.
+
+        enum_value_example: @value(n) で決めた値とそれに続く値。
+        """
+        text = run_main('enum_value_example')
+        self.assertIn('enum robot::Mode', text)
+        self.assertRegex(text, r'IDLE +?= 10')
+        self.assertRegex(text, r'RUNNING += 11')
+        self.assertRegex(text, r'PAUSED += 32')
+        self.assertRegex(text, r'UNKNOWN += -1')
+        self.assertRegex(text, r'ERROR += 100')
+        self.assertIn('FATAL is 101', text)
+        self.assertIn("{'IDLE': 10}, {'RUNNING': 11}", text)
+        self.assertIn('duplicate value: line 1', text)
+        self.assertIn('Value 1 of "B" is already used by "A" in enum "E"', text)
 
 
 class UnionExampleTest(unittest.TestCase):
