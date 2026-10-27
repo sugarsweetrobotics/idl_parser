@@ -88,6 +88,7 @@ More examples are in the [examples](examples/) folder:
 | [`annotation_example.py`](examples/annotation_example.py) | IDL 4 annotations (`@key`, `@range`, ...) and struct keys |
 | [`valuetype_example.py`](examples/valuetype_example.py) | value types and event types: state members, `factory`, inheritance, `supports`, boxed value types |
 | [`include_dirs_example.py`](examples/include_dirs_example.py) | IDL files that `#include` each other across several include directories |
+| [`conditional_include_example.py`](examples/conditional_include_example.py) | `#include` in `#if` / `#elif` / `#else` branches: only the files of the kept branch are read |
 | [`scoped_name_example.py`](examples/scoped_name_example.py) | same-named types in several modules: relative (`X`, `C::X`) and absolute (`::B::X`) names |
 
 Run them with e.g. `python examples/union_example.py` (in a source checkout no install is needed).

@@ -1,12 +1,15 @@
 """Conditional directives and macros of the preprocessor (issue #120).
 
-IDL is preprocessed like C++ (IDL 4.2, 7.3). After comments are removed and
-``#include`` files are pasted, :func:`preprocess` applies
+IDL is preprocessed like C++ (IDL 4.2, 7.3). After comments are removed,
+:meth:`Preprocessor.preprocess` applies
 
 - ``#define NAME`` / ``#define NAME value`` and ``#undef NAME``,
 - ``#ifdef`` / ``#ifndef`` / ``#if`` / ``#elif`` / ``#else`` / ``#endif``,
 - ``#error`` (an :class:`~idl_parser.exception.InvalidIDLSyntaxError`) and
   ``#warning`` (a :class:`PreprocessorWarning`),
+- ``#include``, when an ``include`` function is given: the included lines
+  are processed in place with the same macros, so an ``#include`` in a
+  branch that is skipped is not read (issue #127),
 
 and expands object-like macros in the remaining lines, so that
 ``#define N 5`` makes ``long a[N];`` an array of 5 elements.
@@ -80,11 +83,18 @@ class Preprocessor(object):
     :param format_code: Function that puts spaces around punctuation of an
         expanded macro body, so that it is split into tokens like the rest
         of the line.
+    :param include: Function called for an ``#include`` in a branch that is
+        kept, as ``include(name, line_number, file_name)`` where ``name`` is
+        the text after ``#include`` (``"a.idl"`` or ``<a.idl>``). It returns
+        the lines of the included file (comments removed) to be processed in
+        place, or an empty list to paste nothing. ``None`` (the default)
+        keeps ``#include`` lines as they are.
     """
 
-    def __init__(self, format_code=None):
+    def __init__(self, format_code=None, include=None):
         self._macros = {}
         self._format_code = format_code if format_code is not None else (lambda s: s)
+        self._include = include
 
     @property
     def macros(self):
@@ -99,10 +109,15 @@ class Preprocessor(object):
 
         :raises ~idl_parser.exception.InvalidIDLSyntaxError: An ``#if`` /
             ``#elif`` expression is invalid, ``#else`` / ``#elif`` /
-            ``#endif`` has no ``#if``, an ``#if`` has no ``#endif``, or an
-            active ``#error`` was found.
+            ``#endif`` has no ``#if``, an ``#if`` has no ``#endif`` (each
+            included file is checked on its own, as in C), or an active
+            ``#error`` was found.
         """
         output = []
+        self._preprocess(lines, output)
+        return output
+
+    def _preprocess(self, lines, output):
         # One entry per open #if: [active, taken, seen_else, line_number, file_name]
         # "active": lines of the current branch are kept;
         # "taken": a branch of this #if has already been kept.
@@ -112,6 +127,14 @@ class Preprocessor(object):
             line_number, file_name, line = lines[i]
             i += 1
             m = _DIRECTIVE_RE.match(line.strip())
+            if m is not None and m.group(1) == 'include' and self._include is not None:
+                # Read only when the branch is kept (issue #127), and with
+                # the macros defined so far, so that include guards work.
+                if all(s[0] for s in stack):
+                    included = self._include(m.group(2), line_number, file_name)
+                    if included:
+                        self._preprocess(included, output)
+                continue
             if m is None or m.group(1) not in DIRECTIVES:
                 if all(s[0] for s in stack):
                     if m is None:
@@ -180,7 +203,6 @@ class Preprocessor(object):
             _, _, _, line_number, file_name = stack[-1]
             raise exception.InvalidIDLSyntaxError(line_number, file_name,
                                                   '#if without #endif')
-        return output
 
     def define(self, name, value=''):
         """Define an object-like macro, as ``#define name value`` does."""

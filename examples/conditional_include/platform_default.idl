@@ -1,0 +1,9 @@
+// Types used when no platform is selected.
+#ifndef PLATFORM_DEFAULT_IDL
+#define PLATFORM_DEFAULT_IDL
+
+module platform {
+  typedef unsigned long Handle;
+};
+
+#endif // PLATFORM_DEFAULT_IDL

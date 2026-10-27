@@ -55,9 +55,9 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
     """
 
     def test_examples_exist(self):
-        """The fourteen example scripts exist in examples/.
+        """The fifteen example scripts exist in examples/.
 
-        examples/ に14個のサンプルスクリプトが存在する。
+        examples/ に15個のサンプルスクリプトが存在する。
         """
         names = [os.path.basename(p) for p in example_scripts()]
         for name in ('example.py', 'argument_direction_example.py', 'struct_example.py',
@@ -65,7 +65,8 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
                      'annotation_example.py', 'scoped_name_example.py',
                      'valuetype_example.py', 'include_dirs_example.py',
                      'struct_inheritance_map_example.py', 'any_fixed_example.py',
-                     'preprocessor_example.py', 'typedef_template_module_example.py'):
+                     'preprocessor_example.py', 'typedef_template_module_example.py',
+                     'conditional_include_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -311,6 +312,43 @@ class PreprocessorExampleTest(unittest.TestCase):
         self.assertIn('struct StampedScan { unsigned long long stamp, Scan scan }', third)
         self.assertIn('Point [4] points', third)
         self.assertIn('intensities bound: 4', third)
+
+
+class ConditionalIncludeExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル(examples)
+
+    Output of examples/conditional_include_example.py (issue #127).
+    examples/conditional_include_example.py の出力(#127)。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.parts = run_main('conditional_include_example').split('\n\n')
+
+    def test_default(self):
+        """conditional_include_example: without defines, the #else file is included.
+
+        conditional_include_example: defines なしでは #else のファイルが include される。
+        """
+        self.assertIn('Handle is unsigned long (platform_default.idl)', self.parts[0])
+        self.assertIn('robot structs: Command\n', self.parts[0] + '\n')
+
+    def test_platform_a(self):
+        """conditional_include_example: PLATFORM_A includes platform_a.idl, whose HAS_LIDAR adds LidarScan.
+
+        conditional_include_example: PLATFORM_A で platform_a.idl が読まれ、その HAS_LIDAR で LidarScan が増える。
+        """
+        self.assertIn("defines={'PLATFORM_A': ''}", self.parts[1])
+        self.assertIn('Handle is long (platform_a.idl)', self.parts[1])
+        self.assertIn('robot structs: Command, LidarScan', self.parts[1])
+
+    def test_platform_b(self):
+        """conditional_include_example: PLATFORM_B includes platform_b.idl.
+
+        conditional_include_example: PLATFORM_B で platform_b.idl が読まれる。
+        """
+        self.assertIn('Handle is string (platform_b.idl)', self.parts[2])
+        self.assertNotIn('LidarScan', self.parts[2])
 
 
 class EnumExampleTest(unittest.TestCase):
