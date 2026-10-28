@@ -36,7 +36,7 @@ TYPOS = {
 UNSUPPORTED = {
     'component': 'component C { provides I p; };',
     'home': 'home H manages C { };',
-    'typeprefix': 'typeprefix M "example.com";',
+    'import': 'import ::M;',
 }
 
 

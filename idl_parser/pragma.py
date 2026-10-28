@@ -1,17 +1,18 @@
 """``#pragma`` directives found in IDL files (issues #10 / #28).
 
 ``#pragma`` lines are taken out of the input during preprocessing, so they
-never reach the parser as tokens and are ignored wherever they are written.
-Each one is kept as an :class:`IDLPragma` and is available from
-:attr:`idl_parser.parser.IDLParser.pragmas`.
+never reach the parser as tokens. Each one is kept as an :class:`IDLPragma`
+and is available from :attr:`idl_parser.parser.IDLParser.pragmas`.
 
 ``#pragma keylist <type> [<member> ...]`` (OpenSplice DDS) is interpreted:
 the named struct is looked up after the whole input has been parsed, so the
 struct may be defined before or after the pragma, and its key members are
 available as :attr:`idl_parser.struct.IDLStruct.keys` (combined with members
-annotated with ``@key``; see there).  Other pragmas
-(``#pragma prefix``, ``#pragma once``, vendor-specific ones, ...) are only
-recorded.
+annotated with ``@key``; see there).  ``#pragma prefix``, ``#pragma ID``
+and ``#pragma version`` give the repository IDs of the definitions
+(:attr:`idl_parser.node.IDLNode.repository_id`, issue #135; see
+:mod:`idl_parser.repository_id`). Other pragmas (``#pragma once``,
+vendor-specific ones, ...) are only recorded.
 
 Each key name of a keylist is checked against the members of the target
 struct (issue #38).  A key may name a member of a nested struct with
@@ -61,6 +62,8 @@ class IDLPragma(object):
         self._filepath = filepath
         self._target = None
         self._unresolved_keys = None
+        # The scope node the pragma is written in (issue #135)
+        self._scope_node = None
 
     @property
     def name(self):
@@ -109,8 +112,37 @@ class IDLPragma(object):
 
     @property
     def target(self):
-        """For a keylist, the :class:`IDLStruct` it applies to, or ``None`` if not found."""
+        """For a keylist, the :class:`IDLStruct` it applies to; for
+        ``#pragma ID`` and ``#pragma version``, the definition it applies to
+        (issue #135). ``None`` if not found, and for other pragmas."""
         return self._target
+
+    @property
+    def is_prefix(self):
+        """True for ``#pragma prefix`` (issue #135)."""
+        return self._name == 'prefix'
+
+    @property
+    def is_id(self):
+        """True for ``#pragma ID`` (issue #135)."""
+        return self._name == 'ID'
+
+    @property
+    def is_version(self):
+        """True for ``#pragma version`` (issue #135)."""
+        return self._name == 'version'
+
+    @property
+    def value(self):
+        """The string of ``#pragma prefix "P"`` (``'P'``), of ``#pragma ID A "ID"``
+        (``'ID'``) or the version of ``#pragma version A 2.4`` (``'2.4'``),
+        without quotes; otherwise ``None`` (issue #135)."""
+        if self.is_prefix:
+            return _unquote(' '.join(self._arguments)) if self._arguments else ''
+        if self.is_id or self.is_version:
+            if len(self._arguments) >= 2:
+                return _unquote(' '.join(self._arguments[1:]))
+        return None
 
     @property
     def unresolved_keys(self):
@@ -133,6 +165,17 @@ class IDLPragma(object):
                           KeylistWarning, stacklevel=2)
 
     def _resolve(self, global_module):
+        """Apply a keylist, ``#pragma ID`` or ``#pragma version``.
+
+        See :meth:`_resolve_keylist` and
+        :func:`idl_parser.repository_id.apply_pragma`.
+        """
+        if self.is_id or self.is_version:
+            from . import repository_id
+            return repository_id.apply_pragma(self, global_module)
+        return self._resolve_keylist(global_module)
+
+    def _resolve_keylist(self, global_module):
         """Find the target struct of a keylist and attach the keys to it.
 
         The type name is looked up like a C++ name: from the innermost
@@ -165,6 +208,21 @@ class IDLPragma(object):
 
     def __repr__(self):
         return '<IDLPragma #pragma %s>' % ' '.join([self._name] + self._arguments)
+
+
+def _unquote(text):
+    """``'"omg.org"'`` -> ``'omg.org'``."""
+    text = text.strip()
+    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+        return text[1:-1]
+    return text
+
+
+# Names of the pragmas put around the lines of an #include file, so that a
+# #pragma prefix ends with the file it is written in (issue #135). They are
+# not listed in IDLParser.pragmas.
+INCLUDE_BEGIN = '__include_begin__'
+INCLUDE_END = '__include_end__'
 
 
 def _key_exists(struct, key):
@@ -201,11 +259,15 @@ def _find_struct(global_module, path):
     return m.struct_by_name(path[-1])
 
 
-def extract_pragmas(lines):
+def extract_pragmas(lines, keep_in_place=False):
     """Remove ``#pragma`` lines from preprocessed ``lines``.
 
     :param lines: List of ``(line_number, filepath, line)`` after comments,
         ``#include`` and ``#ifdef`` have been handled.
+    :param keep_in_place: Put each :class:`IDLPragma` where its line was,
+        as ``(line_number, filepath, IDLPragma)``, instead of removing the
+        line, so that a :class:`~idl_parser.token_buffer.TokenBuffer` can tell
+        where it was written (issue #135).
     :returns: ``(lines_without_pragmas, [IDLPragma, ...])``
     """
     output_lines = []
@@ -220,7 +282,10 @@ def extract_pragmas(lines):
     for line_number, file_name, line in lines:
         text = match_pragma(line)
         if text is not None:
-            pragmas.append(IDLPragma(text, scope, line_number, file_name))
+            p = IDLPragma(text, scope, line_number, file_name)
+            pragmas.append(p)
+            if keep_in_place:
+                output_lines.append((line_number, file_name, p))
             continue
         output_lines.append((line_number, file_name, line))
 
