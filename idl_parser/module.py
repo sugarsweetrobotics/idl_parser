@@ -52,8 +52,23 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         self._forward_eventtypes = []
         self._init_definitions()
         self._modules = []
+        self._filepaths = []
         # typeid / typeprefix declarations, kept in the global scope (issue #135)
         self._type_declarations = []
+
+    @property
+    def filepath(self):
+        """File where the module is first opened (an absolute path), or
+        None. A module opened in several files (``module M { ... };`` in
+        a.idl and in b.idl) lists them all in :attr:`filepaths` (issue #142).
+        For the global scope it is the first file parsed."""
+        return self._filepath
+
+    @property
+    def filepaths(self):
+        """Files where the module is opened (absolute paths), in the order
+        they are read (issue #142)."""
+        return list(self._filepaths)
 
     @property
     def is_global(self):
@@ -118,7 +133,12 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         :param filepath: File name recorded in the parsed nodes.
         :raises ~idl_parser.exception.InvalidIDLSyntaxError: The input is not valid IDL.
         """
-        self._filepath = filepath
+        # A module opened in several files keeps the file where it is first
+        # opened, and lists them all in filepaths (issue #142)
+        if self._filepath is None:
+            self._filepath = filepath
+        if filepath is not None and filepath not in self._filepaths:
+            self._filepaths.append(filepath)
         if not self.name == global_namespace:
             ln, fn, kakko = token_buf.pop()
             if not kakko == '{':
