@@ -21,6 +21,7 @@ API Reference
    idl_parser.definitions
    idl_parser.preprocessor
    idl_parser.pragma
+   idl_parser.repository_id
    idl_parser.type
    idl_parser.node
    idl_parser.token_buffer

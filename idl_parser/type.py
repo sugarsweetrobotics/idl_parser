@@ -30,7 +30,29 @@ primitive = [
 
 # any, Object and ValueBase hold a reference or a value of any type, so they
 # have no default value such as 0 (issue #119)
-reference_primitive = ['any', 'Object', 'ValueBase']
+reference_primitive = ['any', 'Object', 'ValueBase', 'TypeCode', 'Principal', 'AbstractBase']
+
+# Types of module CORBA that an ORB knows without any IDL (the definitions
+# of orb.idl), such as CORBA::TypeCode (issue #138). When IDL does not define
+# them (e.g. by including an orb.idl), CORBA::TypeCode is an IDLPrimitive
+# named 'TypeCode'.
+builtin_corba_types = ('TypeCode', 'Principal', 'AbstractBase')
+
+
+def builtin_corba_type(name, scope=None):
+    """The name of the built-in CORBA type (``'TypeCode'``) that ``name``
+    (``'CORBA::TypeCode'``, ``'::CORBA::TypeCode'``, or ``'TypeCode'``
+    written inside module CORBA) names, or None (issue #138)."""
+    parts = str(name).strip().lstrip(':').split(sep)
+    if len(parts) == 2 and parts[0] == 'CORBA' and parts[1] in builtin_corba_types:
+        return parts[1]
+    if len(parts) == 1 and parts[0] in builtin_corba_types and not str(name).strip().startswith(sep):
+        n = scope
+        while n is not None:
+            if n.classname == 'IDLModule' and n.name == 'CORBA' and n.parent is not None and n.parent.parent is None:
+                return parts[0]
+            n = n.parent
+    return None
 
 # Bounded strings such as 'string<8>' or 'wstring< MAX_LEN >' (issue #9).
 # The bound may be a constant expression ('string<N * 2>', issue #130).
@@ -643,6 +665,11 @@ class IDLArray(IDLTypeBase):
 class IDLPrimitive(IDLTypeBase):
     """A primitive type (``long``, ``unsigned short``, ``string``, ...).
 
+    The built-in types of module CORBA (``CORBA::TypeCode``,
+    ``CORBA::Principal``, ``CORBA::AbstractBase``) are primitive types too,
+    named ``'TypeCode'``, ... (issue #138); :attr:`is_builtin_corba_type`
+    is True for them.
+
     A bounded string keeps its base name (``string<8>`` -> ``'string'``); the
     bound is available as :attr:`bound`.
     """
@@ -669,6 +696,11 @@ class IDLPrimitive(IDLTypeBase):
     def is_bounded_string(self):
         """True for a bounded string (``string<8>``)."""
         return self._bound is not None
+
+    @property
+    def is_builtin_corba_type(self):
+        """True for a built-in type of module CORBA (``CORBA::TypeCode``, issue #138)."""
+        return self.name in builtin_corba_types
     @property
     def full_path(self):
         return (self.parent.full_path + self.sep + self.name).strip()
