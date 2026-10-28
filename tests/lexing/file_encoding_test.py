@@ -47,7 +47,8 @@ class FileEncodingTest(unittest.TestCase):
         p.parse_idl(path)
         rtc = p.global_module.module_by_name('RTC')
         self.assertEqual(rtc.structs[0].name, 'S')
-        self.assertEqual(rtc.const_by_name('NAME').value, '"caf\xe9"')
+        self.assertEqual(rtc.const_by_name('NAME').value, 'caf\xe9')
+        self.assertEqual(rtc.const_by_name('NAME').value_string, '"caf\xe9"')
 
     def test_included_latin1_file(self):
         """A Latin-1 file included by a UTF-8 file is read. / UTF-8 のファイルから include した Latin-1 のファイルも読める。"""
@@ -72,7 +73,8 @@ class FileEncodingTest(unittest.TestCase):
         p = parser.IDLParser(encoding='shift_jis')
         self.assertEqual(p.encoding, 'shift_jis')
         p.parse_idl(path)
-        self.assertEqual(p.global_module.const_by_name('W').value, 'L"あ"')
+        self.assertEqual(p.global_module.const_by_name('W').value, 'あ')
+        self.assertEqual(p.global_module.const_by_name('W').value_string, 'L"あ"')
 
     def test_wrong_explicit_encoding(self):
         """A file that is not valid in the given encoding raises UnicodeDecodeError. / 指定した文字コードで読めないファイルは UnicodeDecodeError。"""
