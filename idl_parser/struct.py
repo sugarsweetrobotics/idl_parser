@@ -4,6 +4,7 @@ import os, sys, traceback
 from . import node
 from . import type as idl_type
 from . import exception
+from . import definitions
 from . import token_buffer
 
 class IDLMember(node.IDLNode):
@@ -119,8 +120,12 @@ class IDLMember(node.IDLNode):
         self._type._name = self.refine_typename(self.type)
 
 
-class IDLStruct(node.IDLNode):
+class IDLStruct(node.IDLNode, definitions.IDLDefinitionScope):
     """A ``struct`` and its members.
+
+    A struct, union or enum defined in a member (``struct T { long a; } t;``)
+    is scoped by the struct (``M::S::T``) and is available like one in a
+    module (:attr:`structs`, :meth:`struct_by_name`, ..., issue #144).
 
     :param name: Struct name.
     :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
@@ -128,6 +133,7 @@ class IDLStruct(node.IDLNode):
     def __init__(self, name, parent):
         super(IDLStruct, self).__init__('IDLStruct', name.strip(), parent)
         self._verbose = False #True
+        self._init_definitions()
         self._members = []
         self._keys = None
         self._forward = False
@@ -224,6 +230,8 @@ class IDLStruct(node.IDLNode):
             dic['base'] = self._base.full_path
         if self.has_keylist:
             dic['keys'] = self.keys
+        if self.has_definitions:
+            dic.update(self._definitions_dic())
         return self._with_annotations(dic)
 
     def parse_tokens(self, token_buf, filepath=None):
@@ -256,6 +264,12 @@ class IDLStruct(node.IDLNode):
         block_ln = None  # where the member declaration starts (issue #141)
         while True:
 
+            if self._starts_member_type(token_buf) and not node.parse_annotations(block_tokens)[1]:
+                # "struct T { long a; } t;": T is defined in this struct (issue #144)
+                if not block_tokens:
+                    block_ln = token_buf.peek()[0]
+                block_tokens.append(self._parse_typedef_constr_type(token_buf, filepath))
+                continue
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')

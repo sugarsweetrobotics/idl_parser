@@ -528,19 +528,27 @@ def definition_scopes(module, scope=None):
     ``scope`` is the node where a name is written. An interface or a value
     type enclosing it that is still being parsed (so it is not in its module
     yet) is included too, so a definition in it can use the ones before it.
+
+    The structs, exceptions and unions that hold types declared in their
+    members (issue #144) are scopes too, as is the one enclosing ``scope``.
     """
     scopes = []
+    def add(s):
+        scopes.append(s)
+        for holder in s.structs + s.exceptions + s.unions:
+            if holder.has_definitions:
+                add(holder)
     def walk(m):
         for sub in m.modules:
             walk(sub)
-        scopes.append(m)
-        scopes.extend(m.interfaces)
-        scopes.extend(m.valuetypes)
-        scopes.extend(m.eventtypes)
+        add(m)
+        for i in m.interfaces + m.valuetypes + m.eventtypes:
+            add(i)
     walk(module)
     n = scope
     while n is not None:
-        if n.classname in _definition_scope_classnames and all(n is not x for x in scopes):
+        if n.classname in _definition_scope_classnames + _member_scope_classnames and \
+                all(n is not x for x in scopes):
             scopes.append(n)
         n = n.parent
     return scopes
@@ -618,7 +626,9 @@ def _where(line_number, file_name):
 
 
 _definition_scope_classnames = ('IDLInterface', 'IDLValueType', 'IDLEventType')
-_scope_classnames = ('IDLModule', 'IDLStruct', 'IDLUnion') + _definition_scope_classnames
+# Scopes that hold the types declared in their members (issue #144)
+_member_scope_classnames = ('IDLStruct', 'IDLException', 'IDLUnion')
+_scope_classnames = ('IDLModule',) + _member_scope_classnames + _definition_scope_classnames
 
 def _enclosing_scopes(node):
     """Full paths (without a leading '::') of the scopes enclosing ``node``,

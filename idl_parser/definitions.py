@@ -9,12 +9,15 @@ import os
 import sys
 
 from . import node
-from . import struct, typedef, enum, const, union, bitmask, bitset, native
 from .exception import InvalidIDLSyntaxError
 
 # Keywords of the types that can be declared inside a typedef
 # ("typedef struct S { ... } SS;", issue #121).
 constr_type_keywords = ('struct', 'union', 'enum', 'bitmask', 'bitset')
+
+# Keywords of the types that can be declared in a member of a struct or a
+# union ("struct S { struct T { long a; } t; };", issue #144).
+member_type_keywords = ('struct', 'union', 'enum')
 
 # Keywords that start a definition handled by IDLDefinitionScope.parse_definition().
 definition_keywords = ('typedef', 'struct', 'exception', 'enum', 'bitmask',
@@ -25,7 +28,9 @@ class IDLDefinitionScope(object):
     """Mixin for a scope that holds type and constant definitions.
 
     Used by :class:`~idl_parser.module.IDLModule` and
-    :class:`~idl_parser.interface.IDLInterface`.
+    :class:`~idl_parser.interface.IDLInterface`, and by
+    :class:`~idl_parser.struct.IDLStruct` and :class:`~idl_parser.union.IDLUnion`
+    for the types declared in their members (issue #144).
     """
 
     def _init_definitions(self):
@@ -309,6 +314,13 @@ class IDLDefinitionScope(object):
         self.parse_definition(keyword, token_buf.from_tokens(tokens), filepath)
         return name_
 
+    def _starts_member_type(self, token_buf):
+        """True if ``token_buf`` starts with a struct, union or enum
+        definition written in a member (``struct T { ... } t;``, issue #144).
+        Nothing is consumed."""
+        return token_buf.peek()[2] in member_type_keywords and \
+            token_buf.peek(2)[2] in ('{', ':', 'switch')
+
     @property
     def has_definitions(self):
         """True if any type or constant is defined in this scope."""
@@ -551,3 +563,8 @@ class IDLDefinitionScope(object):
                  'bitsets' : [b.to_dic() for b in self.bitsets],
                  'unions' : [u.to_dic() for u in self.unions],
                  'consts' : [c.to_dic() for c in self.consts] }
+
+
+# Imported here, after IDLDefinitionScope, because IDLStruct and IDLUnion
+# use it too (issue #144)
+from . import struct, typedef, enum, const, union, bitmask, bitset, native

@@ -4,6 +4,7 @@ import os, sys, traceback
 from . import node
 from . import type as idl_type
 from . import exception
+from . import definitions
 from . import token_buffer
 from . import const_expr
 
@@ -158,8 +159,23 @@ class IDLUnionMember(node.IDLNode):
         self.check_element_types(self._type) # sequence / array elements (issue #67)
         self._type._name = self.refine_typename(self.type)
 
-class IDLUnion(node.IDLNode):
+def _only_labels(tokens):
+    """True if ``tokens`` are case labels (``case 1 :``, ``default:``) and
+    annotations only, so that a member type comes next (issue #144)."""
+    after = 0  # the tokens after the last label
+    for i, t in enumerate(tokens):
+        if t.endswith(':') and not t.endswith('::') or t == ':':
+            after = i + 1
+    if after == 0 and tokens and tokens[0] in ('case', 'default'):
+        return False  # a label without its ":" yet
+    return not node.parse_annotations(tokens[after:])[1]
+
+
+class IDLUnion(node.IDLNode, definitions.IDLDefinitionScope):
     """A ``union``: a discriminator type and members selected by its value.
+
+    A struct, union or enum defined in a case (``case 1: struct T { ... } t;``)
+    is scoped by the union (``M::U::T``, issue #144).
 
     :param name: Union name.
     :param parent: Enclosing :class:`~idl_parser.module.IDLModule`.
@@ -167,6 +183,7 @@ class IDLUnion(node.IDLNode):
     def __init__(self, name, parent):
         super(IDLUnion, self).__init__('IDLUnion', name.strip(), parent)
         self._verbose = True
+        self._init_definitions()
         self._descriminator_kind = None
         self._discriminator_type = None
         self._members = []
@@ -207,6 +224,8 @@ class IDLUnion(node.IDLNode):
                 'classname' : self.classname,
                 'descriminator_kind' : self.descriminator_kind,
                 'members' : [v.to_dic() for v in self.members] }
+        if self.has_definitions:
+            dic.update(self._definitions_dic())
         return self._with_annotations(dic)
 
     def parse_tokens(self, token_buf, filepath=None):
@@ -236,12 +255,22 @@ class IDLUnion(node.IDLNode):
         block_ln = None
         while True:
 
+            if self._starts_member_type(token_buf) and _only_labels(block_tokens):
+                # "case 1: struct T { long a; } t;": T is defined in this
+                # union (issue #144)
+                if not block_tokens:
+                    block_ln = token_buf.peek()[0]
+                block_tokens.append(self._parse_typedef_constr_type(token_buf, filepath))
+                continue
             ln, fn, token = token_buf.pop()
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise exception.InvalidIDLSyntaxError()
 
             elif token == '}':
+                if block_tokens:
+                    raise exception.InvalidIDLSyntaxError(
+                        ln, fn, 'No ";" after "%s" in union "%s"' % (' '.join(block_tokens), self.name))
                 ln, fn, token = token_buf.pop()
                 if not token == ';':
                     if self._verbose: sys.stdout.write('# Error. No semi-colon after "}".\n')
