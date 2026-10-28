@@ -4,6 +4,10 @@ import os, sys, traceback
 from . import node
 from . import type as idl_type
 from . import exception
+from . import const_expr
+
+# Primitive types a union can switch on, besides the integer types (issue #136)
+_discriminator_primitives = ('char', 'wchar', 'boolean')
 
 class IDLUnionMember(node.IDLNode):
     """A member (branch) of a union, with its ``case`` labels.
@@ -15,6 +19,7 @@ class IDLUnionMember(node.IDLNode):
         self._verbose = True
         self._type = None
         self._descriminator_value_associations = []
+        self._labels = []
         self._is_default = False
         self.sep = '::'
 
@@ -37,10 +42,15 @@ class IDLUnionMember(node.IDLNode):
         while blocks:
             if blocks[0] == 'case':
                 blocks.pop(0)
-                if len(blocks) < 2:
+                # The label is every token up to the ":", so that an
+                # expression such as "N + 1" is kept whole (issue #136)
+                label = []
+                while blocks and blocks[0] != ':':
+                    label.append(blocks.pop(0))
+                if not label or len(blocks) < 2:
                     if self._verbose: sys.stdout.write('# Error. No value after "case".\n')
                     raise exception.InvalidIDLSyntaxError()
-                self._descriminator_value_associations.append(blocks.pop(0))
+                self._descriminator_value_associations.append(' '.join(label))
             elif blocks[0] == 'default':
                 blocks.pop(0)
                 self._is_default = True
@@ -111,6 +121,17 @@ class IDLUnionMember(node.IDLNode):
         return self._descriminator_value_associations
 
     @property
+    def labels(self):
+        """The values of the ``case`` labels, evaluated with the type of the
+        discriminator (issue #136), in order: an int for an integer type
+        (``case N + 1:`` included), a str of one character for ``char`` and
+        ``wchar``, a bool for ``boolean``, and the
+        :class:`~idl_parser.enum.IDLEnumValue` for an enum. ``default`` is
+        not included; see :attr:`is_default`.
+        """
+        return list(self._labels)
+
+    @property
     def is_default(self):
         """True if this member has the ``default:`` label."""
         return self._is_default
@@ -146,6 +167,7 @@ class IDLUnion(node.IDLNode):
         super(IDLUnion, self).__init__('IDLUnion', name.strip(), parent)
         self._verbose = True
         self._descriminator_kind = None
+        self._discriminator_type = None
         self._members = []
         self._forward = False
         self.sep = '::'
@@ -225,7 +247,7 @@ class IDLUnion(node.IDLNode):
                 break
 
             if token == ';':
-                self._parse_block(block_tokens)
+                self._parse_block(block_tokens, ln, fn)
                 block_tokens = []
                 continue
             block_tokens.append(token)
@@ -233,7 +255,16 @@ class IDLUnion(node.IDLNode):
         self._post_process()
 
     def parse_descriminator_kind(self, token_buf):
-        """Read ``switch ( TYPE )`` and keep ``TYPE`` as :attr:`descriminator_kind`."""
+        """Read ``switch ( TYPE )`` and keep ``TYPE`` as :attr:`descriminator_kind`.
+
+        ``TYPE`` may be several words (``unsigned long long``, issue #136).
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The declaration
+            is not valid, or ``TYPE`` is not an integer type, ``char``,
+            ``wchar``, ``boolean`` or an enum (or a typedef of one).
+        :raises ~idl_parser.exception.InvalidDataTypeException: ``TYPE`` is
+            not defined.
+        """
         ln, fn, token = token_buf.pop()
         if token != 'switch':
             if self._verbose: sys.stdout.write('# Error. Union definition missing "switch".\n')
@@ -242,20 +273,99 @@ class IDLUnion(node.IDLNode):
         if token != '(':
             if self._verbose: sys.stdout.write('# Error. No "(".\n')
             raise exception.InvalidIDLSyntaxError()
-        ln, fn, token = token_buf.pop()
-        self._descriminator_kind = token
-        ln, fn, token = token_buf.pop()
-        if token != ')':
-            if self._verbose: sys.stdout.write('# Error. No ")".\n')
-            raise exception.InvalidIDLSyntaxError()
+        words = []
+        while True:
+            ln, fn, token = token_buf.pop()
+            if token == ')' and words:
+                break
+            if token is None or token in ('(', ')', '{', '}', ';'):
+                if self._verbose: sys.stdout.write('# Error. No ")".\n')
+                raise exception.InvalidIDLSyntaxError(ln, fn, 'No ")" after the discriminator type of union "%s"' % self.name)
+            words.append(token)
+        self._descriminator_kind = ' '.join(words)
+        self._discriminator_type = self._resolve_discriminator(ln, fn)
 
-    def _parse_block(self, blocks):
+    def _resolve_discriminator(self, ln, fn):
+        """The type node of the discriminator, typedefs followed (issue #136)."""
+        name = self._descriminator_kind
+        if idl_type.is_primitive(name):
+            typ = idl_type.IDLType(name, self)
+        else:
+            typs = self.root_node.find_types(name, scope=self)
+            if not typs:
+                raise exception.InvalidDataTypeException(
+                    ln, fn, 'Can not find Data Type (%s) of the discriminator of union "%s"' % (name, self.name))
+            typ = typs[0]
+        for _ in range(32):  # a typedef of a typedef of ...
+            if not typ.is_typedef:
+                break
+            typ = typ.type
+        if typ.is_enum or (typ.is_primitive and
+                           (typ.name in const_expr.integer_types or typ.name in _discriminator_primitives)):
+            return typ
+        raise exception.InvalidIDLSyntaxError(
+            ln, fn, 'The discriminator of union "%s" must be an integer, char, wchar, boolean or enum type, not "%s"'
+            % (self.name, name))
+
+    @property
+    def discriminator_type(self):
+        """The type of the discriminator (issue #136): an
+        :class:`~idl_parser.type.IDLPrimitive` (``'long'``,
+        ``'unsigned long long'``, ``'char'``, ``'boolean'``, ...) or an
+        :class:`~idl_parser.enum.IDLEnum`. A typedef is followed to the type
+        it stands for. :attr:`descriminator_kind` is the name as written."""
+        return self._discriminator_type
+
+    def _parse_block(self, blocks, ln=None, fn=None):
         v = IDLUnionMember(self)
         v.parse_blocks(blocks, self.filepath)
         if v.is_default and self.default_member is not None:
             if self._verbose: sys.stdout.write('# Error. Union "%s" has more than one "default" label.\n' % self.name)
             raise exception.InvalidIDLSyntaxError()
+        used = set(_label_key(x) for m in self._members for x in m._labels)
+        for label in v.descriminator_value_associations:
+            value = self._evaluate_label(label, ln, fn)
+            if _label_key(value) in used:
+                raise exception.InvalidIDLSyntaxError(
+                    ln, fn, 'Label "%s" of union "%s" is used more than once' % (label, self.name))
+            used.add(_label_key(value))
+            v._labels.append(value)
         self._members.append(v)
+
+    def _evaluate_label(self, label, ln, fn):
+        """The value of a ``case`` label for the discriminator type (issue #136)."""
+        typ = self._discriminator_type
+        def error(reason):
+            return exception.InvalidConstExpressionError(
+                ln, fn, 'Invalid label "%s" of union "%s" (discriminator %s): %s'
+                % (label, self.name, self._descriminator_kind, reason))
+        try:
+            if typ.is_enum:
+                value = _find_enumerator(typ, label)
+                if value is None:
+                    raise error('not an enumerator of %s' % typ.full_path.lstrip(':'))
+                return value
+            if typ.name in ('char', 'wchar'):
+                value = const_expr.parse_char_literal(label, wide=typ.name == 'wchar')
+                if value is None:
+                    value = _const_literal(label, self, lambda v: const_expr.parse_char_literal(v, wide=True))
+                if value is None:
+                    raise error('not a character literal')
+                return value
+            if typ.name == 'boolean':
+                value = const_expr.parse_boolean_literal(label)
+                if value is None:
+                    value = _const_literal(label, self, const_expr.parse_boolean_literal)
+                if value is None:
+                    raise error('not TRUE or FALSE')
+                return value
+            value = const_expr.evaluate(label, self)
+        except const_expr.ConstExprError as e:
+            raise error(str(e))
+        low, high = const_expr.integer_ranges[typ.name]
+        if not low <= value <= high:
+            raise error('%d is out of the range of %s' % (value, typ.name))
+        return value
 
     def _post_process(self):
         self.forEachMember(lambda m : m.post_process())
@@ -290,3 +400,39 @@ class IDLUnion(node.IDLNode):
         """Call ``func`` with each member."""
         for m in self._members:
             func(m)
+
+
+def _label_key(value):
+    """A key telling label values apart: an enumerator by identity, other
+    values by type and value (so True and 1 differ)."""
+    if isinstance(value, node.IDLNode):
+        return ('enumerator', id(value))
+    return (type(value).__name__, value)
+
+
+def _find_enumerator(enum, label):
+    """The enumerator of ``enum`` that ``label`` names (``RED``,
+    ``T::RED``, ``::T::RED``), or None. As in IDL, an enumerator belongs to
+    the scope enclosing its enum (``T::RED`` for ``T::Color``); the name
+    through the enum (``T::Color::RED``) is accepted too."""
+    names = label.strip().lstrip(':').split('::')
+    value = enum.value_by_name(names[-1].strip())
+    if value is None:
+        return None
+    scope = names[:-1]
+    if not scope:
+        return value
+    for path in (enum.parent.full_path, enum.full_path):
+        parts = [p for p in path.lstrip(':').split('::') if p]
+        if parts[len(parts) - len(scope):] == scope:
+            return value
+    return None
+
+
+def _const_literal(name, scope, parse):
+    """The value of the constant named ``name``, read with ``parse`` from its
+    value as written, or None if there is no such constant."""
+    c = const_expr.find_const(name, scope)
+    if c is None:
+        return None
+    return parse(c.value_string)
