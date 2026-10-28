@@ -234,7 +234,7 @@ class MacroTest(unittest.TestCase):
                  'module M { const INT X = ZERO; const string S = NAME; };\n')
         m = g.module_by_name('M')
         self.assertEqual(m.const_by_name('X').type.name, 'long long')
-        self.assertEqual(m.const_by_name('S').value, '"a;b{c}"')
+        self.assertEqual(m.const_by_name('S').value_string, '"a;b{c}"')
 
     def test_literals_and_names_kept(self):
         """Names in literals and parts of longer names are not expanded.
@@ -244,8 +244,8 @@ class MacroTest(unittest.TestCase):
         g = load('#define N 5\nmodule M { const string S = "N"; const char C = \'N\'; '
                  'const long NN = 1; struct S2 { long N_; }; };\n')
         m = g.module_by_name('M')
-        self.assertEqual(m.const_by_name('S').value, '"N"')
-        self.assertEqual(m.const_by_name('C').value, "'N'")
+        self.assertEqual(m.const_by_name('S').value_string, '"N"')
+        self.assertEqual(m.const_by_name('C').value_string, "'N'")
         self.assertEqual(m.const_by_name('NN').value, 1)
         self.assertEqual(m.struct_by_name('S2').members[0].name, 'N_')
 

@@ -11,7 +11,14 @@ and parentheses. The operands are integer literals (decimal, octal ``017``
 and hexadecimal ``0x1F``) and the names of integer constants, scoped names
 (``M::N``, ``::N``) included. As in C++, ``/`` rounds toward zero and the
 result of ``%`` has the sign of the left operand.
+
+:func:`evaluate_real` evaluates floating-point and fixed-point expressions
+(``1.0 / 3``, ``1.25d * 2``) for the values of ``float``, ``double`` and
+``fixed`` constants, and the literals of the other types are read by
+:func:`parse_char_literal`, :func:`parse_boolean_literal` and
+:func:`unescape` (issues #136, #137).
 """
+import decimal
 import re
 
 from .exception import InvalidConstExpressionError
@@ -37,9 +44,15 @@ integer_ranges = {
 }
 
 _token = re.compile(r'\s*(?:'
-                    r'(?P<number>0[xX][0-9A-Fa-f]+|[0-9]+)'
+                    r'(?P<number>0[xX][0-9A-Fa-f]+)'
+                    r'|(?P<fixed>(?:[0-9]+\.?[0-9]*|\.[0-9]+)[dD])'
+                    r'|(?P<float>(?:[0-9]+\.[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+)'
+                    r'|(?P<int>[0-9]+)'
                     r'|(?P<name>(?:::)?[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)'
                     r'|(?P<op><<|>>|[|^&+\-*/%~()]))')
+
+# Operators of floating-point and fixed-point expressions (issue #137)
+_real_operators = ('+', '-', '*', '/')
 
 # Binary operators, loosest first (or_expr ... mult_expr of IDL 4.2)
 _binary_levels = (('|',), ('^',), ('&',), ('<<', '>>'), ('+', '-'), ('*', '/', '%'))
@@ -58,8 +71,12 @@ def _tokenize(expr):
         if not m or m.end() == pos:
             raise ConstExprError('Unexpected "%s"' % text[pos:].strip())
         pos = m.end()
-        if m.group('number') is not None:
-            tokens.append(('number', m.group('number')))
+        if m.group('number') is not None or m.group('int') is not None:
+            tokens.append(('number', m.group(0).strip()))
+        elif m.group('fixed') is not None:
+            tokens.append(('fixed', m.group('fixed')))
+        elif m.group('float') is not None:
+            tokens.append(('float', m.group('float')))
         elif m.group('name') is not None:
             tokens.append(('name', m.group('name')))
         else:
@@ -96,6 +113,13 @@ def _shift(a, b, left):
     return a << b if left else a >> b
 
 
+_real_apply = {
+    '+': lambda a, b: a + b,
+    '-': lambda a, b: a - b,
+    '*': lambda a, b: a * b,
+    '/': lambda a, b: a / b,
+}
+
 _apply = {
     '|': lambda a, b: a | b,
     '^': lambda a, b: a ^ b,
@@ -111,10 +135,17 @@ _apply = {
 
 
 class _Parser(object):
-    def __init__(self, tokens, lookup):
+    """Evaluates the tokens of an expression.
+
+    :param kind: ``'integer'`` (int), ``'float'`` (float) or ``'fixed'``
+        (:class:`decimal.Decimal`); floating-point and fixed-point
+        expressions allow only ``+ - * /`` (issue #137).
+    """
+    def __init__(self, tokens, lookup, kind='integer'):
         self._tokens = tokens
         self._pos = 0
         self._lookup = lookup
+        self._kind = kind
 
     def _peek(self):
         return self._tokens[self._pos] if self._pos < len(self._tokens) else (None, None)
@@ -140,12 +171,24 @@ class _Parser(object):
             if kind != 'op' or text not in _binary_levels[level]:
                 return value
             self._pop()
+            if self._kind != 'integer':
+                if text not in _real_operators:
+                    raise ConstExprError('"%s" can not be used in a %s expression'
+                                         % (text, 'floating-point' if self._kind == 'float' else 'fixed-point'))
+                right = self._binary(level + 1)
+                if text == '/' and right == 0:
+                    raise ConstExprError('Division by zero')
+                value = _real_apply[text](value, right)
+                continue
             value = _apply[text](value, self._binary(level + 1))
 
     def _unary(self):
         kind, text = self._peek()
         if kind == 'op' and text in ('-', '+', '~'):
             self._pop()
+            if text == '~' and self._kind != 'integer':
+                raise ConstExprError('"~" can not be used in a %s expression'
+                                     % ('floating-point' if self._kind == 'float' else 'fixed-point'))
             value = self._unary()
             return -value if text == '-' else (~value if text == '~' else value)
         return self._primary()
@@ -156,7 +199,17 @@ class _Parser(object):
             value = parse_int_literal(text)
             if value is None:
                 raise ConstExprError('Invalid integer literal "%s"' % text)
+            if self._kind == 'float':
+                return float(value)
+            if self._kind == 'fixed':
+                return decimal.Decimal(value)
             return value
+        if kind in ('float', 'fixed'):
+            if self._kind == 'integer':
+                raise ConstExprError('"%s" is not an integer' % text)
+            if self._kind == 'float':
+                return float(text.rstrip('dD'))
+            return decimal.Decimal(text.rstrip('dD'))
         if kind == 'name':
             return self._lookup(text)
         if kind == 'op' and text == '(':
@@ -230,6 +283,38 @@ def evaluate(expr, scope):
     if not tokens:
         raise ConstExprError('Empty expression')
     return _Parser(tokens, lookup).parse()
+
+
+def evaluate_real(expr, scope, kind):
+    """Value of the floating-point (``kind='float'``, a float) or fixed-point
+    (``kind='fixed'``, a :class:`decimal.Decimal`) constant expression
+    ``expr`` written in ``scope`` (issue #137).
+
+    Integer, floating-point and fixed-point (``1.25d``) literals and the
+    names of constants of those types can be used, with ``+ - * /`` and the
+    unary ``-`` and ``+``.
+
+    :raises ConstExprError: ``expr`` is not such an expression.
+    """
+    def lookup(name):
+        c = find_const(name, scope)
+        if c is None:
+            raise ConstExprError('Constant "%s" is not defined' % name)
+        value = c.value
+        if isinstance(value, bool) or not isinstance(value, (int, float, decimal.Decimal)):
+            raise ConstExprError('Constant "%s" is not a number' % name)
+        if kind == 'float':
+            return float(value)
+        if isinstance(value, float):
+            return decimal.Decimal(repr(value))
+        return decimal.Decimal(value)
+
+    tokens = _tokenize(str(expr))
+    if not tokens:
+        raise ConstExprError('Empty expression')
+    with decimal.localcontext() as ctx:
+        ctx.prec = 62  # enough for the 31 digits of a fixed-point value
+        return _Parser(tokens, lookup, kind).parse()
 
 
 def evaluate_positive(expr, scope, what, ln=None, fn=None):

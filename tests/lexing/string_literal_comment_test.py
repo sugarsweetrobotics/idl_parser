@@ -48,7 +48,7 @@ def load_with_timeout(idl, seconds=20):
 
 
 def consts(g, module='M'):
-    return [(c.name, c.value) for c in g.module_by_name(module).consts]
+    return [(c.name, c.value if c.is_integer else c.value_string) for c in g.module_by_name(module).consts]
 
 
 class Issue50Test(unittest.TestCase):

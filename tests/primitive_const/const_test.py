@@ -13,7 +13,7 @@ def load(idl):
 
 
 def consts(g, module='M'):
-    return [(c.typename, c.name, c.value) for c in g.module_by_name(module).consts]
+    return [(c.typename, c.name, c.value if c.is_integer else c.value_string) for c in g.module_by_name(module).consts]
 
 
 class ConstStringWithSpacesTest(unittest.TestCase):

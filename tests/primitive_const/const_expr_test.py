@@ -120,16 +120,16 @@ class ConstValueTest(unittest.TestCase):
         g = load('typedef unsigned long Count; typedef Count Count2; const Count2 X = 2 * 2;')
         self.assertEqual(g.const_by_name('X').value, 4)
 
-    def test_other_types_are_kept_as_written(self):
-        """Consts of other types (float, string, boolean, char) keep the value as written.
+    def test_other_types_have_no_int_value(self):
+        """Consts of other types (float, string, boolean, char) have no int_value (issue #137).
 
-        それ以外の型(float, string, boolean, char)の const は書いたまま。
+        それ以外の型(float, string, boolean, char)の const は int_value を持たない(#137)。
         """
         g = load('const double D = 1.5 * 2; const string S = "a"; const boolean B = TRUE;'
                  " const char C = 'x';")
-        self.assertEqual([(c.name, c.value, c.int_value) for c in g.consts],
-                         [('D', '1.5 * 2', None), ('S', '"a"', None), ('B', 'TRUE', None),
-                          ('C', "'x'", None)])
+        self.assertEqual([(c.name, c.value, c.value_string, c.int_value) for c in g.consts],
+                         [('D', 3.0, '1.5 * 2', None), ('S', 'a', '"a"', None),
+                          ('B', True, 'TRUE', None), ('C', 'x', "'x'", None)])
 
     def test_to_dic(self):
         """to_dic() and to_simple_dic() give the evaluated value.
