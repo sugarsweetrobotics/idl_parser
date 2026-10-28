@@ -3,6 +3,7 @@ import sys
 from . import node
 from . import exception
 from . import definitions
+from . import repository_id
 
 from . import type as idl_type
 
@@ -598,6 +599,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         while True:
 
             ln, fn, token = token_buf.pop()
+            repository_id.take_pragmas(self, token_buf)
             if token == None:
                 if self._verbose: sys.stdout.write('# Error. No kokka "}".\n')
                 raise exception.InvalidIDLSyntaxError(ln, fn, 'No "}" in the declaration of %s "%s"' % (self._kind, self.name))
@@ -619,7 +621,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
 
             if token == ';':
                 if block_tokens:
-                    self._parse_block(block_tokens)
+                    self._parse_block(block_tokens, ln, fn)
                 block_tokens = []
                 continue
             block_tokens.append(token)
@@ -628,8 +630,12 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
     def _post_process(self):
         self.forEachMethod(lambda m : m.post_process())
 
-    def _parse_block(self, blocks):
+    def _parse_block(self, blocks, ln=None, fn=None):
         annotations, rest = node.parse_annotations(blocks)
+        if rest and rest[0] in ('typeid', 'typeprefix') and not annotations:
+            # "typeid N "ID";" / "typeprefix N "P";" (issue #135)
+            repository_id.parse_declaration(rest[0], rest[1:], self, ln, fn)
+            return
         if rest and rest[0] in ('attribute', 'readonly'):
             attributes = parse_attributes(blocks, self, self.filepath)
             self._attributes.extend(attributes)

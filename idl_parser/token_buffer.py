@@ -71,20 +71,28 @@ def join_brackets(tokens):
     """
     out = []
     join_next = False
+    # A #pragma kept in place (issue #135) is not joined; it is put after
+    # the token being joined, as if it were written after it
+    held = []
     for line_number, file_name, t in tokens:
+        if not isinstance(t, str):
+            held.append((line_number, file_name, t))
+            continue
         literal = _is_literal(t)
         if out and not literal and not _is_literal(out[-1][2]) and \
                 (join_next or t[0] in ']>'):
             ln, fn, prev = out[-1]
             out[-1] = (ln, fn, prev + t)
         else:
+            out.extend(held)
+            held = []
             out.append((line_number, file_name, t))
         last = out[-1][2]
         # Inside "[ ]" the tokens of a size expression are joined too, so
         # that "a[N * 2]" gives "a[N*2]" (issue #130)
         join_next = not _is_literal(last) and \
             (last[-1] in '[<' or last.count('[') > last.count(']'))
-    return out
+    return out + held
 
 
 class TokenBuffer():
@@ -93,12 +101,22 @@ class TokenBuffer():
     Each token is a ``(line_number, file_name, token)`` tuple. At the end of
     the input, :meth:`pop` and :meth:`peek` return ``(-1, '', None)``.
 
-    :param lines: List of ``(line_number, file_name, line)`` tuples.
+    A ``#pragma`` kept in place (an :class:`~idl_parser.pragma.IDLPragma`
+    instead of a line, issue #135) is not a token: :meth:`pop` and
+    :meth:`peek` skip it, and the pragmas that :meth:`pop` has gone past are
+    returned by :meth:`take_pragmas`.
+
+    :param lines: List of ``(line_number, file_name, line)`` tuples; ``line``
+        may be an :class:`~idl_parser.pragma.IDLPragma`.
     """
     def __init__(self, lines):
         self._tokens = []
         self._token_offset = 0
+        self._passed_pragmas = []
         for line_number, file_name, line in lines:
+            if not isinstance(line, str):
+                self._tokens.append((line_number, file_name, line))
+                continue
             for t in split_tokens(line):
                 self._tokens.append((line_number, file_name, t))
         self._tokens = join_brackets(self._tokens)
@@ -118,6 +136,10 @@ class TokenBuffer():
 
     def pop(self):
         """Return the next token and consume it."""
+        while len(self._tokens) > self._token_offset and \
+                not isinstance(self._tokens[self._token_offset][2], str):
+            self._passed_pragmas.append(self._tokens[self._token_offset][2])
+            self._token_offset = self._token_offset + 1
         if len(self._tokens) == self._token_offset:
             return (-1, '', None)
         t = self._tokens[self._token_offset]#.strip()
@@ -130,6 +152,19 @@ class TokenBuffer():
         :param ahead: Number of tokens to look past; ``peek(1)`` returns the
             token after the next one.
         """
-        if len(self._tokens) <= self._token_offset + ahead:
-            return (-1, '', None)
-        return self._tokens[self._token_offset + ahead]
+        i = self._token_offset
+        while i < len(self._tokens):
+            t = self._tokens[i]
+            i = i + 1
+            if not isinstance(t[2], str):
+                continue
+            if ahead == 0:
+                return t
+            ahead = ahead - 1
+        return (-1, '', None)
+
+    def take_pragmas(self):
+        """The pragmas kept in place that :meth:`pop` has gone past since the
+        last call, in order (issue #135)."""
+        pragmas, self._passed_pragmas = self._passed_pragmas, []
+        return pragmas

@@ -7,7 +7,7 @@ without a name (internally ``'__global__'``).
 import os, sys, traceback, warnings
 
 from . import node, type
-from . import interface, definitions, valuetype
+from . import interface, definitions, valuetype, repository_id
 from .exception import InvalidIDLSyntaxError, UnsupportedIDLSyntaxWarning
 global_namespace = '__global__'
 sep = '::'
@@ -16,7 +16,10 @@ sep = '::'
 # definition is skipped with an UnsupportedIDLSyntaxWarning (issue #76).
 unsupported_keywords = ('component',
                         'home', 'porttype', 'connector',
-                        'typeid', 'typeprefix', 'import')
+                        'import')
+
+# Declarations that set repository IDs (issue #135)
+repository_id_keywords = ('typeid', 'typeprefix')
 
 # Modifiers written before a definition keyword ("local interface",
 # "abstract valuetype"). They apply to the definition after them; an
@@ -49,6 +52,8 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         self._forward_eventtypes = []
         self._init_definitions()
         self._modules = []
+        # typeid / typeprefix declarations, kept in the global scope (issue #135)
+        self._type_declarations = []
 
     @property
     def is_global(self):
@@ -124,6 +129,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         modifiers = []
         while True:
             ln, fn, token = token_buf.pop()
+            repository_id.take_pragmas(self, token_buf)
             if token is not None and token.startswith('@'):
                 # Annotations apply to the next definition (issue #39).
                 annotations.append(self._parse_annotation(token, token_buf))
@@ -161,6 +167,8 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                     m = IDLModule(name_, self)
                     self._modules.append(m)
                     self._definitions.append(m)
+                # A #pragma prefix in an earlier opening ended with it (issue #135)
+                m._prefix_state = self._prefix_state
                 m._add_annotations(pending_annotations)
                 m.parse_tokens(token_buf, filepath=fp)
             elif token == 'interface':
@@ -199,6 +207,9 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
 
             elif token == ';':
                 pass
+
+            elif token in repository_id_keywords:
+                self._parse_repository_id_declaration(token, token_buf, ln, fn)
 
             elif any(a.name == 'annotation' for a in pending_annotations):
                 # An annotation definition ("@annotation A { ... };"). It
@@ -254,6 +265,19 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         else:
             defined.append(v)
             self._definitions.append(v)
+
+    def _parse_repository_id_declaration(self, keyword, token_buf, ln, fn):
+        """Read ``typeid N "ID";`` or ``typeprefix N "P";`` after its keyword (issue #135)."""
+        tokens = []
+        while True:
+            t = token_buf.peek()[2]
+            if t is None or t in ('}', '{'):
+                raise InvalidIDLSyntaxError(ln, fn, 'No ";" after "%s %s"' % (keyword, ' '.join(tokens)))
+            token_buf.pop()
+            if t == ';':
+                break
+            tokens.append(t)
+        repository_id.parse_declaration(keyword, tokens, self, ln, fn)
 
     def _parse_annotation(self, token, token_buf):
         """Consume an annotation and return it as an :class:`~idl_parser.node.IDLAnnotation`.
