@@ -87,6 +87,25 @@ def join_brackets(tokens):
     return out
 
 
+# While IDLParser.parse_lines() parses (parsing is True), a node that is
+# made takes the line of the last token read as its line number (issue #141).
+parsing = False
+_line = None
+
+
+def current_line():
+    """The line number of the last token read, or None when nothing is
+    being parsed (issue #141)."""
+    return _line if parsing else None
+
+
+def set_line(line_number):
+    """Make ``line_number`` the line of the nodes made next, e.g. the line
+    where a member declaration starts, read before its ``;`` (issue #141)."""
+    global _line
+    _line = line_number
+
+
 class TokenBuffer():
     """The tokens of the input, read one by one by the parser.
 
@@ -98,6 +117,7 @@ class TokenBuffer():
     def __init__(self, lines):
         self._tokens = []
         self._token_offset = 0
+        self._line_number = None
         for line_number, file_name, line in lines:
             for t in split_tokens(line):
                 self._tokens.append((line_number, file_name, t))
@@ -122,7 +142,14 @@ class TokenBuffer():
             return (-1, '', None)
         t = self._tokens[self._token_offset]#.strip()
         self._token_offset = self._token_offset + 1
+        self._line_number = t[0]
+        set_line(t[0])
         return t
+
+    @property
+    def line_number(self):
+        """Line number of the last token :meth:`pop` returned, or None (issue #141)."""
+        return self._line_number
 
     def peek(self, ahead=0):
         """Return the next token without consuming it (same format as pop).

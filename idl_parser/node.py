@@ -225,6 +225,9 @@ class IDLNode(object):
         self._filepath = None
         self.sep = '::'
         self._annotations = []
+        # The line the node is written on (issue #141)
+        from . import token_buffer
+        self._line_number = token_buffer.current_line() if parent is not None else None
 
     @property
     def annotations(self):
@@ -267,6 +270,19 @@ class IDLNode(object):
         """The name, so that ``str(member.type)`` is a type name such as ``'T'``
         whether or not the type has been resolved to its definition."""
         return self.name
+
+    @property
+    def line_number(self):
+        """Line number in :attr:`filepath` where the node is written, or None
+        (issue #141).
+
+        For a definition with a name (module, interface, struct, enum, ...)
+        it is the line of its name; for a member, an enumerator, an
+        operation or an attribute, the line where its declaration starts.
+        Type nodes (:class:`~idl_parser.type.IDLTypeBase`) and the global
+        scope have None.
+        """
+        return self._line_number
 
     @property
     def filepath(self):

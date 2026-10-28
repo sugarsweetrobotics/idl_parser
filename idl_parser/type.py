@@ -261,6 +261,7 @@ class IDLTypeBase(node.IDLNode):
     """
     def __init__(self, classname, name, parent):
         super(IDLTypeBase, self).__init__(classname, name, parent.root_node)
+        self._line_number = None  # a type is not a definition (issue #141)
         self._is_sequence = False
         self._is_primitive = False
 

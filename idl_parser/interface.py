@@ -3,6 +3,7 @@ import sys
 from . import node
 from . import exception
 from . import definitions
+from . import token_buffer
 
 from . import type as idl_type
 
@@ -595,6 +596,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
     def _parse_body(self, token_buf, filepath=None):
         """Parse the body after its ``{``, up to and including ``};``."""
         block_tokens = []
+        block_ln = None  # where the declaration starts (issue #141)
         while True:
 
             ln, fn, token = token_buf.pop()
@@ -619,9 +621,12 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
 
             if token == ';':
                 if block_tokens:
+                    token_buffer.set_line(block_ln)
                     self._parse_block(block_tokens)
                 block_tokens = []
                 continue
+            if not block_tokens:
+                block_ln = ln
             block_tokens.append(token)
         self._post_process()
 

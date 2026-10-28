@@ -282,7 +282,12 @@ class IDLParser():
         lines = self._extract_pragmas(lines)
 
         self._token_buf = token_buffer.TokenBuffer(lines)
-        self._global_module.parse_tokens(self._token_buf, filepath=filepath)
+        # Nodes take their line numbers from this buffer (issue #141)
+        previous, token_buffer.parsing = token_buffer.parsing, True
+        try:
+            self._global_module.parse_tokens(self._token_buf, filepath=filepath)
+        finally:
+            token_buffer.parsing = previous
         self._apply_pragmas()
 
     def _extract_pragmas(self, lines):
