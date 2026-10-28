@@ -273,7 +273,7 @@ class IDLUnion(node.IDLNode):
     def member_by_name(self, name):
         """The member named ``name``, or None."""
         for m in self._members:
-            if m.name == name:
+            if m.name == node.unescape(name):
                 return m
 
         return None

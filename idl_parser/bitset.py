@@ -137,7 +137,7 @@ class IDLBitset(node.IDLNode):
     def bitfield_by_name(self, name):
         """The named bitfield ``name`` (an :class:`IDLBitfield`; the base bitset is searched too), or None."""
         for b in self.members:
-            if b.name == name:
+            if b.name == node.unescape(name):
                 return b
         return None
 

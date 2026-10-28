@@ -158,6 +158,34 @@ def split_declarators(tokens, what='declaration'):
 
 
 _identifier = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+_escaped_identifier = re.compile(r'^_[A-Za-z][A-Za-z0-9_]*$')
+
+
+def is_escaped(name):
+    """True if ``name`` is an escaped identifier (``_module``, issue #140)."""
+    return name is not None and _escaped_identifier.match(str(name).strip()) is not None
+
+
+def unescape(name):
+    """The IDL identifier that ``name`` stands for (issue #140).
+
+    In IDL a leading ``_`` escapes an identifier that would clash with a
+    keyword, and is not part of the identifier: ``_module`` is ``module``.
+    Each component of a scoped name is unescaped (``M::_Foo`` ->
+    ``M::Foo``); anything else (``__global__``, ``long[3]``) is returned as
+    it is.
+    """
+    if name is None or '_' not in name:
+        return name
+    if sep_ in name:
+        return sep_.join(unescape(p) if p.strip() else p for p in name.split(sep_))
+    stripped = name.strip()
+    if _escaped_identifier.match(stripped):
+        return stripped[1:]
+    return name
+
+
+sep_ = '::'
 
 # IDL 4.2 keywords that can not be used as identifiers (issue #119). The
 # keywords of the CCM building blocks (component, home, port, ...) and
@@ -373,18 +401,34 @@ class IDLNode(object):
 
     @property
     def name(self):
-        """Name of the node, without its scope (``'T'`` for ``M::T``)."""
+        """Name of the node, without its scope (``'T'`` for ``M::T``).
+
+        An escaped identifier is given without its leading ``_``
+        (``_module`` -> ``'module'``, issue #140); see :attr:`is_escaped`.
+        """
+        return unescape(self._name)
+
+    @property
+    def is_escaped(self):
+        """True if the name is written as an escaped identifier
+        (``long _module;``, issue #140). :attr:`name` is ``'module'`` then,
+        and :attr:`written_name` ``'_module'``."""
+        return is_escaped(self._name)
+
+    @property
+    def written_name(self):
+        """The name as written in the IDL (``'_module'``, issue #140)."""
         return self._name
 
     @property
     def basename(self):
         """Last part of a scoped :attr:`name` (``'A::B'`` -> ``'B'``, ``'::A'`` -> ``'A'``)."""
-        return self._name.split(self.sep)[-1]
+        return self.name.split(self.sep)[-1]
 
     @property
     def pathname(self):
         """Scope part of a scoped :attr:`name` (``'A::B'`` -> ``'A'``, ``'::A::B'`` -> ``'A'``), or ``''``."""
-        name = self._name
+        name = self.name
         if name.startswith(self.sep):
             name = name[len(self.sep):]
         if self.sep in name:
@@ -442,7 +486,7 @@ class IDLNode(object):
                        'forward_valuetypes', 'forward_eventtypes'))
 
     def _is_pending_forward(self, typename, kinds):
-        name = str(typename).strip()
+        name = unescape(str(typename).strip())
         if name.startswith(self.sep):
             name = name[len(self.sep):]
         if len(self.root_node.find_types(name)) > 0:
@@ -499,6 +543,7 @@ class IDLNode(object):
     def _is_enclosing_definition(self, name):
         """True if name is a struct, union or value type that encloses this node and is
         still being parsed (so it is not registered in its module yet)."""
+        name = unescape(name)
         n = self.parent
         while n is not None and not n.is_root:
             if n.classname in ('IDLStruct', 'IDLUnion', 'IDLValueType', 'IDLEventType'):

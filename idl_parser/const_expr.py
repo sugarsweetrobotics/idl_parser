@@ -15,6 +15,7 @@ result of ``%`` has the sign of the left operand.
 import re
 
 from .exception import InvalidConstExpressionError
+from .node import unescape
 
 sep = '::'
 
@@ -172,7 +173,7 @@ def find_const(name, scope):
     for m in definition_scopes(root, scope):
         for c in m.consts:
             consts.setdefault((m.full_path.lstrip(':') + sep + c.name).lstrip(':'), c)
-    name = name.strip()
+    name = unescape(name.strip())
     if name.startswith(sep):
         candidates = [name[len(sep):]]
     else:

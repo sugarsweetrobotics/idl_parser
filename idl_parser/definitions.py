@@ -90,8 +90,8 @@ class IDLDefinitionScope(object):
             if s.is_forward:
                 # Forward declaration ("struct A;"): remember the name only.
                 # The definition, if any, is added to structs when it appears.
-                if name_ not in self._forward_structs:
-                    self._forward_structs.append(name_)
+                if node.unescape(name_) not in self._forward_structs:
+                    self._forward_structs.append(node.unescape(name_))
             elif s_:
                 if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
             #    raise InvalidIDLSyntaxError
@@ -151,8 +151,8 @@ class IDLDefinitionScope(object):
             s.parse_tokens(token_buf, filepath)
             if s.is_forward:
                 # Forward declaration ("union A;"): remember the name only.
-                if name_ not in self._forward_unions:
-                    self._forward_unions.append(name_)
+                if node.unescape(name_) not in self._forward_unions:
+                    self._forward_unions.append(node.unescape(name_))
             elif self.union_by_name(name_):
                 if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
             #    raise InvalidIDLSyntaxError
@@ -269,7 +269,7 @@ class IDLDefinitionScope(object):
     def struct_by_name(self, name):
         """The struct named ``name`` (not scoped) in this scope, or None."""
         for s in self.structs:
-            if s.name == name:
+            if s.name == node.unescape(name):
                 return s
         return None
 
@@ -308,7 +308,7 @@ class IDLDefinitionScope(object):
     def exception_by_name(self, name):
         """The exception named ``name`` (not scoped) in this scope, or None."""
         for x in self.exceptions:
-            if x.name == name:
+            if x.name == node.unescape(name):
                 return x
         return None
 
@@ -324,7 +324,7 @@ class IDLDefinitionScope(object):
     def enum_by_name(self, name):
         """The enum named ``name`` (not scoped) in this scope, or None."""
         for e in self.enums:
-            if e.name == name:
+            if e.name == node.unescape(name):
                 return e
         return None
 
@@ -343,7 +343,7 @@ class IDLDefinitionScope(object):
     def bitmask_by_name(self, name):
         """The bitmask named ``name`` (not scoped) in this scope, or None."""
         for b in self.bitmasks:
-            if b.name == name:
+            if b.name == node.unescape(name):
                 return b
         return None
 
@@ -359,7 +359,7 @@ class IDLDefinitionScope(object):
     def bitset_by_name(self, name):
         """The bitset named ``name`` (not scoped) in this scope, or None."""
         for b in self.bitsets:
-            if b.name == name:
+            if b.name == node.unescape(name):
                 return b
         return None
 
@@ -375,7 +375,7 @@ class IDLDefinitionScope(object):
     def union_by_name(self, name):
         """The union named ``name`` (not scoped) in this scope, or None."""
         for u in self.unions:
-            if u.name == name:
+            if u.name == node.unescape(name):
                 return u
         return None
 
@@ -405,7 +405,7 @@ class IDLDefinitionScope(object):
     def const_by_name(self, name):
         """The constant named ``name`` (not scoped) in this scope, or None."""
         for c in self.consts:
-            if c.name == name:
+            if c.name == node.unescape(name):
                 return c
         return None
 
@@ -424,7 +424,7 @@ class IDLDefinitionScope(object):
     def native_by_name(self, name):
         """The native type named ``name`` (not scoped) in this scope, or None."""
         for n in self.natives:
-            if n.name == name:
+            if n.name == node.unescape(name):
                 return n
         return None
 
@@ -440,7 +440,7 @@ class IDLDefinitionScope(object):
     def typedef_by_name(self, name):
         """The typedef named ``name`` (not scoped) in this scope, or None."""
         for t in self.typedefs:
-            if t.name == name:
+            if t.name == node.unescape(name):
                 return t
         return None
 
