@@ -179,7 +179,7 @@ class IDLValueType(interface.IDLInterface):
         Members of base value types are not searched.
         """
         for m in self._state_members:
-            if m.name == name:
+            if m.name == node.unescape(name):
                 return m
         return None
 
@@ -191,7 +191,7 @@ class IDLValueType(interface.IDLInterface):
     def factory_by_name(self, name):
         """The initializer named ``name``, or None."""
         for f in self._factories:
-            if f.name == name:
+            if f.name == node.unescape(name):
                 return f
         return None
 

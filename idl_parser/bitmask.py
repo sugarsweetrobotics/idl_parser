@@ -107,7 +107,7 @@ class IDLBitmask(node.IDLNode):
     def value_by_name(self, name):
         """The value named ``name`` (an :class:`IDLBitValue`), or None."""
         for v in self._values:
-            if v.name == name:
+            if v.name == node.unescape(name):
                 return v
         return None
 
