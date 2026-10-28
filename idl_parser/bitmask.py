@@ -198,4 +198,5 @@ class IDLBitmask(node.IDLNode):
         v._filepath = self.filepath
         v._add_annotations(annotations)
         self._values.append(v)
+        node.check_unique_names([b.name for b in self._values], 'bitmask "%s"' % self.name, ln, fn)
 

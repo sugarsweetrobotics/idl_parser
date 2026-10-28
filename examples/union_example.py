@@ -29,7 +29,7 @@ module shapes {
 
   typedef sequence<Point2D> PointSeq;
 
-  struct Rectangle {
+  struct Rect {
     Point2D top_left;
     double width;
     double height;
@@ -40,7 +40,7 @@ module shapes {
     case CIRCLE:
       double radius;
     case RECTANGLE:
-      Rectangle rect;
+      Rect rect;
     case POLYGON:
       PointSeq vertices;
     case POINT:

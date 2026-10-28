@@ -5,6 +5,7 @@ A ``module`` and an ``interface`` can both hold ``struct``, ``union``,
 ``bitset`` definitions (issue #101). :class:`IDLDefinitionScope` keeps them
 and parses them for both.
 """
+import os
 import sys
 
 from . import node
@@ -41,6 +42,56 @@ class IDLDefinitionScope(object):
         self._natives = []
         # Every definition in the order it is written (issue #134)
         self._definitions = []
+        # Names declared in this scope (issue #143): lower-case name ->
+        # list of (name, kind, forward, location)
+        self._declared = {}
+
+    def _scope_description(self):
+        """``'module "M"'``, ``'interface "M::I"'`` or ``'the global scope'`` for messages."""
+        if self.parent is None:
+            return 'the global scope'
+        return '%s "%s"' % (getattr(self, '_kind', None) or self.classname[3:].lower(),
+                            self.full_path.lstrip(':'))
+
+    def _declare(self, name, kind, location=None, forward=False, reread=True):
+        """Declare ``name`` in this scope; return True if the definition is
+        new and is to be kept (issue #143).
+
+        IDL allows a name once in a scope, also across kinds, and two names
+        that differ only in case collide. A module may be opened again, and
+        a forward declaration may come before or after the definition of
+        the same kind. A definition read again from the same place
+        ``location`` (``(line, file, index of the token in the line)``,
+        from :meth:`~idl_parser.token_buffer.TokenBuffer.position`; a file
+        included by several files parsed one after the other) is skipped:
+        False is returned. With
+        ``reread=False`` (the members of an interface) ``location`` is used
+        for the message only.
+
+        :raises ~idl_parser.exception.InvalidIDLSyntaxError: The name is
+            already declared in this scope, or differs only in case from a
+            name declared in it.
+        """
+        name = node.unescape(name)  # "_long" declares "long" (issue #140)
+        ln, fn = location[:2] if location is not None else (None, None)
+        if fn:
+            # The same file may be reached by a relative and an absolute path
+            location = (ln, os.path.abspath(fn)) + tuple(location[2:])
+        entries = self._declared.setdefault(name.lower(), [])
+        for n, k, fwd, loc in entries:
+            if reread and location is not None and loc == location and k == kind and fwd == forward:
+                return False  # the same definition, read again
+        for n, k, fwd, loc in entries:
+            if n != name:
+                raise InvalidIDLSyntaxError(
+                    ln, fn, '"%s" differs only in case from "%s" in %s'
+                    % (name, n, self._scope_description()))
+            if k == kind and (k == 'module' or fwd or forward):
+                continue
+            raise InvalidIDLSyntaxError(
+                ln, fn, '"%s" is already defined in %s' % (name, self._scope_description()))
+        entries.append((name, kind, forward, location))
+        return True
 
     def parse_definition(self, token, token_buf, filepath=None, annotations=()):
         """Parse a definition whose keyword ``token`` is already consumed.
@@ -69,6 +120,7 @@ class IDLDefinitionScope(object):
                     break
                 else:
                     blocks.append(t)
+            pos = token_buf.position()  # of the ";"
             anns, blocks = node.parse_annotations(blocks)
             # "typedef long A, B[3];" defines one typedef per name (issue #117)
             typename, declarators = node.split_declarators(blocks, 'typedef')
@@ -76,96 +128,89 @@ class IDLDefinitionScope(object):
                 t = typedef.IDLTypedef(self)
                 t._add_annotations(pending_annotations + anns)
                 t.parse_blocks(typename + [d], filepath=filepath)
-                t_ = self.typedef_by_name(t.name)
-                if t_:
-                    if self._verbose: sys.stdout.write('# Error. Same Typedef Defined (%s)\n' % t.name)
-                else:
+                if self._declare(t.name, 'typedef', pos):
                     self._typedefs.append(t)
                     self._definitions.append(t)
 
         elif token == 'struct':
             ln, fn, name_ = token_buf.pop()
+            pos = token_buf.position()
             node.check_identifier(name_, 'struct', ln, fn)
-            s_ = self.struct_by_name(name_)
             s = struct.IDLStruct(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath=filepath)
-            if s.is_forward:
+            if not self._declare(name_, 'struct', pos, s.is_forward):
+                pass  # read again (issue #143)
+            elif s.is_forward:
                 # Forward declaration ("struct A;"): remember the name only.
                 # The definition, if any, is added to structs when it appears.
                 if node.unescape(name_) not in self._forward_structs:
                     self._forward_structs.append(node.unescape(name_))
                 self._definitions.append(s)
-            elif s_:
-                if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
-            #    raise InvalidIDLSyntaxError
             else:
                 self._structs.append(s)
                 self._definitions.append(s)
 
         elif token == 'exception':
             ln, fn, name_ = token_buf.pop()
+            pos = token_buf.position()
             node.check_identifier(name_, 'exception', ln, fn)
             s = struct.IDLException(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath=filepath)
-            if self.exception_by_name(name_):
-                if self._verbose: sys.stdout.write('# Error. Same Exception Defined (%s)\n' % name_)
-            else:
+            if self._declare(name_, 'exception', pos):
                 self._exceptions.append(s)
                 self._definitions.append(s)
 
         elif token == 'enum':
             ln, fn, name_ = token_buf.pop()
+            pos = token_buf.position()
             node.check_identifier(name_, 'enum', ln, fn)
             s = enum.IDLEnum(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath)
-            s_ = self.enum_by_name(name_)
-            if s_:
-                if self._verbose: sys.stdout.write('# Error. Same Enum Defined (%s)\n' % name_)
-            #    raise InvalidIDLSyntaxError
-            else:
+            if self._declare(name_, 'enum', pos):
+                # The enumerators belong to this scope (issue #143)
+                for v in s.values:
+                    self._declare(v.name, 'enumerator', pos)
                 self._enums.append(s)
                 self._definitions.append(s)
 
         elif token == 'bitmask':
             ln, fn, name_ = token_buf.pop()
+            pos = token_buf.position()
             node.check_identifier(name_, 'bitmask', ln, fn)
             s = bitmask.IDLBitmask(name_, self, pending_annotations)
             s.parse_tokens(token_buf, filepath)
-            if self.bitmask_by_name(name_):
-                if self._verbose: sys.stdout.write('# Error. Same Bitmask Defined (%s)\n' % name_)
-            else:
+            if self._declare(name_, 'bitmask', pos):
                 self._bitmasks.append(s)
                 self._definitions.append(s)
 
         elif token == 'bitset':
             ln, fn, name_ = token_buf.pop()
+            pos = token_buf.position()
             node.check_identifier(name_, 'bitset', ln, fn)
             s = bitset.IDLBitset(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath)
-            if self.bitset_by_name(name_):
-                if self._verbose: sys.stdout.write('# Error. Same Bitset Defined (%s)\n' % name_)
-            else:
+            if self._declare(name_, 'bitset', pos):
                 self._bitsets.append(s)
                 self._definitions.append(s)
 
         elif token == 'union':
             ln, fn, name_ = token_buf.pop()
+            pos = token_buf.position()
             node.check_identifier(name_, 'union', ln, fn)
             s = union.IDLUnion(name_, self)
             s._add_annotations(pending_annotations)
             s.parse_tokens(token_buf, filepath)
-            if s.is_forward:
+            if not self._declare(name_, 'union', pos, s.is_forward):
+                pass  # read again (issue #143)
+            elif s.is_forward:
                 # Forward declaration ("union A;"): remember the name only.
                 if node.unescape(name_) not in self._forward_unions:
                     self._forward_unions.append(node.unescape(name_))
                 self._definitions.append(s)
-            elif self.union_by_name(name_):
-                if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
-            #    raise InvalidIDLSyntaxError
             else:
                 self._unions.append(s)
                 self._definitions.append(s)
@@ -173,6 +218,7 @@ class IDLDefinitionScope(object):
         elif token == 'native':
             # "native N;": a type with a name only (issue #93).
             ln, fn, name_ = token_buf.pop()
+            pos = token_buf.position()
             node.check_identifier(name_, 'native', ln, fn)
             if name_ is None or name_ in (';', '{', '}'):
                 raise InvalidIDLSyntaxError(ln, fn, 'No name after "native"')
@@ -181,9 +227,7 @@ class IDLDefinitionScope(object):
                 raise InvalidIDLSyntaxError(ln, fn, 'No ";" after "native %s"' % name_)
             n = native.IDLNative(name_, self, filepath=filepath)
             n._add_annotations(pending_annotations)
-            if self.native_by_name(name_):
-                if self._verbose: sys.stdout.write('# Error. Same Native Defined (%s)\n' % name_)
-            else:
+            if self._declare(name_, 'native', pos):
                 self._natives.append(n)
                 self._definitions.append(n)
 
@@ -197,6 +241,7 @@ class IDLDefinitionScope(object):
                 if t == ';':
                     break
                 values.append(t)
+            pos = token_buf.position()  # of the ";"
 
             # Split at '=': "<type> <name> = <value>" (issue #52).
             # The value is every token after '=', so that an
@@ -215,10 +260,7 @@ class IDLDefinitionScope(object):
             s = const.IDLConst(name_, typename, value_, self, filepath=filepath)
             s._add_annotations(pending_annotations)
             s._evaluate(ln, fn)
-            s_ = self.const_by_name(name_)
-            if s_:
-                if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
-            else:
+            if self._declare(name_, 'const', pos):
                 self._consts.append(s)
                 self._definitions.append(s)
 

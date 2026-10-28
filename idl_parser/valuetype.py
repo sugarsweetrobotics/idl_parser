@@ -361,6 +361,8 @@ class IDLValueType(interface.IDLInterface):
                 raise exception.InvalidIDLSyntaxError(
                     message='An abstract %s "%s" can not have state members' % (self._kind, self.name))
             members = self._parse_state_members(annotations, rest)
+            for m in members:
+                self._declare(m.name, 'state member', (ln, fn), reread=False)
             self._state_members.extend(members)
             self._definitions.extend(members)
             return
@@ -370,10 +372,19 @@ class IDLValueType(interface.IDLInterface):
                     message='An abstract %s "%s" can not have factories' % (self._kind, self.name))
             f = IDLFactory(self)
             f.parse_blocks(blocks, self.filepath)
+            self._declare(f.name, 'factory', (ln, fn), reread=False)
             self._factories.append(f)
             self._definitions.append(f)
             return
         super(IDLValueType, self)._parse_block(blocks, ln, fn)
+
+    def _own_member_names(self):
+        # State members are inherited too; factories are not
+        return super(IDLValueType, self)._own_member_names() + \
+            [m.name for m in self._state_members]
+
+    def _bases(self):
+        return list(self._inheritances) + list(self._supports)
 
     def _parse_state_members(self, annotations, blocks):
         """``public T a, b[3]`` -> one IDLStateMember per name."""

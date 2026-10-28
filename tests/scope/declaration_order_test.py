@@ -9,6 +9,7 @@ is written, nested modules and forward declarations included.
 """
 import unittest
 from idl_parser import parser
+from idl_parser.exception import InvalidIDLSyntaxError
 
 
 IDL = '''
@@ -107,10 +108,10 @@ class DeclarationOrderTest(unittest.TestCase):
         self.assertEqual([n.name for n in v.definitions], ['a', 'create', 'op', 'VL'])
         self.assertEqual([n.name for n in self.g.eventtype_by_name('EV').definitions], ['e'])
 
-    def test_duplicate_left_out(self):
-        """A repeated definition is left out, as in the lists by kind. / 重複した定義は種類別のリストと同じく入らない。"""
-        g = parser.IDLParser().load('typedef long L; typedef long L; const long C = 1;')
-        self.assertEqual(names(g.definitions), [('IDLTypedef', 'L'), ('IDLConst', 'C')])
+    def test_duplicate_is_an_error(self):
+        """A repeated definition is an error since issue #143. / 重複した定義は #143 からエラーになる。"""
+        with self.assertRaises(InvalidIDLSyntaxError):
+            parser.IDLParser().load('typedef long L; typedef long L; const long C = 1;')
 
     def test_returns_copy(self):
         """Changing the returned list does not change the node. / 返したリストを変えてもノードは変わらない。"""

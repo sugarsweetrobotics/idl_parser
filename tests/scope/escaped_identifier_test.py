@@ -99,9 +99,9 @@ class EscapedIdentifierTest(unittest.TestCase):
         self.assertIs(self.m.struct_by_name('G').members[0].type, self.m.struct_by_name('F'))
 
     def test_same_name_with_and_without_escape(self):
-        """_S and S are the same name. / _S と S は同じ名前。"""
-        g = parser.IDLParser().load('struct _S { long a; }; struct S { long b; };')
-        self.assertEqual([s.name for s in g.structs], ['S'])
+        """_S and S are the same name, so defining both is an error (issue #143). / _S と S は同じ名前なので、両方定義するとエラー(#143)。"""
+        with self.assertRaises(InvalidIDLSyntaxError):
+            parser.IDLParser().load('struct _S { long a; }; struct S { long b; };')
 
     def test_to_dic(self):
         """to_dic() uses the names without "_". / to_dic() は "_" を外した名前を使う。"""

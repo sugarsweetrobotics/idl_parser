@@ -40,7 +40,7 @@ IDL = '''module M {
      long v; factory
      mk(); };
   native N;
-  exception X { long code; };
+  exception Err { long code; };
   bitmask BM { b0,
     b1 };
   bitset BS {
@@ -76,7 +76,7 @@ class NodeLineNumberTest(unittest.TestCase):
         self.assertEqual(m.union_by_name('U').line_number, 18)
         self.assertEqual(m.valuetype_by_name('V').line_number, 23)
         self.assertEqual(m.native_by_name('N').line_number, 26)
-        self.assertEqual(m.exception_by_name('X').line_number, 27)
+        self.assertEqual(m.exception_by_name('Err').line_number, 27)
         self.assertEqual(m.bitmask_by_name('BM').line_number, 28)
         self.assertEqual(m.bitset_by_name('BS').line_number, 30)
         self.assertEqual(m.struct_by_name('TS').line_number, 32)

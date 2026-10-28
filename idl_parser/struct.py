@@ -271,6 +271,10 @@ class IDLStruct(node.IDLNode):
             if token == ';':
                 token_buffer.set_line(block_ln)
                 self._parse_block(block_tokens)
+                # Member names are unique, also with the base members, and
+                # ignoring case (issue #143)
+                node.check_unique_names([m.name for m in self.all_members],
+                                        '%s "%s"' % (self.classname[3:].lower(), self.name), ln, fn)
                 block_tokens = []
                 continue
             if not block_tokens:

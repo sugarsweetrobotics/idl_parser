@@ -456,7 +456,7 @@ class UnionExampleTest(unittest.TestCase):
         union_example: 各 case のメンバー型(プリミティブ/struct/typedef/array)。
         """
         self.assertIn('case CIRCLE -> radius: primitive double', self.text)
-        self.assertIn('case RECTANGLE -> rect: struct shapes::Rectangle (members: top_left, width, height)',
+        self.assertIn('case RECTANGLE -> rect: struct shapes::Rect (members: top_left, width, height)',
                       self.text)
         self.assertIn('case POLYGON -> vertices: typedef shapes::PointSeq = sequence of Point2D', self.text)
         self.assertIn('case 2 -> matrix: array double', self.text)

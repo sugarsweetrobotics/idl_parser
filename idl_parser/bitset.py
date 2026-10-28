@@ -229,6 +229,14 @@ class IDLBitset(node.IDLNode):
             self._bitfields.append(b)
             self._own_bits += bits
 
+        # Bitfield names are unique, also with the base bitfields, and
+        # ignoring case (issue #143); unnamed bitfields have no name
+        names, b = [], self
+        while b is not None:
+            names = [f.name for f in b.bitfields] + names
+            b = b._base
+        node.check_unique_names([n for n in names if n], 'bitset "%s"' % self.name, ln, fn)
+
         if self.bit_size > MAX_BITS:
             raise exception.InvalidIDLSyntaxError(
                 ln, fn, 'Bitset "%s" has %d bits (must be %d or less)' % (self.name, self.bit_size, MAX_BITS))

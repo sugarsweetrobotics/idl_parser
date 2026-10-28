@@ -226,6 +226,27 @@ def check_identifier(name, what='name', line_number=None, file_name=None):
             'The keyword "%s" can not be used as a name (%s)' % (name.split('[', 1)[0].strip(), what))
 
 
+def check_unique_names(names, what, line_number=None, file_name=None):
+    """Raise InvalidIDLSyntaxError if two of ``names`` are the same, or
+    differ only in case (``a`` and ``A``), as IDL requires (issue #143).
+
+    :param names: The names, in order (None is skipped).
+    :param what: Where the names are, for the message (``'struct "S"'``).
+    """
+    seen = {}
+    for name in names:
+        if name is None:
+            continue
+        other = seen.get(name.lower())
+        if other is not None:
+            if other == name:
+                raise InvalidIDLSyntaxError(
+                    line_number, file_name, '"%s" is declared more than once in %s' % (name, what))
+            raise InvalidIDLSyntaxError(
+                line_number, file_name, '"%s" and "%s" differ only in case in %s' % (other, name, what))
+        seen[name.lower()] = name
+
+
 def _make_annotation(name, arg_tokens):
     args, params = [], {}
     if arg_tokens:

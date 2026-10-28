@@ -20,16 +20,16 @@ module M {
     struct S { long a; };
     typedef S SArr[N];
     enum E { A, B };
-    exception X { string why; };
+    exception Err { string why; };
     union U switch (long) { case 1: long a; };
     native H;
     struct T { S s; E e; };
     attribute long x;
     readonly attribute string name, label;
-    readonly attribute T t raises (X);
-    attribute SArr arr getraises (X) setraises (X);
+    readonly attribute T tv raises (Err);
+    attribute SArr arr getraises (Err) setraises (Err);
     attribute sequence<long, 10> values;
-    T get(in S s, in E e) raises (X);
+    T get(in S s, in E e) raises (Err);
     @final struct Annotated { long b; };
     void f();
   };
@@ -69,7 +69,7 @@ class InterfaceBodyTest(unittest.TestCase):
     def test_attributes(self):
         """Attributes are IDLAttribute objects, one per name. / attribute は名前ごとに IDLAttribute になる。"""
         self.assertEqual([a.name for a in self.i.attributes],
-                         ['x', 'name', 'label', 't', 'arr', 'values'])
+                         ['x', 'name', 'label', 'tv', 'arr', 'values'])
         x = self.i.attribute_by_name('x')
         self.assertEqual(x.classname, 'IDLAttribute')
         self.assertEqual(str(x.type), 'long')
@@ -82,7 +82,7 @@ class InterfaceBodyTest(unittest.TestCase):
 
     def test_attribute_type(self):
         """The type of an attribute is resolved from the interface scope. / attribute の型は interface のスコープから解決される。"""
-        self.assertEqual(self.i.attribute_by_name('t').type.obj.full_path, 'M::I::T')
+        self.assertEqual(self.i.attribute_by_name('tv').type.obj.full_path, 'M::I::T')
         arr = self.i.attribute_by_name('arr').type.obj
         self.assertEqual(arr.full_path, 'M::I::SArr')
         self.assertEqual(arr.type.size, 3)
@@ -90,19 +90,19 @@ class InterfaceBodyTest(unittest.TestCase):
 
     def test_attribute_raises(self):
         """raises / getraises / setraises are kept. / raises・getraises・setraises を保持する。"""
-        t = self.i.attribute_by_name('t')
-        self.assertEqual(t.getraises, ['X'])
+        t = self.i.attribute_by_name('tv')
+        self.assertEqual(t.getraises, ['Err'])
         self.assertEqual(t.setraises, [])
         arr = self.i.attribute_by_name('arr')
-        self.assertEqual(arr.getraises, ['X'])
-        self.assertEqual(arr.setraises, ['X'])
+        self.assertEqual(arr.getraises, ['Err'])
+        self.assertEqual(arr.setraises, ['Err'])
 
     def test_definitions(self):
         """Types and constants are defined in the interface. / 型と定数が interface に定義される。"""
         self.assertEqual([s.name for s in self.i.structs], ['S', 'T', 'Annotated'])
         self.assertEqual([t.name for t in self.i.typedefs], ['SArr'])
         self.assertEqual([e.name for e in self.i.enums], ['E'])
-        self.assertEqual([x.name for x in self.i.exceptions], ['X'])
+        self.assertEqual([x.name for x in self.i.exceptions], ['Err'])
         self.assertEqual([u.name for u in self.i.unions], ['U'])
         self.assertEqual([n.name for n in self.i.natives], ['H'])
         self.assertEqual([c.name for c in self.i.consts], ['N'])
@@ -116,7 +116,7 @@ class InterfaceBodyTest(unittest.TestCase):
     def test_scoped_names(self):
         """Definitions are scoped by the interface. / 定義は interface のスコープに入る。"""
         self.assertEqual(self.i.struct_by_name('S').full_path, 'M::I::S')
-        self.assertEqual(self.i.exception_by_name('X').full_path, 'M::I::X')
+        self.assertEqual(self.i.exception_by_name('Err').full_path, 'M::I::Err')
         # Enumerators belong to the scope enclosing the enum
         self.assertEqual(self.i.enum_by_name('E').values[0].full_path, 'M::I::A')
 
@@ -126,7 +126,7 @@ class InterfaceBodyTest(unittest.TestCase):
         self.assertEqual([m.type.obj.full_path for m in t.members], ['M::I::S', 'M::I::E'])
         get = self.i.method_by_name('get')
         self.assertEqual(get.returns.obj.full_path, 'M::I::T')
-        self.assertEqual(get.exceptions[0].full_path, 'M::I::X')
+        self.assertEqual(get.exceptions[0].full_path, 'M::I::Err')
 
     def test_resolution_outside_interface(self):
         """"I::S" outside the interface finds the definition. / interface の外から "I::S" で参照できる。"""
@@ -153,7 +153,7 @@ class InterfaceBodyTest(unittest.TestCase):
         """to_dic() has "attributes" and the definitions only when there are any. / ある場合だけ入る。"""
         dic = self.i.to_dic()
         self.assertEqual([a['name'] for a in dic['attributes']],
-                         ['x', 'name', 'label', 't', 'arr', 'values'])
+                         ['x', 'name', 'label', 'tv', 'arr', 'values'])
         self.assertEqual([s['name'] for s in dic['structs']], ['S', 'T', 'Annotated'])
         g, _ = load('interface I { void f(); };')
         dic = g.interface_by_name('I').to_dic()
