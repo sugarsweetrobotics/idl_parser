@@ -4,6 +4,7 @@ import os, sys, traceback
 from . import node
 from . import type as idl_type
 from . import exception
+from . import token_buffer
 from . import const_expr
 
 # Primitive types a union can switch on, besides the integer types (issue #136)
@@ -232,6 +233,7 @@ class IDLUnion(node.IDLNode):
             raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
+        block_ln = None
         while True:
 
             ln, fn, token = token_buf.pop()
@@ -247,9 +249,12 @@ class IDLUnion(node.IDLNode):
                 break
 
             if token == ';':
+                token_buffer.set_line(block_ln)
                 self._parse_block(block_tokens, ln, fn)
                 block_tokens = []
                 continue
+            if not block_tokens:
+                block_ln = ln  # where the member starts (issue #141)
             block_tokens.append(token)
 
         self._post_process()
