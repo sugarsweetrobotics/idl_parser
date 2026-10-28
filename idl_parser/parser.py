@@ -7,6 +7,7 @@ that are kept are expanded, object-like macros are expanded (see :mod:`idl_parse
 ``#pragma`` lines are taken out (see :mod:`idl_parser.pragma`). Every definition ends up in the
 :attr:`IDLParser.global_module` tree.
 """
+import io
 import os, sys
 import re
 import functools
@@ -91,13 +92,23 @@ class IDLParser():
         option of a C preprocessor (issue #120): a dict of name to value
         (``{'N': '5', 'DEBUG': ''}``) or a list of names (each defined as
         ``1``).
+    :param encoding: Character encoding of the IDL files, included files too
+        (issue #139). By default a file is read as UTF-8 (a BOM is
+        skipped), and a file that is not valid UTF-8 is read again as
+        Latin-1, which keeps every byte, so that a file with comments in
+        another encoding (e.g. ISO-8859-1 or Shift_JIS) can be read: IDL
+        identifiers are ASCII, so only the text of comments and literals
+        may be garbled. Given an encoding (``'shift_jis'``), the files are
+        read with it, and a file that is not valid in it raises
+        :class:`UnicodeDecodeError`.
     """
-    def __init__(self, idl_dirs=[], verbose=False, defines=None):
+    def __init__(self, idl_dirs=[], verbose=False, defines=None, encoding=None):
         if defines is None:
             defines = {}
         elif not isinstance(defines, dict):
             defines = dict((name, '1') for name in defines)
         self._defines = dict(defines)
+        self._encoding = encoding
         self._global_module = module.IDLModule()
         self._dirs = idl_dirs
         self._verbose = verbose
@@ -133,6 +144,27 @@ class IDLParser():
             if idl_type.is_string(name):
                 return False
         return idl_type.is_primitive(name)
+
+    @property
+    def encoding(self):
+        """Character encoding of the IDL files, or None for UTF-8 with a
+        fallback to Latin-1 (see :class:`IDLParser`, issue #139)."""
+        return self._encoding
+
+    def _read_lines(self, path):
+        """The lines of the file ``path``, decoded with :attr:`encoding` (issue #139)."""
+        with open(path, 'rb') as f:
+            data = f.read()
+        if self._encoding is not None:
+            text = data.decode(self._encoding)
+        else:
+            try:
+                text = data.decode('utf-8-sig')
+            except UnicodeDecodeError:
+                text = data.decode('latin-1')
+        # Universal newlines, as open() in text mode; str.splitlines() would
+        # also split at form feeds and other separators
+        return io.StringIO(text, newline=None).readlines()
 
     @property
     def dirs(self):
@@ -261,9 +293,8 @@ class IDLParser():
         # do not re-enter parse_idl() endlessly (issue #6).
         self._parsed_files.append(abs_path)
         lines = []
-        with open(idl_path, 'r') as f:
-            for line_number, line in enumerate(f, 1):
-                lines.append((line_number, idl_path, line))
+        for line_number, line in enumerate(self._read_lines(idl_path), 1):
+            lines.append((line_number, idl_path, line))
 
         self.parse_lines(lines, filepath=idl_path)
 
@@ -317,20 +348,19 @@ class IDLParser():
             can not be found.
         """
         included_filepaths = []
-        with open(idl_path, 'r') as f:
-            for line_number, line in enumerate(f, 1):
-                if line.find('#include') >= 0:
-                    if line.find('"') >= 0:
-                        file = line[line.find('"')+1:line.rfind('"')].strip()
-                    elif line.find('<') >= 0:
-                        file = line[line.find('<')+1:line.rfind('>')].strip()
-                    else:
-                        continue
-                    p = self._resolve_include(file, current_file=idl_path)
-                    if p is None:
-                        raise self._include_not_found(file, line_number, idl_path)
-                    if p not in included_filepaths:
-                        included_filepaths.append(p)
+        for line_number, line in enumerate(self._read_lines(idl_path), 1):
+            if line.find('#include') >= 0:
+                if line.find('"') >= 0:
+                    file = line[line.find('"')+1:line.rfind('"')].strip()
+                elif line.find('<') >= 0:
+                    file = line[line.find('<')+1:line.rfind('>')].strip()
+                else:
+                    continue
+                p = self._resolve_include(file, current_file=idl_path)
+                if p is None:
+                    raise self._include_not_found(file, line_number, idl_path)
+                if p not in included_filepaths:
+                    included_filepaths.append(p)
 
         return included_filepaths
 
@@ -471,9 +501,8 @@ class IDLParser():
                 self._parsed_files.append(abs_p)
             if self._verbose: logger.write('IDL Found (%s). Including\n' % filename)
             inc_lines = []
-            with open(p, 'r') as f:
-                for ln, l in enumerate(f, 1):
-                    inc_lines.append((ln, p, l))
+            for ln, l in enumerate(self._read_lines(p), 1):
+                inc_lines.append((ln, p, l))
             return self._clear_comments(inc_lines)
 
         return include
