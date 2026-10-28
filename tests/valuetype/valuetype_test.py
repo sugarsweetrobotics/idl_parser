@@ -29,7 +29,7 @@ module M {
     long get();
     attribute long z;
     struct Inner { long b; };
-    public Inner inner;
+    public Inner nested;
   };
   abstract valuetype A { void f(); };
   custom valuetype C { public long z; };
@@ -110,9 +110,9 @@ class ValueTypeTest(unittest.TestCase):
                          [('public', 'x', 'long'), ('private', 'y', 'string'),
                           ('public', 'values', 'sequence<long>'),
                           ('public', 'others', 'sequence<long>'),
-                          ('public', 'arr', 'long[3]'), ('public', 'inner', 'Inner')])
+                          ('public', 'arr', 'long[3]'), ('public', 'nested', 'Inner')])
         self.assertFalse(v.state_member_by_name('y').is_public)
-        self.assertEqual(v.state_member_by_name('inner').type.full_path, 'M::V::Inner')
+        self.assertEqual(v.state_member_by_name('nested').type.full_path, 'M::V::Inner')
         self.assertIsNone(v.state_member_by_name('nope'))
 
     def test_factory(self):

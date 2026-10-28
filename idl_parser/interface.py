@@ -151,6 +151,25 @@ class IDLMethod(node.IDLNode):
             else:
                 argument_blocks.append(token)
             index = index + 1
+        node.check_unique_names([a.name for a in self._arguments],
+                                'the arguments of "%s"' % self._name)
+        if self._oneway:
+            self._check_oneway(blocks[0])
+
+    def _check_oneway(self, returns):
+        """A oneway operation returns void, has only "in" arguments and
+        raises no exception (issue #143)."""
+        if returns != 'void':
+            raise exception.InvalidIDLSyntaxError(
+                message='The oneway operation "%s" must return void, not "%s"' % (self._name, returns))
+        for a in self._arguments:
+            if a.direction != 'in':
+                raise exception.InvalidIDLSyntaxError(
+                    message='The oneway operation "%s" can not have the %s argument "%s"'
+                    % (self._name, a.direction, a.name))
+        if self._raises:
+            raise exception.InvalidIDLSyntaxError(
+                message='The oneway operation "%s" can not raise exceptions' % self._name)
 
     def _parse_clauses(self, blocks):
         """Parse "raises (E1, E2)" and "context ("a", "b")" after the arguments."""
@@ -619,23 +638,71 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
 
             if token == ';':
                 if block_tokens:
-                    self._parse_block(block_tokens)
+                    self._parse_block(block_tokens, ln, fn)
                 block_tokens = []
                 continue
             block_tokens.append(token)
         self._post_process()
+        self._check_inherited_names(ln, fn)
 
     def _post_process(self):
         self.forEachMethod(lambda m : m.post_process())
 
-    def _parse_block(self, blocks):
+    def _parse_block(self, blocks, ln=None, fn=None):
         annotations, rest = node.parse_annotations(blocks)
         if rest and rest[0] in ('attribute', 'readonly'):
-            self._attributes.extend(parse_attributes(blocks, self, self.filepath))
+            attributes = parse_attributes(blocks, self, self.filepath)
+            for a in attributes:
+                self._declare(a.name, 'attribute', (ln, fn), reread=False)
+            self._attributes.extend(attributes)
             return
         v = IDLMethod(self)
-        v.parse_blocks(blocks, self.filepath)
+        try:
+            v.parse_blocks(blocks, self.filepath)
+        except exception.InvalidIDLSyntaxError as e:
+            if e.line_number is None and ln is not None:
+                e._line_number, e._file_name = ln, fn
+            raise
+        self._declare(v.name, 'operation', (ln, fn), reread=False)
         self._methods.append(v)
+
+    def _own_member_names(self):
+        """Names of the operations and attributes defined in this interface
+        itself, which a derived interface inherits."""
+        return [m.name for m in self._methods] + [a.name for a in self._attributes]
+
+    def _bases(self):
+        """The interfaces (and value types) this one derives from directly."""
+        return list(self._inheritances)
+
+    def _check_inherited_names(self, ln=None, fn=None):
+        """Raise if an operation or attribute name comes from two different
+        base interfaces, or if this interface defines again a name it
+        inherits (case is ignored). A base reached by several paths
+        (diamond inheritance) counts once (issue #143)."""
+        inherited = {}  # lower-case name -> (name, interface)
+        seen = []
+        stack = self._bases()
+        while stack:
+            base = stack.pop(0)
+            if any(base is b for b in seen):
+                continue
+            seen.append(base)
+            for name in base._own_member_names():
+                other = inherited.get(name.lower())
+                if other is not None and other[1] is not base:
+                    raise exception.InvalidIDLSyntaxError(
+                        ln, fn, '%s "%s" inherits "%s" from both "%s" and "%s"'
+                        % (self._kind, self.name, name, other[1].full_path.lstrip(':'),
+                           base.full_path.lstrip(':')))
+                inherited[name.lower()] = (name, base)
+            stack.extend(base._bases())
+        for name in self._own_member_names():
+            other = inherited.get(name.lower())
+            if other is not None:
+                raise exception.InvalidIDLSyntaxError(
+                    ln, fn, '"%s" in %s "%s" redefines "%s" inherited from "%s"'
+                    % (name, self._kind, self.name, other[0], other[1].full_path.lstrip(':')))
 
     @property
     def methods(self):

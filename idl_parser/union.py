@@ -226,6 +226,9 @@ class IDLUnion(node.IDLNode):
 
             if token == ';':
                 self._parse_block(block_tokens)
+                # Member names are unique, ignoring case (issue #143)
+                node.check_unique_names([m.name for m in self._members],
+                                        'union "%s"' % self.name, ln, fn)
                 block_tokens = []
                 continue
             block_tokens.append(token)

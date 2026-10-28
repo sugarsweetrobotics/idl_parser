@@ -354,13 +354,16 @@ class IDLValueType(interface.IDLInterface):
                     message='Can not find Data Type (%s)' % self._boxed_type.ref_name)
         self.check_element_types(self._boxed_type)
 
-    def _parse_block(self, blocks):
+    def _parse_block(self, blocks, ln=None, fn=None):
         annotations, rest = node.parse_annotations(blocks)
         if rest and rest[0] in ('public', 'private'):
             if self._abstract:
                 raise exception.InvalidIDLSyntaxError(
                     message='An abstract %s "%s" can not have state members' % (self._kind, self.name))
-            self._state_members.extend(self._parse_state_members(annotations, rest))
+            members = self._parse_state_members(annotations, rest)
+            for m in members:
+                self._declare(m.name, 'state member', (ln, fn), reread=False)
+            self._state_members.extend(members)
             return
         if rest and rest[0] == 'factory':
             if self._abstract:
@@ -368,9 +371,18 @@ class IDLValueType(interface.IDLInterface):
                     message='An abstract %s "%s" can not have factories' % (self._kind, self.name))
             f = IDLFactory(self)
             f.parse_blocks(blocks, self.filepath)
+            self._declare(f.name, 'factory', (ln, fn), reread=False)
             self._factories.append(f)
             return
-        super(IDLValueType, self)._parse_block(blocks)
+        super(IDLValueType, self)._parse_block(blocks, ln, fn)
+
+    def _own_member_names(self):
+        # State members are inherited too; factories are not
+        return super(IDLValueType, self)._own_member_names() + \
+            [m.name for m in self._state_members]
+
+    def _bases(self):
+        return list(self._inheritances) + list(self._supports)
 
     def _parse_state_members(self, annotations, blocks):
         """``public T a, b[3]`` -> one IDLStateMember per name."""

@@ -177,6 +177,7 @@ class IDLEnum(node.IDLNode):
                     % (value, v.name, other.name, self.name))
         v._value = value
         self._values.append(v)
+        node.check_unique_names([e.name for e in self._values], 'enum "%s"' % self.name, ln, fn)
 
     def _parse_value(self, annotation, name, ln, fn):
         """Integer of ``@value(n)``: an integer literal or the name of a ``const``."""

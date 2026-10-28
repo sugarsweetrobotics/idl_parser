@@ -155,7 +155,9 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                       UnsupportedIDLSyntaxWarning)
             elif token == 'module':
                 ln, fn, name_ = token_buf.pop()
+                pos = token_buf.position()
                 node.check_identifier(name_, 'module', ln, fn)
+                self._declare(name_, 'module', pos)
                 m = self.module_by_name(name_)
                 if m == None:
                     m = IDLModule(name_, self)
@@ -164,6 +166,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 m.parse_tokens(token_buf, filepath=fp)
             elif token == 'interface':
                 ln, fn, name_ = token_buf.pop()
+                pos = token_buf.position()
                 node.check_identifier(name_, 'interface', ln, fn)
                 s = interface.IDLInterface(name_, self)
                 s._add_annotations(pending_annotations)
@@ -171,19 +174,15 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 s._abstract = 'abstract' in pending_modifiers
                 s.parse_tokens(token_buf, filepath=fp)
 
+                if not self._declare(name_, 'interface', pos, s.is_forward):
+                    continue  # read again (issue #143)
                 if s.is_forward:
                     # Forward declaration ("interface A;"): remember the name only.
                     # The definition, if any, is added to interfaces when it appears.
                     if name_ not in self._forward_interfaces:
                         self._forward_interfaces.append(name_)
                     continue
-
-                s_ = self.interface_by_name(name_)
-                if s_:
-                    if self._verbose: sys.stdout.write('# Error. Same Interface Defined (%s)\n' % name_)
-                #    raise InvalidIDLSyntaxError
-                else:
-                    self._interfaces.append(s)
+                self._interfaces.append(s)
 
             elif token in ('valuetype', 'eventtype'):
                 self._parse_valuetype(token, token_buf, pending_annotations, pending_modifiers, fp)
@@ -228,6 +227,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
     def _parse_valuetype(self, keyword, token_buf, annotations, modifiers, filepath):
         """Parse a valuetype or an eventtype after its keyword (issue #99)."""
         ln, fn, name_ = token_buf.pop()
+        pos = token_buf.position()
         if name_ is None or name_ in (';', '{', '}', ':'):
             raise InvalidIDLSyntaxError(ln, fn, 'No name after "%s"' % keyword)
         node.check_identifier(name_, keyword, ln, fn)
@@ -241,12 +241,12 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         v.parse_tokens(token_buf, filepath=filepath)
 
         defined = self._valuetypes if keyword == 'valuetype' else self._eventtypes
-        if v.is_forward:
+        if not self._declare(name_, keyword, pos, v.is_forward):
+            pass  # read again (issue #143)
+        elif v.is_forward:
             forward = self._forward_valuetypes if keyword == 'valuetype' else self._forward_eventtypes
             if name_ not in forward:
                 forward.append(name_)
-        elif any(d.name == name_ for d in defined):
-            if self._verbose: sys.stdout.write('# Error. Same %s Defined (%s)\n' % (keyword, name_))
         else:
             defined.append(v)
 

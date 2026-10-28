@@ -102,6 +102,7 @@ class TokenBuffer():
             for t in split_tokens(line):
                 self._tokens.append((line_number, file_name, t))
         self._tokens = join_brackets(self._tokens)
+        self._count_columns()
 
     @classmethod
     def from_tokens(cls, tokens):
@@ -109,7 +110,29 @@ class TokenBuffer():
         tuples that are already split (issue #121)."""
         buf = cls([])
         buf._tokens = list(tokens)
+        buf._count_columns()
         return buf
+
+    def _count_columns(self):
+        # The index of each token in its line, so that a token is known by
+        # its place in the text also when a file is read again (issue #143)
+        self._columns = []
+        last, column = None, 0
+        for ln, fn, t in self._tokens:
+            column = column + 1 if (ln, fn) == last else 0
+            last = (ln, fn)
+            self._columns.append(column)
+
+    def position(self):
+        """``(line_number, file_name, index in the line)`` of the token
+        returned by the last :meth:`pop`, or None before the first one.
+
+        The same text gives the same position each time it is read.
+        """
+        if self._token_offset == 0:
+            return None
+        ln, fn, _ = self._tokens[self._token_offset - 1]
+        return (ln, fn, self._columns[self._token_offset - 1])
 
     @property
     def t_debug(self):
