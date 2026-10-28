@@ -5,6 +5,7 @@ from . import node
 from . import type as idl_type
 from . import exception
 from . import definitions
+from . import token_buffer
 from . import const_expr
 
 # Primitive types a union can switch on, besides the integer types (issue #136)
@@ -251,11 +252,14 @@ class IDLUnion(node.IDLNode, definitions.IDLDefinitionScope):
             raise exception.InvalidIDLSyntaxError()
 
         block_tokens = []
+        block_ln = None
         while True:
 
             if self._starts_member_type(token_buf) and _only_labels(block_tokens):
                 # "case 1: struct T { long a; } t;": T is defined in this
                 # union (issue #144)
+                if not block_tokens:
+                    block_ln = token_buf.peek()[0]
                 block_tokens.append(self._parse_typedef_constr_type(token_buf, filepath))
                 continue
             ln, fn, token = token_buf.pop()
@@ -274,9 +278,12 @@ class IDLUnion(node.IDLNode, definitions.IDLDefinitionScope):
                 break
 
             if token == ';':
+                token_buffer.set_line(block_ln)
                 self._parse_block(block_tokens, ln, fn)
                 block_tokens = []
                 continue
+            if not block_tokens:
+                block_ln = ln  # where the member starts (issue #141)
             block_tokens.append(token)
 
         self._post_process()
@@ -410,7 +417,7 @@ class IDLUnion(node.IDLNode, definitions.IDLDefinitionScope):
     def member_by_name(self, name):
         """The member named ``name``, or None."""
         for m in self._members:
-            if m.name == name:
+            if m.name == node.unescape(name):
                 return m
 
         return None

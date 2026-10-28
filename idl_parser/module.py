@@ -52,8 +52,23 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         self._forward_eventtypes = []
         self._init_definitions()
         self._modules = []
+        self._filepaths = []
         # typeid / typeprefix declarations, kept in the global scope (issue #135)
         self._type_declarations = []
+
+    @property
+    def filepath(self):
+        """File where the module is first opened (an absolute path), or
+        None. A module opened in several files (``module M { ... };`` in
+        a.idl and in b.idl) lists them all in :attr:`filepaths` (issue #142).
+        For the global scope it is the first file parsed."""
+        return self._filepath
+
+    @property
+    def filepaths(self):
+        """Files where the module is opened (absolute paths), in the order
+        they are read (issue #142)."""
+        return list(self._filepaths)
 
     @property
     def is_global(self):
@@ -118,7 +133,12 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         :param filepath: File name recorded in the parsed nodes.
         :raises ~idl_parser.exception.InvalidIDLSyntaxError: The input is not valid IDL.
         """
-        self._filepath = filepath
+        # A module opened in several files keeps the file where it is first
+        # opened, and lists them all in filepaths (issue #142)
+        if self._filepath is None:
+            self._filepath = filepath
+        if filepath is not None and filepath not in self._filepaths:
+            self._filepaths.append(filepath)
         if not self.name == global_namespace:
             ln, fn, kakko = token_buf.pop()
             if not kakko == '{':
@@ -183,8 +203,8 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 if s.is_forward:
                     # Forward declaration ("interface A;"): remember the name only.
                     # The definition, if any, is added to interfaces when it appears.
-                    if name_ not in self._forward_interfaces:
-                        self._forward_interfaces.append(name_)
+                    if node.unescape(name_) not in self._forward_interfaces:
+                        self._forward_interfaces.append(node.unescape(name_))
                     self._definitions.append(s)
                     continue
 
@@ -257,10 +277,10 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         defined = self._valuetypes if keyword == 'valuetype' else self._eventtypes
         if v.is_forward:
             forward = self._forward_valuetypes if keyword == 'valuetype' else self._forward_eventtypes
-            if name_ not in forward:
-                forward.append(name_)
+            if node.unescape(name_) not in forward:
+                forward.append(node.unescape(name_))
             self._definitions.append(v)
-        elif any(d.name == name_ for d in defined):
+        elif any(d.name == node.unescape(name_) for d in defined):
             if self._verbose: sys.stdout.write('# Error. Same %s Defined (%s)\n' % (keyword, name_))
         else:
             defined.append(v)
@@ -346,7 +366,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
     def module_by_name(self, name):
         """The sub-module named ``name`` (not scoped), or None."""
         for m in self.modules:
-            if m.name == name:
+            if m.name == node.unescape(name):
                 return m
         return None
 
@@ -365,7 +385,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
     def interface_by_name(self, name):
         """The interface named ``name`` (not scoped) in this module, or None."""
         for i in self.interfaces:
-            if i.name == name:
+            if i.name == node.unescape(name):
                 return i
         return None
 
@@ -396,7 +416,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
     def valuetype_by_name(self, name):
         """The value type named ``name`` (not scoped) in this module, or None."""
         for v in self._valuetypes:
-            if v.name == name:
+            if v.name == node.unescape(name):
                 return v
         return None
 
@@ -424,7 +444,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
     def eventtype_by_name(self, name):
         """The event type named ``name`` (not scoped) in this module, or None."""
         for v in self._eventtypes:
-            if v.name == name:
+            if v.name == node.unescape(name):
                 return v
         return None
 
@@ -458,7 +478,8 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
             return [type.IDLType(full_typename, scope if scope is not None else self)]
         # A fully qualified name may start with '::' ("::M::A", issue #69).
         # full_path has no leading '::' ("M::A"), so drop it before comparing.
-        name = str(full_typename).strip()
+        # Escaped identifiers ("_Foo") name "Foo" (issue #140).
+        name = node.unescape(str(full_typename).strip())
         absolute = name.startswith('::')
         if absolute:
             name = name.lstrip(':').strip()
@@ -489,7 +510,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
         apart from the types because they can not be used as the type of a
         member or an argument.
         """
-        name = str(name).strip()
+        name = node.unescape(str(name).strip())
         absolute = name.startswith('::')
         if absolute:
             name = name.lstrip(':').strip()

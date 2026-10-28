@@ -3,6 +3,7 @@ import sys
 from . import node
 from . import exception
 from . import definitions
+from . import token_buffer
 from . import repository_id
 
 from . import type as idl_type
@@ -248,7 +249,7 @@ class IDLMethod(node.IDLNode):
     def argument_by_name(self, name):
         """The argument named ``name``, or None."""
         for a in self.arguments:
-            if a.name == name:
+            if a.name == node.unescape(name):
                 return a
 
         return None
@@ -524,6 +525,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         base valuetypes and its supported interfaces with them (issue #99).
         """
         interfaces, forward = self._all_interfaces(kinds)
+        name = node.unescape(name)
         if name.startswith(sep):
             candidates = [name[len(sep):]]
         else:
@@ -596,6 +598,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
     def _parse_body(self, token_buf, filepath=None):
         """Parse the body after its ``{``, up to and including ``};``."""
         block_tokens = []
+        block_ln = None  # where the declaration starts (issue #141)
         while True:
 
             ln, fn, token = token_buf.pop()
@@ -621,9 +624,12 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
 
             if token == ';':
                 if block_tokens:
+                    token_buffer.set_line(block_ln)
                     self._parse_block(block_tokens, ln, fn)
                 block_tokens = []
                 continue
+            if not block_tokens:
+                block_ln = ln
             block_tokens.append(token)
         self._post_process()
 
@@ -662,7 +668,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         Attributes of base interfaces are not searched.
         """
         for a in self.attributes:
-            if name == a.name:
+            if node.unescape(name) == a.name:
                 return a
         return None
 
@@ -672,7 +678,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         Operations of base interfaces are not searched.
         """
         for m in self.methods:
-            if name == m.name:
+            if node.unescape(name) == m.name:
                 return m
         return None
 

@@ -5,6 +5,7 @@ from . import node
 from . import type as idl_type
 from . import exception
 from . import definitions
+from . import token_buffer
 
 class IDLMember(node.IDLNode):
     """A member of a struct, such as ``long x;`` or ``@key string id;``.
@@ -260,10 +261,13 @@ class IDLStruct(node.IDLNode, definitions.IDLDefinitionScope):
             raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of struct "%s"' % self.name)
 
         block_tokens = []
+        block_ln = None  # where the member declaration starts (issue #141)
         while True:
 
             if self._starts_member_type(token_buf) and not node.parse_annotations(block_tokens)[1]:
                 # "struct T { long a; } t;": T is defined in this struct (issue #144)
+                if not block_tokens:
+                    block_ln = token_buf.peek()[0]
                 block_tokens.append(self._parse_typedef_constr_type(token_buf, filepath))
                 continue
             ln, fn, token = token_buf.pop()
@@ -279,9 +283,12 @@ class IDLStruct(node.IDLNode, definitions.IDLDefinitionScope):
                 break
 
             if token == ';':
+                token_buffer.set_line(block_ln)
                 self._parse_block(block_tokens)
                 block_tokens = []
                 continue
+            if not block_tokens:
+                block_ln = ln
             block_tokens.append(token)
 
         self._post_process()
@@ -316,7 +323,7 @@ class IDLStruct(node.IDLNode, definitions.IDLDefinitionScope):
     def member_by_name(self, name):
         """The member named ``name`` (the base struct is searched too), or None."""
         for m in self.all_members:
-            if m.name == name:
+            if m.name == node.unescape(name):
                 return m
 
         return None
