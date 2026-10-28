@@ -89,6 +89,7 @@ More examples are in the ``examples`` folder of the repository:
 - ``typedef_template_module_example.py``: types declared inside a typedef (``typedef enum E { ... } EE;``), and template modules, which are skipped with a warning
 - ``union_example.py``: unions (discriminator kinds, case and ``default`` labels, member types)
 - ``annotation_example.py``: IDL 4 annotations (``@key``, ``@range``, ...) and struct keys
+- ``repository_id_example.py``: repository IDs (``IDL:omg.org/CosNaming/NamingContext:1.0``) from ``#pragma prefix`` / ``ID`` / ``version``, ``typeid`` and ``typeprefix``
 - ``scoped_name_example.py``: same-named types in several modules (relative ``X``, ``C::X`` and absolute ``::B::X`` names)
 
 https://github.com/sugarsweetrobotics/idl_parser/tree/main/examples
