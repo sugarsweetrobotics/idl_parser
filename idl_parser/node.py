@@ -270,7 +270,9 @@ class IDLNode(object):
 
     @property
     def filepath(self):
-        """File the node was defined in, or None (e.g. for :meth:`idl_parser.parser.IDLParser.load` without ``filepath``)."""
+        """File the node was defined in, as an absolute path (issue #142), or
+        None (e.g. for :meth:`idl_parser.parser.IDLParser.load` without
+        ``filepath``)."""
         return self._filepath
 
     @property

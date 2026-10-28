@@ -74,6 +74,11 @@ def _format_code(code):
     code = code.replace('}', ' } ')
     return re.sub(r'\s+', ' ', code)
 
+def _absolute(path):
+    """``path`` made absolute; None stays None (issue #142)."""
+    return None if path is None else os.path.abspath(path)
+
+
 class IDLParser():
     """Parser of OMG IDL.
 
@@ -276,7 +281,13 @@ class IDLParser():
 
         :param lines: List of ``(line_number, file_name, line)`` tuples.
         :param filepath: File name recorded in the parsed nodes.
+
+        File names are made absolute, so that the :attr:`~idl_parser.node.IDLNode.filepath`
+        of every node, in an included file or not, is an absolute path
+        (issue #142).
         """
+        filepath = _absolute(filepath)
+        lines = [(ln, _absolute(fn), line) for ln, fn, line in lines]
         lines = self._clear_comments(lines)
         lines = self._clear_ifdef(lines)
         lines = self._extract_pragmas(lines)
@@ -463,6 +474,7 @@ class IDLParser():
                 raise self._include_not_found(filename, line_number, file_name)
 
             abs_p = os.path.abspath(p)
+            p = abs_p  # the nodes record absolute paths (issue #142)
             if abs_p in pasted:
                 if self._verbose: logger.write('IDL (%s) already included. Skipped.\n' % filename)
                 return []
