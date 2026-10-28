@@ -471,6 +471,11 @@ class IDLParser():
             filename = filename.strip()
             if self._verbose: logger.write('Find Includes %s\n' % filename)
             p = self._resolve_include(filename, current_file=file_name)
+            if p is None and filename == 'orb.idl':
+                # The types of orb.idl (CORBA::TypeCode, ...) are built in
+                # (issue #138), so an orb.idl that is not found is not needed
+                if self._verbose: logger.write('orb.idl is not found; the built-in CORBA types are used.\n')
+                return []
             if p is None:
                 if self._verbose: logger.write(' # IDL (%s) can not be found.\n' % filename)
                 raise self._include_not_found(filename, line_number, file_name)

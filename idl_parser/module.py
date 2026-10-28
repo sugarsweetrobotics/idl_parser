@@ -474,7 +474,13 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 m.for_each_valuetype(nodes.append)
                 m.for_each_eventtype(nodes.append)
         nodes.extend(enclosing_definitions(scope, nodes))
-        return _find_by_name(nodes, name, absolute, parent, scope)
+        found = _find_by_name(nodes, name, absolute, parent, scope)
+        if not found:
+            # CORBA::TypeCode and the other types an ORB knows (issue #138)
+            builtin = type.builtin_corba_type(full_typename, scope)
+            if builtin is not None:
+                return [type.IDLPrimitive(builtin, scope if scope is not None else self)]
+        return found
 
     def find_exceptions(self, name, scope=None):
         """Return the exceptions named ``name`` (a list), as in "raises (E)".
