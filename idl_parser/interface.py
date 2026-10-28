@@ -631,11 +631,14 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
     def _parse_block(self, blocks):
         annotations, rest = node.parse_annotations(blocks)
         if rest and rest[0] in ('attribute', 'readonly'):
-            self._attributes.extend(parse_attributes(blocks, self, self.filepath))
+            attributes = parse_attributes(blocks, self, self.filepath)
+            self._attributes.extend(attributes)
+            self._definitions.extend(attributes)
             return
         v = IDLMethod(self)
         v.parse_blocks(blocks, self.filepath)
         self._methods.append(v)
+        self._definitions.append(v)
 
     @property
     def methods(self):

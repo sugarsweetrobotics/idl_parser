@@ -160,6 +160,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 if m == None:
                     m = IDLModule(name_, self)
                     self._modules.append(m)
+                    self._definitions.append(m)
                 m._add_annotations(pending_annotations)
                 m.parse_tokens(token_buf, filepath=fp)
             elif token == 'interface':
@@ -176,6 +177,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                     # The definition, if any, is added to interfaces when it appears.
                     if name_ not in self._forward_interfaces:
                         self._forward_interfaces.append(name_)
+                    self._definitions.append(s)
                     continue
 
                 s_ = self.interface_by_name(name_)
@@ -184,6 +186,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 #    raise InvalidIDLSyntaxError
                 else:
                     self._interfaces.append(s)
+                    self._definitions.append(s)
 
             elif token in ('valuetype', 'eventtype'):
                 self._parse_valuetype(token, token_buf, pending_annotations, pending_modifiers, fp)
@@ -245,10 +248,12 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
             forward = self._forward_valuetypes if keyword == 'valuetype' else self._forward_eventtypes
             if name_ not in forward:
                 forward.append(name_)
+            self._definitions.append(v)
         elif any(d.name == name_ for d in defined):
             if self._verbose: sys.stdout.write('# Error. Same %s Defined (%s)\n' % (keyword, name_))
         else:
             defined.append(v)
+            self._definitions.append(v)
 
     def _parse_annotation(self, token, token_buf):
         """Consume an annotation and return it as an :class:`~idl_parser.node.IDLAnnotation`.
