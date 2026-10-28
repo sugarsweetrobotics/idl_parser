@@ -160,6 +160,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 if m == None:
                     m = IDLModule(name_, self)
                     self._modules.append(m)
+                    self._definitions.append(m)
                 m._add_annotations(pending_annotations)
                 m.parse_tokens(token_buf, filepath=fp)
             elif token == 'interface':
@@ -176,6 +177,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                     # The definition, if any, is added to interfaces when it appears.
                     if node.unescape(name_) not in self._forward_interfaces:
                         self._forward_interfaces.append(node.unescape(name_))
+                    self._definitions.append(s)
                     continue
 
                 s_ = self.interface_by_name(name_)
@@ -184,6 +186,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 #    raise InvalidIDLSyntaxError
                 else:
                     self._interfaces.append(s)
+                    self._definitions.append(s)
 
             elif token in ('valuetype', 'eventtype'):
                 self._parse_valuetype(token, token_buf, pending_annotations, pending_modifiers, fp)
@@ -245,10 +248,12 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
             forward = self._forward_valuetypes if keyword == 'valuetype' else self._forward_eventtypes
             if node.unescape(name_) not in forward:
                 forward.append(node.unescape(name_))
+            self._definitions.append(v)
         elif any(d.name == node.unescape(name_) for d in defined):
             if self._verbose: sys.stdout.write('# Error. Same %s Defined (%s)\n' % (keyword, name_))
         else:
             defined.append(v)
+            self._definitions.append(v)
 
     def _parse_annotation(self, token, token_buf):
         """Consume an annotation and return it as an :class:`~idl_parser.node.IDLAnnotation`.
@@ -445,6 +450,7 @@ class IDLModule(definitions.IDLDefinitionScope, node.IDLNode):
                 m.for_each_interface(nodes.append)
                 m.for_each_valuetype(nodes.append)
                 m.for_each_eventtype(nodes.append)
+        nodes.extend(enclosing_definitions(scope, nodes))
         return _find_by_name(nodes, name, absolute, parent, scope)
 
     def find_exceptions(self, name, scope=None):
@@ -488,6 +494,23 @@ def definition_scopes(module, scope=None):
             scopes.append(n)
         n = n.parent
     return scopes
+
+
+def enclosing_definitions(scope, known=()):
+    """The interfaces, value types and event types enclosing ``scope`` that
+    are still being parsed, so they are not in their module yet (issue #133).
+
+    In ``interface NC { exception CP { NC cxt; }; };`` the name ``NC`` in the
+    exception names the interface being parsed, as if it were
+    forward-declared. Nodes already in ``known`` are left out.
+    """
+    found = []
+    n = scope
+    while n is not None:
+        if n.classname in _definition_scope_classnames and all(n is not x for x in known):
+            found.append(n)
+        n = n.parent
+    return found
 
 
 def _find_by_name(nodes, name, absolute, parent, scope):

@@ -39,6 +39,8 @@ class IDLDefinitionScope(object):
         self._forward_unions = []
         self._consts = []
         self._natives = []
+        # Every definition in the order it is written (issue #134)
+        self._definitions = []
 
     def parse_definition(self, token, token_buf, filepath=None, annotations=()):
         """Parse a definition whose keyword ``token`` is already consumed.
@@ -79,6 +81,7 @@ class IDLDefinitionScope(object):
                     if self._verbose: sys.stdout.write('# Error. Same Typedef Defined (%s)\n' % t.name)
                 else:
                     self._typedefs.append(t)
+                    self._definitions.append(t)
 
         elif token == 'struct':
             ln, fn, name_ = token_buf.pop()
@@ -92,11 +95,13 @@ class IDLDefinitionScope(object):
                 # The definition, if any, is added to structs when it appears.
                 if node.unescape(name_) not in self._forward_structs:
                     self._forward_structs.append(node.unescape(name_))
+                self._definitions.append(s)
             elif s_:
                 if self._verbose: sys.stdout.write('# Error. Same Struct Defined (%s)\n' % name_)
             #    raise InvalidIDLSyntaxError
             else:
                 self._structs.append(s)
+                self._definitions.append(s)
 
         elif token == 'exception':
             ln, fn, name_ = token_buf.pop()
@@ -108,6 +113,7 @@ class IDLDefinitionScope(object):
                 if self._verbose: sys.stdout.write('# Error. Same Exception Defined (%s)\n' % name_)
             else:
                 self._exceptions.append(s)
+                self._definitions.append(s)
 
         elif token == 'enum':
             ln, fn, name_ = token_buf.pop()
@@ -121,6 +127,7 @@ class IDLDefinitionScope(object):
             #    raise InvalidIDLSyntaxError
             else:
                 self._enums.append(s)
+                self._definitions.append(s)
 
         elif token == 'bitmask':
             ln, fn, name_ = token_buf.pop()
@@ -131,6 +138,7 @@ class IDLDefinitionScope(object):
                 if self._verbose: sys.stdout.write('# Error. Same Bitmask Defined (%s)\n' % name_)
             else:
                 self._bitmasks.append(s)
+                self._definitions.append(s)
 
         elif token == 'bitset':
             ln, fn, name_ = token_buf.pop()
@@ -142,6 +150,7 @@ class IDLDefinitionScope(object):
                 if self._verbose: sys.stdout.write('# Error. Same Bitset Defined (%s)\n' % name_)
             else:
                 self._bitsets.append(s)
+                self._definitions.append(s)
 
         elif token == 'union':
             ln, fn, name_ = token_buf.pop()
@@ -153,11 +162,13 @@ class IDLDefinitionScope(object):
                 # Forward declaration ("union A;"): remember the name only.
                 if node.unescape(name_) not in self._forward_unions:
                     self._forward_unions.append(node.unescape(name_))
+                self._definitions.append(s)
             elif self.union_by_name(name_):
                 if self._verbose: sys.stdout.write('# Error. Same Union Defined (%s)\n' % name_)
             #    raise InvalidIDLSyntaxError
             else:
                 self._unions.append(s)
+                self._definitions.append(s)
 
         elif token == 'native':
             # "native N;": a type with a name only (issue #93).
@@ -174,6 +185,7 @@ class IDLDefinitionScope(object):
                 if self._verbose: sys.stdout.write('# Error. Same Native Defined (%s)\n' % name_)
             else:
                 self._natives.append(n)
+                self._definitions.append(n)
 
         elif token == 'const':
             values = []
@@ -208,6 +220,7 @@ class IDLDefinitionScope(object):
                 if self._verbose: sys.stdout.write('# Error. Same Const Defined (%s)\n' % name_)
             else:
                 self._consts.append(s)
+                self._definitions.append(s)
 
         else:
             return False
@@ -260,6 +273,26 @@ class IDLDefinitionScope(object):
         return any((self._typedefs, self._structs, self._exceptions, self._enums,
                     self._bitmasks, self._bitsets, self._unions, self._consts,
                     self._natives))
+
+    @property
+    def definitions(self):
+        """Every definition in this scope in the order it is written (issue #134).
+
+        Unlike the lists by kind (:attr:`structs`, :attr:`typedefs`, ...),
+        the kinds are mixed: ``const long A = 1; struct S { ... }; typedef S T;``
+        gives ``[A, S, T]``. Forward declarations are included as the nodes
+        they make (``is_forward`` is True), one for each declaration. A
+        definition that repeats one already in the scope is left out, as in
+        the lists by kind.
+
+        In a module, sub-modules, interfaces, value types and event types
+        are included too; a module opened more than once
+        (``module M { ... }; module M { ... };``) is listed where it is
+        first opened, and its own ``definitions`` are those of every
+        opening in order. In an interface or a value type, the operations,
+        attributes, state members and factories are included too.
+        """
+        return list(self._definitions)
 
     @property
     def structs(self):
