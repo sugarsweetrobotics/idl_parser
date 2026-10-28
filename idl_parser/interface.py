@@ -655,6 +655,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
             for a in attributes:
                 self._declare(a.name, 'attribute', (ln, fn), reread=False)
             self._attributes.extend(attributes)
+            self._definitions.extend(attributes)
             return
         v = IDLMethod(self)
         try:
@@ -665,6 +666,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
             raise
         self._declare(v.name, 'operation', (ln, fn), reread=False)
         self._methods.append(v)
+        self._definitions.append(v)
 
     def _own_member_names(self):
         """Names of the operations and attributes defined in this interface

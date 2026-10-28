@@ -364,6 +364,7 @@ class IDLValueType(interface.IDLInterface):
             for m in members:
                 self._declare(m.name, 'state member', (ln, fn), reread=False)
             self._state_members.extend(members)
+            self._definitions.extend(members)
             return
         if rest and rest[0] == 'factory':
             if self._abstract:
@@ -373,6 +374,7 @@ class IDLValueType(interface.IDLInterface):
             f.parse_blocks(blocks, self.filepath)
             self._declare(f.name, 'factory', (ln, fn), reread=False)
             self._factories.append(f)
+            self._definitions.append(f)
             return
         super(IDLValueType, self)._parse_block(blocks, ln, fn)
 

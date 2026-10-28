@@ -40,6 +40,8 @@ class IDLDefinitionScope(object):
         self._forward_unions = []
         self._consts = []
         self._natives = []
+        # Every definition in the order it is written (issue #134)
+        self._definitions = []
         # Names declared in this scope (issue #143): lower-case name ->
         # list of (name, kind, forward, location)
         self._declared = {}
@@ -127,6 +129,7 @@ class IDLDefinitionScope(object):
                 t.parse_blocks(typename + [d], filepath=filepath)
                 if self._declare(t.name, 'typedef', pos):
                     self._typedefs.append(t)
+                    self._definitions.append(t)
 
         elif token == 'struct':
             ln, fn, name_ = token_buf.pop()
@@ -142,8 +145,10 @@ class IDLDefinitionScope(object):
                 # The definition, if any, is added to structs when it appears.
                 if name_ not in self._forward_structs:
                     self._forward_structs.append(name_)
+                self._definitions.append(s)
             else:
                 self._structs.append(s)
+                self._definitions.append(s)
 
         elif token == 'exception':
             ln, fn, name_ = token_buf.pop()
@@ -154,6 +159,7 @@ class IDLDefinitionScope(object):
             s.parse_tokens(token_buf, filepath=filepath)
             if self._declare(name_, 'exception', pos):
                 self._exceptions.append(s)
+                self._definitions.append(s)
 
         elif token == 'enum':
             ln, fn, name_ = token_buf.pop()
@@ -167,6 +173,7 @@ class IDLDefinitionScope(object):
                 for v in s.values:
                     self._declare(v.name, 'enumerator', pos)
                 self._enums.append(s)
+                self._definitions.append(s)
 
         elif token == 'bitmask':
             ln, fn, name_ = token_buf.pop()
@@ -176,6 +183,7 @@ class IDLDefinitionScope(object):
             s.parse_tokens(token_buf, filepath)
             if self._declare(name_, 'bitmask', pos):
                 self._bitmasks.append(s)
+                self._definitions.append(s)
 
         elif token == 'bitset':
             ln, fn, name_ = token_buf.pop()
@@ -186,6 +194,7 @@ class IDLDefinitionScope(object):
             s.parse_tokens(token_buf, filepath)
             if self._declare(name_, 'bitset', pos):
                 self._bitsets.append(s)
+                self._definitions.append(s)
 
         elif token == 'union':
             ln, fn, name_ = token_buf.pop()
@@ -200,8 +209,10 @@ class IDLDefinitionScope(object):
                 # Forward declaration ("union A;"): remember the name only.
                 if name_ not in self._forward_unions:
                     self._forward_unions.append(name_)
+                self._definitions.append(s)
             else:
                 self._unions.append(s)
+                self._definitions.append(s)
 
         elif token == 'native':
             # "native N;": a type with a name only (issue #93).
@@ -217,6 +228,7 @@ class IDLDefinitionScope(object):
             n._add_annotations(pending_annotations)
             if self._declare(name_, 'native', pos):
                 self._natives.append(n)
+                self._definitions.append(n)
 
         elif token == 'const':
             values = []
@@ -249,6 +261,7 @@ class IDLDefinitionScope(object):
             s._evaluate(ln, fn)
             if self._declare(name_, 'const', pos):
                 self._consts.append(s)
+                self._definitions.append(s)
 
         else:
             return False
@@ -301,6 +314,26 @@ class IDLDefinitionScope(object):
         return any((self._typedefs, self._structs, self._exceptions, self._enums,
                     self._bitmasks, self._bitsets, self._unions, self._consts,
                     self._natives))
+
+    @property
+    def definitions(self):
+        """Every definition in this scope in the order it is written (issue #134).
+
+        Unlike the lists by kind (:attr:`structs`, :attr:`typedefs`, ...),
+        the kinds are mixed: ``const long A = 1; struct S { ... }; typedef S T;``
+        gives ``[A, S, T]``. Forward declarations are included as the nodes
+        they make (``is_forward`` is True), one for each declaration. A
+        definition that repeats one already in the scope is left out, as in
+        the lists by kind.
+
+        In a module, sub-modules, interfaces, value types and event types
+        are included too; a module opened more than once
+        (``module M { ... }; module M { ... };``) is listed where it is
+        first opened, and its own ``definitions`` are those of every
+        opening in order. In an interface or a value type, the operations,
+        attributes, state members and factories are included too.
+        """
+        return list(self._definitions)
 
     @property
     def structs(self):
