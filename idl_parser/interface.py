@@ -104,23 +104,29 @@ class IDLMethod(node.IDLNode):
         else:
             self._oneway = False
 
-        self._returns = idl_type.IDLType(blocks[0], self)
-        self._name = blocks[1]
+        # The name is the token just before "(": the return type before it
+        # may be several words, e.g. "unsigned long long" (issue #159).
+        open_ = blocks.index('(') if '(' in blocks else len(blocks)
+        if open_ < 2:
+            raise exception.InvalidIDLSyntaxError(
+                message='No return type or name of an operation in "%s"' % self.parent.name)
+        self._name, returns = self._name_and_type(blocks[:open_])
+        self._returns = idl_type.IDLType(returns, self)
         node.check_identifier(self._name, 'operation in "%s"' % self.parent.name)
         self._arguments = []
 
-        if not blocks[2] == '(':
-            print(' -- Invalid Interface Token (%s)' % blocks[1])
+        if open_ == len(blocks):
+            print(' -- Invalid Interface Token (%s)' % self._name)
             print( blocks)
 
         self._raises = []
         self._contexts = []
-        index = 3
+        index = open_ + 1
         args_end = len(blocks)
-        if blocks[2] == '(':
+        if open_ < len(blocks):
             # Read the arguments only up to the ")" that closes the argument
             # list; "raises (...)" and "context (...)" may follow it.
-            close = node.matching_paren(blocks, 2)
+            close = node.matching_paren(blocks, open_)
             if close is None:
                 raise exception.InvalidIDLSyntaxError(message='No ")" after the arguments of "%s"' % self._name)
             self._parse_clauses(blocks[close + 1:])
@@ -156,7 +162,7 @@ class IDLMethod(node.IDLNode):
         node.check_unique_names([a.name for a in self._arguments],
                                 'the arguments of "%s"' % self._name)
         if self._oneway:
-            self._check_oneway(blocks[0])
+            self._check_oneway(returns)
 
     def _check_oneway(self, returns):
         """A oneway operation returns void, has only "in" arguments and
