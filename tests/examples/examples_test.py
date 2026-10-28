@@ -66,7 +66,8 @@ class ExamplesRunAsScriptTest(unittest.TestCase):
                      'valuetype_example.py', 'include_dirs_example.py',
                      'struct_inheritance_map_example.py', 'any_fixed_example.py',
                      'preprocessor_example.py', 'typedef_template_module_example.py',
-                     'conditional_include_example.py', 'const_expr_example.py'):
+                     'conditional_include_example.py', 'const_expr_example.py',
+                     'repository_id_example.py'):
             self.assertIn(name, names)
 
     def test_each_example_runs_as_script(self):
@@ -734,6 +735,26 @@ class IncludeDirsExampleTest(unittest.TestCase):
         self.assertIn("parse_dirs() parsed 4 files: ['common/time.idl', 'geometry/geometry.idl', "
                       "'geometry/path.idl', 'navigation/navigator.idl']", self.text)
         self.assertIn('without common/: IDLCanNotFindException', self.text)
+
+
+
+class RepositoryIdExampleTest(unittest.TestCase):
+    """Category: Examples / カテゴリ: サンプル
+
+    Output of examples/repository_id_example.py (issue #135).
+    examples/repository_id_example.py の出力(#135)。
+    """
+
+    def test_output(self):
+        """repository_id_example: IDs from pragmas, typeid and typeprefix.
+
+        repository_id_example: pragma・typeid・typeprefix から決まる ID。
+        """
+        text = run_main('repository_id_example')
+        self.assertRegex(text, r'CosNaming +IDL:omg.org/CosNaming:1.0')
+        self.assertRegex(text, r'CosNaming::NamingContext +IDL:omg.org/CosNaming/NamingContext:1.1')
+        self.assertRegex(text, r'Legacy::Point +DCE:9e2f5c1a-0001:1')
+        self.assertRegex(text, r'Robot::Arm::move +IDL:example.com/Robot/Arm/move:1.0')
 
 
 if __name__ == '__main__':

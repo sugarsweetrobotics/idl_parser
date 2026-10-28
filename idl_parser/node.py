@@ -161,8 +161,10 @@ _identifier = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 # IDL 4.2 keywords that can not be used as identifiers (issue #119). The
 # keywords of the CCM building blocks (component, home, port, ...) and
-# import / typeid / typeprefix are left out: those definitions are skipped
-# with a warning (issue #100), so the words may still be used as names.
+# import are left out: those definitions are skipped with a warning
+# (issue #100), so the words may still be used as names. typeid and
+# typeprefix (read since issue #135) are left out too, so that IDL using
+# them as names is still read.
 reserved_words = frozenset((
     # core data types
     'any', 'boolean', 'case', 'char', 'const', 'default', 'double', 'enum',
@@ -246,6 +248,16 @@ class IDLNode(object):
         self._filepath = None
         self.sep = '::'
         self._annotations = []
+        # Repository ID (issue #135): the #pragma prefix in effect where the
+        # node is defined, as (prefix, scope the names are relative to; None
+        # for the global scope). A scope passes its current one to the
+        # definitions in it; see idl_parser.repository_id.
+        self._repo_prefix = getattr(parent, '_prefix_state', ('', None))
+        self._prefix_state = self._repo_prefix
+        self._include_prefixes = []
+        self._repo_id = None
+        self._repo_version = None
+        self._typeprefix = None
 
     @property
     def annotations(self):
@@ -288,6 +300,21 @@ class IDLNode(object):
         """The name, so that ``str(member.type)`` is a type name such as ``'T'``
         whether or not the type has been resolved to its definition."""
         return self.name
+
+    @property
+    def repository_id(self):
+        """The repository ID (``'IDL:omg.org/CosNaming/NamingContext:1.0'``,
+        issue #135), following ``#pragma prefix``, ``#pragma ID``,
+        ``#pragma version``, ``typeid`` and ``typeprefix``
+        (see :mod:`idl_parser.repository_id`).
+
+        Modules, interfaces, value types, event types, structs, exceptions,
+        unions, enums, typedefs, constants, native types, bitmasks, bitsets,
+        operations and attributes have one; it is None for the global scope
+        and for other nodes (members, arguments, enumerators, types).
+        """
+        from . import repository_id
+        return repository_id.repository_id(self)
 
     @property
     def filepath(self):

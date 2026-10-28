@@ -28,6 +28,7 @@ except ImportError:  # Python < 3.13 (PEP 702)
         return decorator
 
 from . import  module, token_buffer, pragma as idl_pragma, preprocessor as idl_preprocessor
+from . import repository_id
 from .token_buffer import _literal_end
 from . import type as idl_type
 from . import exception 
@@ -282,16 +283,25 @@ class IDLParser():
         lines = self._extract_pragmas(lines)
 
         self._token_buf = token_buffer.TokenBuffer(lines)
+        # A #pragma prefix ends with the file it is written in (issue #135)
+        self._global_module._prefix_state = ('', None)
+        self._global_module._include_prefixes = []
         self._global_module.parse_tokens(self._token_buf, filepath=filepath)
         self._apply_pragmas()
 
     def _extract_pragmas(self, lines):
-        """Remove ``#pragma`` lines and remember them (issues #10 / #28)."""
-        lines, pragmas = idl_pragma.extract_pragmas(lines)
+        """Take ``#pragma`` lines out of the text and remember them (issues #10 / #28).
+
+        Each pragma stays in ``lines`` as an :class:`~idl_parser.pragma.IDLPragma`,
+        so that the parser knows where it is written (issue #135).
+        """
+        lines, pragmas = idl_pragma.extract_pragmas(lines, keep_in_place=True)
         # A file included by several files is pasted into each of them, so
         # the same pragma can be seen twice.
         known = set((p.filepath, p.line_number) for p in self._pragmas)
         for p in pragmas:
+            if p.name in (idl_pragma.INCLUDE_BEGIN, idl_pragma.INCLUDE_END):
+                continue
             key = (p.filepath, p.line_number)
             if p.filepath is not None and key in known:
                 continue
@@ -304,6 +314,9 @@ class IDLParser():
         # struct it names, even when the struct is in a file parsed later.
         for p in self._pragmas:
             p._resolve(self._global_module)
+        # typeid / typeprefix declarations (issue #135)
+        for d in self._global_module._type_declarations:
+            repository_id.apply_declaration(d, self._global_module)
 
     def includes(self, idl_path):
         """Paths of the files named by the ``#include`` directives of an IDL file.
@@ -458,6 +471,11 @@ class IDLParser():
             filename = filename.strip()
             if self._verbose: logger.write('Find Includes %s\n' % filename)
             p = self._resolve_include(filename, current_file=file_name)
+            if p is None and filename == 'orb.idl':
+                # The types of orb.idl (CORBA::TypeCode, ...) are built in
+                # (issue #138), so an orb.idl that is not found is not needed
+                if self._verbose: logger.write('orb.idl is not found; the built-in CORBA types are used.\n')
+                return []
             if p is None:
                 if self._verbose: logger.write(' # IDL (%s) can not be found.\n' % filename)
                 raise self._include_not_found(filename, line_number, file_name)
@@ -474,7 +492,11 @@ class IDLParser():
             with open(p, 'r') as f:
                 for ln, l in enumerate(f, 1):
                     inc_lines.append((ln, p, l))
-            return self._clear_comments(inc_lines)
+            # Mark where the file begins and ends, so that a #pragma prefix
+            # in it ends with it (issue #135)
+            return ([(line_number, file_name, '#pragma %s\n' % idl_pragma.INCLUDE_BEGIN)] +
+                    self._clear_comments(inc_lines) +
+                    [(line_number, file_name, '#pragma %s\n' % idl_pragma.INCLUDE_END)])
 
         return include
 

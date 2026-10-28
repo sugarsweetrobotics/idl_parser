@@ -25,6 +25,17 @@ integer_types = frozenset((
     'octet', 'int8', 'int16', 'int32', 'int64',
     'uint8', 'uint16', 'uint32', 'uint64'))
 
+# Smallest and largest values of the integer types (issue #136)
+integer_ranges = {
+    'short': (-2 ** 15, 2 ** 15 - 1), 'int16': (-2 ** 15, 2 ** 15 - 1),
+    'long': (-2 ** 31, 2 ** 31 - 1), 'int32': (-2 ** 31, 2 ** 31 - 1),
+    'long long': (-2 ** 63, 2 ** 63 - 1), 'int64': (-2 ** 63, 2 ** 63 - 1),
+    'unsigned short': (0, 2 ** 16 - 1), 'uint16': (0, 2 ** 16 - 1),
+    'unsigned long': (0, 2 ** 32 - 1), 'uint32': (0, 2 ** 32 - 1),
+    'unsigned long long': (0, 2 ** 64 - 1), 'uint64': (0, 2 ** 64 - 1),
+    'octet': (0, 255), 'uint8': (0, 255), 'int8': (-128, 127),
+}
+
 _token = re.compile(r'\s*(?:'
                     r'(?P<number>0[xX][0-9A-Fa-f]+|[0-9]+)'
                     r'|(?P<name>(?:::)?[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)'
@@ -236,3 +247,68 @@ def evaluate_positive(expr, scope, what, ln=None, fn=None):
         raise InvalidConstExpressionError(ln, fn, 'Invalid %s "%s": %d is not a positive integer'
                                     % (what, expr, value))
     return value
+
+
+_simple_escapes = {'n': '\n', 't': '\t', 'v': '\v', 'b': '\b', 'r': '\r',
+                   'f': '\f', 'a': '\a', '\\': '\\', '?': '?', "'": "'", '"': '"'}
+
+
+def unescape(text):
+    """The characters of the body of an IDL string or character literal,
+    with the escape sequences (``\\n``, ``\\x41``, ``\\101``, ``\\u3042``)
+    replaced (issue #136)."""
+    out = []
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c != '\\' or i + 1 >= len(text):
+            out.append(c)
+            i = i + 1
+            continue
+        e = text[i + 1]
+        if e in _simple_escapes:
+            out.append(_simple_escapes[e])
+            i = i + 2
+        elif e in 'xX':
+            m = re.match(r'[0-9A-Fa-f]{1,2}', text[i + 2:])
+            if not m:
+                raise ConstExprError('Invalid escape sequence in "%s"' % text)
+            out.append(chr(int(m.group(0), 16)))
+            i = i + 2 + m.end()
+        elif e == 'u':
+            m = re.match(r'[0-9A-Fa-f]{1,4}', text[i + 2:])
+            if not m:
+                raise ConstExprError('Invalid escape sequence in "%s"' % text)
+            out.append(chr(int(m.group(0), 16)))
+            i = i + 2 + m.end()
+        elif e in '01234567':
+            m = re.match(r'[0-7]{1,3}', text[i + 1:])
+            out.append(chr(int(m.group(0), 8)))
+            i = i + 1 + m.end()
+        else:
+            raise ConstExprError('Invalid escape sequence "\\%s"' % e)
+    return ''.join(out)
+
+
+def parse_char_literal(literal, wide=False):
+    """The character (a str of length 1) of an IDL character literal
+    (``'a'``, ``'\\n'``, ``L'w'`` for a wide one), or None if ``literal``
+    is not a character literal (issue #136).
+
+    :param wide: Accept ``L'w'`` (and ``'w'``), as for a ``wchar``.
+    :raises ConstExprError: The literal is not one character.
+    """
+    literal = literal.strip()
+    if wide and literal.startswith('L'):
+        literal = literal[1:]
+    if len(literal) < 2 or literal[0] != "'" or literal[-1] != "'":
+        return None
+    value = unescape(literal[1:-1])
+    if len(value) != 1:
+        raise ConstExprError('%s is not one character' % literal)
+    return value
+
+
+def parse_boolean_literal(literal):
+    """True / False for ``TRUE`` / ``FALSE``, otherwise None (issue #136)."""
+    return {'TRUE': True, 'FALSE': False}.get(literal.strip())
