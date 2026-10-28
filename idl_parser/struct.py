@@ -304,7 +304,7 @@ class IDLStruct(node.IDLNode):
     def member_by_name(self, name):
         """The member named ``name`` (the base struct is searched too), or None."""
         for m in self.all_members:
-            if m.name == name:
+            if m.name == node.unescape(name):
                 return m
 
         return None
