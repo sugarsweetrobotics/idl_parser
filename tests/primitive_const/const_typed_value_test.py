@@ -41,7 +41,7 @@ const Real2 R = 2.5;
 typedef string Name;
 const Name N = "n";
 module A { enum E { X, Y }; };
-module B {
+module EB {
   const A::E C = A::Y;
   const A::E C2 = C;
   const A::E C3 = ::A::X;
@@ -109,7 +109,7 @@ class ConstTypedValueTest(unittest.TestCase):
     def test_enum(self):
         """Enum values are the IDLEnumValue nodes. / enum の値は IDLEnumValue。"""
         e = self.g.module_by_name('A').enum_by_name('E')
-        b = self.g.module_by_name('B')
+        b = self.g.module_by_name('EB')
         self.assertIs(self.value('C', b), e.value_by_name('Y'))
         self.assertIs(self.value('C2', b), e.value_by_name('Y'))
         self.assertIs(self.value('C3', b), e.value_by_name('X'))
