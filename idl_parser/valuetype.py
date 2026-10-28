@@ -360,7 +360,9 @@ class IDLValueType(interface.IDLInterface):
             if self._abstract:
                 raise exception.InvalidIDLSyntaxError(
                     message='An abstract %s "%s" can not have state members' % (self._kind, self.name))
-            self._state_members.extend(self._parse_state_members(annotations, rest))
+            members = self._parse_state_members(annotations, rest)
+            self._state_members.extend(members)
+            self._definitions.extend(members)
             return
         if rest and rest[0] == 'factory':
             if self._abstract:
@@ -369,6 +371,7 @@ class IDLValueType(interface.IDLInterface):
             f = IDLFactory(self)
             f.parse_blocks(blocks, self.filepath)
             self._factories.append(f)
+            self._definitions.append(f)
             return
         super(IDLValueType, self)._parse_block(blocks)
 
