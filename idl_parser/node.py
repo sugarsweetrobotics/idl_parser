@@ -276,6 +276,9 @@ class IDLNode(object):
         self._filepath = None
         self.sep = '::'
         self._annotations = []
+        # The line the node is written on (issue #141)
+        from . import token_buffer
+        self._line_number = token_buffer.current_line() if parent is not None else None
         # Repository ID (issue #135): the #pragma prefix in effect where the
         # node is defined, as (prefix, scope the names are relative to; None
         # for the global scope). A scope passes its current one to the
@@ -330,6 +333,19 @@ class IDLNode(object):
         return self.name
 
     @property
+    def line_number(self):
+        """Line number in :attr:`filepath` where the node is written, or None
+        (issue #141).
+
+        For a definition with a name (module, interface, struct, enum, ...)
+        it is the line of its name; for a member, an enumerator, an
+        operation or an attribute, the line where its declaration starts.
+        Type nodes (:class:`~idl_parser.type.IDLTypeBase`) and the global
+        scope have None.
+        """
+        return self._line_number
+
+    @property
     def repository_id(self):
         """The repository ID (``'IDL:omg.org/CosNaming/NamingContext:1.0'``,
         issue #135), following ``#pragma prefix``, ``#pragma ID``,
@@ -346,7 +362,9 @@ class IDLNode(object):
 
     @property
     def filepath(self):
-        """File the node was defined in, or None (e.g. for :meth:`idl_parser.parser.IDLParser.load` without ``filepath``)."""
+        """File the node was defined in, as an absolute path (issue #142), or
+        None (e.g. for :meth:`idl_parser.parser.IDLParser.load` without
+        ``filepath``)."""
         return self._filepath
 
     @property

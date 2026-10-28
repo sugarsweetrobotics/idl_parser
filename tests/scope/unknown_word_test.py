@@ -68,7 +68,8 @@ class UnknownWordTest(unittest.TestCase):
         with self.assertRaises(InvalidIDLSyntaxError) as cm:
             load('module M {\n  struct A { long a; };\n  strcut S {\n    long x;\n  };\n};',
                  filepath='typo.idl')
-        self.assertIn('File "typo.idl", line 3', str(cm.exception))
+        # file names are absolute paths (issue #142)
+        self.assertIn('File "%s", line 3' % os.path.abspath('typo.idl'), str(cm.exception))
         self.assertIn('module M', str(cm.exception))
         self.assertIn('"strcut S { ... }"', str(cm.exception))
 

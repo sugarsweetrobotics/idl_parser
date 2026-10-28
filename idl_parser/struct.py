@@ -4,6 +4,7 @@ import os, sys, traceback
 from . import node
 from . import type as idl_type
 from . import exception
+from . import token_buffer
 
 class IDLMember(node.IDLNode):
     """A member of a struct, such as ``long x;`` or ``@key string id;``.
@@ -252,6 +253,7 @@ class IDLStruct(node.IDLNode):
             raise exception.InvalidIDLSyntaxError(ln, fn, 'No "{" in the declaration of struct "%s"' % self.name)
 
         block_tokens = []
+        block_ln = None  # where the member declaration starts (issue #141)
         while True:
 
             ln, fn, token = token_buf.pop()
@@ -267,6 +269,7 @@ class IDLStruct(node.IDLNode):
                 break
 
             if token == ';':
+                token_buffer.set_line(block_ln)
                 self._parse_block(block_tokens)
                 # Member names are unique, also with the base members, and
                 # ignoring case (issue #143)
@@ -274,6 +277,8 @@ class IDLStruct(node.IDLNode):
                                         '%s "%s"' % (self.classname[3:].lower(), self.name), ln, fn)
                 block_tokens = []
                 continue
+            if not block_tokens:
+                block_ln = ln
             block_tokens.append(token)
 
         self._post_process()
