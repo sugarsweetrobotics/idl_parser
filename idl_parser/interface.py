@@ -637,11 +637,14 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
             repository_id.parse_declaration(rest[0], rest[1:], self, ln, fn)
             return
         if rest and rest[0] in ('attribute', 'readonly'):
-            self._attributes.extend(parse_attributes(blocks, self, self.filepath))
+            attributes = parse_attributes(blocks, self, self.filepath)
+            self._attributes.extend(attributes)
+            self._definitions.extend(attributes)
             return
         v = IDLMethod(self)
         v.parse_blocks(blocks, self.filepath)
         self._methods.append(v)
+        self._definitions.append(v)
 
     @property
     def methods(self):
