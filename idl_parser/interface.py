@@ -248,7 +248,7 @@ class IDLMethod(node.IDLNode):
     def argument_by_name(self, name):
         """The argument named ``name``, or None."""
         for a in self.arguments:
-            if a.name == name:
+            if a.name == node.unescape(name):
                 return a
 
         return None
@@ -524,6 +524,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         base valuetypes and its supported interfaces with them (issue #99).
         """
         interfaces, forward = self._all_interfaces(kinds)
+        name = node.unescape(name)
         if name.startswith(sep):
             candidates = [name[len(sep):]]
         else:
@@ -662,7 +663,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         Attributes of base interfaces are not searched.
         """
         for a in self.attributes:
-            if name == a.name:
+            if node.unescape(name) == a.name:
                 return a
         return None
 
@@ -672,7 +673,7 @@ class IDLInterface(definitions.IDLDefinitionScope, node.IDLNode):
         Operations of base interfaces are not searched.
         """
         for m in self.methods:
-            if name == m.name:
+            if node.unescape(name) == m.name:
                 return m
         return None
 

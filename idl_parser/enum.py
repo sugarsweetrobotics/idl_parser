@@ -219,7 +219,7 @@ class IDLEnum(node.IDLNode):
     def value_by_name(self, name):
         """The enumerator named ``name``, or None."""
         for m in self.values:
-            if m.name == name:
+            if m.name == node.unescape(name):
                 return m
         return None
 
