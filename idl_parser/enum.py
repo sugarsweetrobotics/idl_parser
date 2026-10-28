@@ -223,3 +223,24 @@ class IDLEnum(node.IDLNode):
             if m.name == node.unescape(name):
                 return m
         return None
+
+    def find_enumerator(self, name):
+        """The enumerator that ``name`` names (``RED``, ``T::RED``,
+        ``::T::RED``) as a value of this enum, or None (issues #136, #137).
+
+        As in IDL, an enumerator belongs to the scope enclosing its enum
+        (``T::RED`` for ``T::Color``); the name through the enum
+        (``T::Color::RED``) is accepted too.
+        """
+        names = name.strip().lstrip(':').split('::')
+        value = self.value_by_name(names[-1].strip())
+        if value is None:
+            return None
+        scope = [n.strip() for n in names[:-1]]
+        if not scope:
+            return value
+        for path in (self.parent.full_path, self.full_path):
+            parts = [p for p in path.lstrip(':').split('::') if p]
+            if parts[len(parts) - len(scope):] == scope:
+                return value
+        return None

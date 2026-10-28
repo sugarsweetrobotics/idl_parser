@@ -378,21 +378,21 @@ class IDLUnion(node.IDLNode, definitions.IDLDefinitionScope):
                 % (label, self.name, self._descriminator_kind, reason))
         try:
             if typ.is_enum:
-                value = _find_enumerator(typ, label)
+                value = typ.find_enumerator(label)
                 if value is None:
                     raise error('not an enumerator of %s' % typ.full_path.lstrip(':'))
                 return value
             if typ.name in ('char', 'wchar'):
                 value = const_expr.parse_char_literal(label, wide=typ.name == 'wchar')
                 if value is None:
-                    value = _const_literal(label, self, lambda v: const_expr.parse_char_literal(v, wide=True))
+                    value = _const_literal(label, self, lambda v: isinstance(v, str) and len(v) == 1)
                 if value is None:
                     raise error('not a character literal')
                 return value
             if typ.name == 'boolean':
                 value = const_expr.parse_boolean_literal(label)
                 if value is None:
-                    value = _const_literal(label, self, const_expr.parse_boolean_literal)
+                    value = _const_literal(label, self, lambda v: isinstance(v, bool))
                 if value is None:
                     raise error('not TRUE or FALSE')
                 return value
@@ -447,29 +447,10 @@ def _label_key(value):
     return (type(value).__name__, value)
 
 
-def _find_enumerator(enum, label):
-    """The enumerator of ``enum`` that ``label`` names (``RED``,
-    ``T::RED``, ``::T::RED``), or None. As in IDL, an enumerator belongs to
-    the scope enclosing its enum (``T::RED`` for ``T::Color``); the name
-    through the enum (``T::Color::RED``) is accepted too."""
-    names = label.strip().lstrip(':').split('::')
-    value = enum.value_by_name(names[-1].strip())
-    if value is None:
-        return None
-    scope = names[:-1]
-    if not scope:
-        return value
-    for path in (enum.parent.full_path, enum.full_path):
-        parts = [p for p in path.lstrip(':').split('::') if p]
-        if parts[len(parts) - len(scope):] == scope:
-            return value
-    return None
-
-
-def _const_literal(name, scope, parse):
-    """The value of the constant named ``name``, read with ``parse`` from its
-    value as written, or None if there is no such constant."""
+def _const_literal(name, scope, accept):
+    """The value of the constant named ``name`` if ``accept(value)`` is
+    true (issue #137), otherwise None."""
     c = const_expr.find_const(name, scope)
-    if c is None:
+    if c is None or not accept(c.value):
         return None
-    return parse(c.value_string)
+    return c.value
